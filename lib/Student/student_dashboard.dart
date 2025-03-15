@@ -8,7 +8,7 @@ class StudentDashboardPage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.teal.shade700,
-        title: const Text("STUDENT DASHBOAR"),
+        title: const Text("STUDENT DASHBOARD"),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
