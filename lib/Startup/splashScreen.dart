@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'routes.dart';
+import 'dart:async';
+import '../Startup/routes.dart';
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
   _SplashScreenState createState() => _SplashScreenState();
 }
@@ -10,7 +13,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(Duration(seconds: 3), () {
+    Timer(const Duration(seconds: 3), () {
       Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
     });
   }
@@ -18,9 +21,15 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF76C7C0),
+      backgroundColor: const Color(0xFF76C7C0), // Light teal background
       body: Center(
-        child: Image.asset('assets/logo.png', width: 120),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(15), // Apply border radius
+          child: Image.asset(
+            "assets/logo.png",
+            width: 150,
+          ),
+        ),
       ),
     );
   }

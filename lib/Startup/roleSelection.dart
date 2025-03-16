@@ -1,19 +1,48 @@
 import 'package:flutter/material.dart';
-import 'routes.dart';
+import '../Startup/routes.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
+  const RoleSelectionScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF76C7C0),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text("CHOOSE YOUR ROLE", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-          SizedBox(height: 20),
-          RoleButton(icon: Icons.school, label: "STUDENT", route: AppRoutes.studentLogin),
-          RoleButton(icon: Icons.person, label: "TEACHER", route: AppRoutes.teacherLogin),
-        ],
+      backgroundColor: const Color(0xFF76C7C0), // Light teal
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center, // Center vertically
+            crossAxisAlignment: CrossAxisAlignment.center, // Center horizontally
+            children: [
+              Image.asset(
+                "assets/role_top.png", // Add your image here
+                height: 150,
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "CHOOSE YOUR ROLE",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+              RoleButton(
+                icon: Icons.school,
+                text: "STUDENT",
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.studentLogin);
+                },
+              ),
+              const SizedBox(height: 20),
+              RoleButton(
+                icon: Icons.person, // Faculty icon
+                text: "FACULTY",
+                onTap: () {
+                  Navigator.pushNamed(context, AppRoutes.facultyLogin);
+                },
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -21,22 +50,41 @@ class RoleSelectionScreen extends StatelessWidget {
 
 class RoleButton extends StatelessWidget {
   final IconData icon;
-  final String label;
-  final String route;
+  final String text;
+  final VoidCallback onTap;
 
-  RoleButton({required this.icon, required this.label, required this.route});
+  const RoleButton({super.key, required this.icon, required this.text, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton.icon(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Color(0xFF2A7F77),
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 40),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 250,
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A7F77), // Dark teal
+          borderRadius: BorderRadius.circular(15),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 5,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 40),
+            const SizedBox(height: 10),
+            Text(
+              text.toUpperCase(),
+              style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
       ),
-      onPressed: () => Navigator.pushNamed(context, route),
-      icon: Icon(icon, color: Colors.white),
-      label: Text(label, style: TextStyle(fontSize: 18, color: Colors.white)),
     );
   }
 }

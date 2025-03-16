@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
       title: 'Presenza',
       theme: ThemeData(primarySwatch: Colors.teal),
       initialRoute: AppRoutes.splash,
-      routes: AppRoutes.getRoutes(),  // ✅ Call getRoutes() instead of using AppRoutes.routes
+      onGenerateRoute: AppRoutes.generateRoute, // Use custom route transitions
     );
   }
 }
