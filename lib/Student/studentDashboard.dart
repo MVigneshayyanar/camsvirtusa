@@ -40,6 +40,36 @@ class _StudentDashboardState extends State<StudentDashboard> {
     }
   }
 
+  void _navigateTo(String page) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(title: Text(page)),
+          body: Center(
+            child: Text(
+              '$page Page',
+              style: const TextStyle(fontSize: 24),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardButton(String label, IconData icon, Function() onTap) {
+    return ElevatedButton.icon(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: const Color(0xFF2A7F77),
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+      ),
+      icon: Icon(icon),
+      label: Text(label),
+      onPressed: onTap,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,16 +86,48 @@ class _StudentDashboardState extends State<StudentDashboard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Name: ${studentData!['name']}",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-            Text("Email: ${studentData!['email']}",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
-            Text("Student ID: ${widget.studentId}",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white)),
+            Text(
+              "Name: ${studentData!['name']}",
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+            Text(
+              "Email: ${studentData!['email']}",
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+            Text(
+              "Student ID: ${widget.studentId}",
+              style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
+            ),
+            const SizedBox(height: 30),
+            _buildDashboardButton(
+                "View Attendance", Icons.check, () => _navigateTo('Attendance')),
+            const SizedBox(height: 10),
+            _buildDashboardButton(
+                "View Timetable", Icons.calendar_today, () => _navigateTo('Timetable')),
+            const SizedBox(height: 10),
+            _buildDashboardButton(
+                "Request OD", Icons.assignment, () => _navigateTo('Request OD')),
+            const SizedBox(height: 10),
+            _buildDashboardButton(
+                "Request Leave", Icons.event_busy, () => _navigateTo('Request Leave')),
+            const SizedBox(height: 10),
+            _buildDashboardButton(
+                "View Profile", Icons.person, () => _navigateTo('studentProfile')),
           ],
         ),
       )
-          : const Center(child: Text("Student data not found!", style: TextStyle(color: Colors.white, fontSize: 18))),
+          : const Center(
+          child: Text("Student data not found!",
+              style: TextStyle(color: Colors.white, fontSize: 18))),
     );
   }
 }
