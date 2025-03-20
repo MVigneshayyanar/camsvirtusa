@@ -7,7 +7,7 @@ class RoleSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF76C7C0), // Light teal
+      backgroundColor: const Color(0xFF7886C7), // Light teal
       body: SafeArea(
         child: Center(
           child: Column(
@@ -63,7 +63,7 @@ class RoleButton extends StatelessWidget {
         width: 250,
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          color: const Color(0xFF2A7F77), // Dark teal
+          color: const Color(0xFF2D336B), // Dark teal
           borderRadius: BorderRadius.circular(15),
           boxShadow: [
             BoxShadow(

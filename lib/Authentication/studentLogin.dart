@@ -1,8 +1,61 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../Startup/routes.dart';
 
-class StudentLoginScreen extends StatelessWidget {
+class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
+
+  @override
+  _StudentLoginScreenState createState() => _StudentLoginScreenState();
+}
+
+class _StudentLoginScreenState extends State<StudentLoginScreen> {
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    String email = _emailController.text.trim();
+    String password = _passwordController.text.trim();
+
+    try {
+      // Query Firestore to find user by email
+      QuerySnapshot query = await FirebaseFirestore.instance
+          .collection('students')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        var userDoc = query.docs.first;
+        var userData = userDoc.data() as Map<String, dynamic>;
+        String studentId = userDoc.id; // Get the document ID (Student ID)
+
+        if (userData['password'] == password) {
+          // Navigate to Dashboard with Student ID
+          Navigator.pushReplacementNamed(
+            context,
+            AppRoutes.studentDashboard,
+            arguments: studentId,
+          );
+        } else {
+          setState(() => _errorMessage = "Invalid password. Try again.");
+        }
+      } else {
+        setState(() => _errorMessage = "User not found. Check your email.");
+      }
+    } catch (e) {
+      setState(() => _errorMessage = "Login failed: ${e.toString()}");
+    }
+
+    setState(() => _isLoading = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,15 +75,18 @@ class StudentLoginScreen extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: Colors.white,
-                  hintText: "User ID",
+                  hintText: "Email",
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
               const SizedBox(height: 15),
               TextField(
+                controller: _passwordController,
                 obscureText: true,
                 decoration: InputDecoration(
                   filled: true,
@@ -39,6 +95,14 @@ class StudentLoginScreen extends StatelessWidget {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               ),
+              if (_errorMessage != null)
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  ),
+                ),
               const SizedBox(height: 10),
               TextButton(
                 onPressed: () {
@@ -47,10 +111,10 @@ class StudentLoginScreen extends StatelessWidget {
                 child: const Text("Login via OTP?", style: TextStyle(color: Colors.white)),
               ),
               const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.studentDashboard);
-                },
+              _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : ElevatedButton(
+                onPressed: _login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2A7F77),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

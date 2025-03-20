@@ -19,35 +19,75 @@ class AppRoutes {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
-        return _fadeRoute( SplashScreen(), settings);
+        return _animatedRoute(SplashScreen(), settings);
+
       case roleSelection:
-        return _fadeRoute(const RoleSelectionScreen(), settings);
+        return _animatedRoute(const RoleSelectionScreen(), settings);
+
       case studentLogin:
-        return _fadeRoute(const StudentLoginScreen(), settings);
+        return _animatedRoute(const StudentLoginScreen(), settings);
+
       case facultyLogin:
-        return _fadeRoute(const FacultyLoginScreen(), settings);
+        return _animatedRoute(const FacultyLoginScreen(), settings);
+
       case otpVerification:
-        return _fadeRoute(const OTPVerificationScreen(), settings);
+        return _animatedRoute(const OTPVerificationScreen(), settings);
+
       case studentDashboard:
-        return _fadeRoute(const StudentDashboard(), settings);
+        final studentId = settings.arguments as String?;
+        if (studentId != null && studentId.isNotEmpty) {
+          return _animatedRoute(StudentDashboard(studentId: studentId), settings);
+        } else {
+          return _errorRoute("Invalid or Missing Student ID", settings);
+        }
+
       case facultyDashboard:
-        return _fadeRoute(const FacultyDashboard(), settings);
+        final facultyId = settings.arguments as String?;
+        if (facultyId != null && facultyId.isNotEmpty) {
+          return _animatedRoute(FacultyDashboard(facultyId: facultyId), settings);
+        } else {
+          return _errorRoute("Invalid or Missing Faculty ID", settings);
+        }
+
       default:
-        return _fadeRoute( SplashScreen(), settings);
+        return _animatedRoute(SplashScreen(), settings);
     }
   }
 
-  // Function for fade transition effect
-  static PageRouteBuilder _fadeRoute(Widget page, RouteSettings settings) {
+  // Function for smooth transition effect (Slide + Fade)
+  static PageRouteBuilder _animatedRoute(Widget page, RouteSettings settings) {
     return PageRouteBuilder(
       settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
+        const begin = Offset(1.0, 0.0); // Start from right
+        const end = Offset.zero;
+        const curve = Curves.easeInOut;
+
+        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        var fadeTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+
+        return SlideTransition(
+          position: animation.drive(tween),
+          child: FadeTransition(opacity: animation.drive(fadeTween), child: child),
         );
       },
+    );
+  }
+
+  // Function for handling invalid routes
+  static PageRouteBuilder _errorRoute(String message, RouteSettings settings) {
+    return PageRouteBuilder(
+      settings: settings,
+      pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+        backgroundColor: const Color(0xFF76C7C0),
+        body: Center(
+          child: Text(
+            message,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+          ),
+        ),
+      ),
     );
   }
 }
