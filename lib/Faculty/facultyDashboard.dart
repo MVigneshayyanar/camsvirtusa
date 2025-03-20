@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 
 class FacultyDashboard extends StatelessWidget {
-  const FacultyDashboard({super.key});
+  final String facultyId;
+
+  const FacultyDashboard({super.key, required this.facultyId});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF76C7C0),
       appBar: AppBar(
+        title: const Text("Faculty Dashboard"),
         backgroundColor: const Color(0xFF2A7F77),
-        title: const Text("faculty Dashboard"),
       ),
       body: Center(
-        child: const Text(
-          "Welcome to faculty Dashboard",
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+        child: Text(
+          "Welcome, Faculty ID: $facultyId",
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
         ),
       ),
     );
