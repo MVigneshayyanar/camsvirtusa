@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "175373050604",
+    "project_id": "camsvirtusa-55484",
+    "storage_bucket": "camsvirtusa-55484.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:175373050604:android:416122080904a36749bbc9",
+        "android_client_info": {
+          "package_name": "com.example.camsvirtusa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB2xpxoeSOC0pqX9m7HfDyAwGzI2rm4UbM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
