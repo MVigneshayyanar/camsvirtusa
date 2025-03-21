@@ -41,7 +41,7 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
           // Navigate to Dashboard with Student ID
           Navigator.pushReplacementNamed(
             context,
-            AppRoutes.studentDashboard,
+            AppRoutes.facultyDashboard,
             arguments: facultyId,
           );
         } else {
