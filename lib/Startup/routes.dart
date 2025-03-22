@@ -80,7 +80,7 @@ class AppRoutes {
     return PageRouteBuilder(
       settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
-        backgroundColor: const Color(0xFF76C7C0),
+        backgroundColor: const Color(0xFF7886C7),
         body: Center(
           child: Text(
             message,

@@ -60,7 +60,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
   Widget _buildDashboardButton(String label, IconData icon, Function() onTap) {
     return ElevatedButton.icon(
       style: ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF2A7F77),
+        backgroundColor: const Color(0xFF2D336B),
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
       ),
@@ -73,9 +73,9 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF76C7C0),
+      backgroundColor: const Color(0xFF7886C7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2A7F77),
+        backgroundColor: const Color(0xFF2D336B),
         title: const Text("Student Dashboard"),
       ),
       body: _isLoading

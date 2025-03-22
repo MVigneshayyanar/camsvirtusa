@@ -8,9 +8,9 @@ class FacultyDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF76C7C0),
+      backgroundColor: const Color(0xFF7886C7),
       appBar: AppBar(
-        backgroundColor: const Color(0xFF2A7F77),
+        backgroundColor: const Color(0xFF2D336B),
         title: const Text("faculty Dashboard"),
       ),
       body: Center(
