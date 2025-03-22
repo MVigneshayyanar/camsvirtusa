@@ -15,7 +15,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF76C7C0), // Light teal background
+      backgroundColor: const Color(0xFF7886C7), // Light teal background
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -53,7 +53,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   // Logic to send OTP
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2A7F77), // Dark teal
+                  backgroundColor: const Color(0xFF2D336B), // Dark teal
                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -84,7 +84,7 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                   // Logic to verify OTP
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2A7F77), // Dark teal
+                  backgroundColor: const Color(0xFF2D336B), // Dark teal
                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -108,10 +108,10 @@ class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2A7F77)),
+                  icon: const Icon(Icons.arrow_back, color: Color(0xFF2D336B)),
                   label: const Text(
                     "Back",
-                    style: TextStyle(fontSize: 16, color: Color(0xFF2A7F77)),
+                    style: TextStyle(fontSize: 16, color: Color(0xFF2D336B)),
                   ),
                 ),
               ),

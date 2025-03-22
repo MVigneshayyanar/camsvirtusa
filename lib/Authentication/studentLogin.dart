@@ -60,7 +60,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF76C7C0),
+      backgroundColor: const Color(0xFF7886C7),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 30),
@@ -116,7 +116,7 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
                   : ElevatedButton(
                 onPressed: _login,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2A7F77),
+                  backgroundColor: const Color(0xFF2D336B),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                 ),
