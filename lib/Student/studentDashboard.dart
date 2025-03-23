@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'studentProfile.dart';
 
 class StudentDashboard extends StatefulWidget {
   final String studentId;
@@ -57,6 +58,15 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
+  void _navigateToProfile() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => StudentProfile(studentId: widget.studentId),
+      ),
+    );
+  }
+
   Widget _buildDashboardButton(String label, String image, Function() onTap) {
     return GestureDetector(
       onTap: onTap,
@@ -97,8 +107,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF2D336B),
         title: const Text("Student Dashboard"),
-        leading: Icon(Icons.menu, color: Colors.white),
-        actions: [Icon(Icons.notifications, color: Colors.white)],
+        leading: const Icon(Icons.menu, color: Colors.white),
+        actions: const [Icon(Icons.notifications, color: Colors.white)],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.white))
@@ -174,7 +184,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 mainAxisSpacing: 15,
                 children: [
                   _buildDashboardButton(
-                      "View Profile", 'assets/profile_icon.png', () => _navigateTo('Profile')),
+                      "View Profile", 'assets/profile_icon.png', _navigateToProfile),
                   _buildDashboardButton(
                       "Check Attendance", 'assets/attendance.png', () => _navigateTo('Attendance')),
                   _buildDashboardButton(
