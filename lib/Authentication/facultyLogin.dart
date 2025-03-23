@@ -70,7 +70,7 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
               const Icon(Icons.school, size: 100, color: Colors.white),
               const SizedBox(height: 20),
               const Text(
-                "STUDENT LOGIN",
+                "FACULTY LOGIN",
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
               ),
               const SizedBox(height: 20),
