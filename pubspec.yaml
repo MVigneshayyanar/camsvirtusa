@@ -33,3 +33,6 @@ flutter:
   assets:
     - assets/logo.jpg
     - assets/role_top.png
+    - assets/view_profile.png
+
+

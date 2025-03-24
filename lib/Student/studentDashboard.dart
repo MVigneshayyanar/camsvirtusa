@@ -67,7 +67,8 @@ class _StudentDashboardState extends State<StudentDashboard> {
     );
   }
 
-  Widget _buildDashboardButton(String label, String image, Function() onTap) {
+  // ✅ Modified function to accept imageSize
+  Widget _buildDashboardButton(String label, String image, Function() onTap, {double imageSize = 50.0}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -86,7 +87,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(image, width: 50, height: 50),
+            Image.asset(image, width: imageSize, height: imageSize), // ✅ Uses dynamic image size
             const SizedBox(height: 10),
             Text(
               label,
@@ -117,10 +118,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // Profile Section
+            // ✅ Profile Section
             Row(
               children: [
-                CircleAvatar(
+                const CircleAvatar(
                   radius: 40,
                   backgroundImage: AssetImage('assets/profile.png'),
                 ),
@@ -139,7 +140,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
             const SizedBox(height: 20),
 
-            // Attendance Progress Bar
+            // ✅ Attendance Progress Bar
             Row(
               children: [
                 Expanded(
@@ -176,7 +177,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             ),
             const SizedBox(height: 30),
 
-            // Dashboard Buttons Grid
+            // ✅ Dashboard Buttons Grid
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
@@ -184,13 +185,13 @@ class _StudentDashboardState extends State<StudentDashboard> {
                 mainAxisSpacing: 15,
                 children: [
                   _buildDashboardButton(
-                      "View Profile", 'assets/profile_icon.png', _navigateToProfile),
+                      "View Profile", 'assets/view_profile.png', _navigateToProfile, imageSize: 100.0),
                   _buildDashboardButton(
-                      "Check Attendance", 'assets/attendance.png', () => _navigateTo('Attendance')),
+                      "Check Attendance", 'assets/attendance.png', () => _navigateTo('Attendance'), imageSize: 60.0),
                   _buildDashboardButton(
-                      "On Duty Form", 'assets/od_form.png', () => _navigateTo('On Duty')),
+                      "On Duty Form", 'assets/od_form.png', () => _navigateTo('On Duty'), imageSize: 60.0),
                   _buildDashboardButton(
-                      "Leave Form", 'assets/leave_form.png', () => _navigateTo('Leave')),
+                      "Leave Form", 'assets/leave_form.png', () => _navigateTo('Leave'), imageSize: 60.0),
                 ],
               ),
             ),
