@@ -187,11 +187,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   _buildDashboardButton(
                       "View Profile", 'assets/view_profile.png', _navigateToProfile, imageSize: 100.0),
                   _buildDashboardButton(
-                      "Check Attendance", 'assets/attendance.png', () => _navigateTo('Attendance'), imageSize: 60.0),
+                      "Check Attendance", 'assets/check_attendance.png', () => _navigateTo('Attendance'), imageSize: 100.0),
                   _buildDashboardButton(
-                      "On Duty Form", 'assets/od_form.png', () => _navigateTo('On Duty'), imageSize: 60.0),
+                      "On Duty Form", 'assets/on_duty.png', () => _navigateTo('On Duty'), imageSize: 100.0),
                   _buildDashboardButton(
-                      "Leave Form", 'assets/leave_form.png', () => _navigateTo('Leave'), imageSize: 60.0),
+                      "Leave Form", 'assets/leave_form.png', () => _navigateTo('Leave'), imageSize: 100.0),
                 ],
               ),
             ),

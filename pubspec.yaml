@@ -34,5 +34,12 @@ flutter:
     - assets/logo.jpg
     - assets/role_top.png
     - assets/view_profile.png
+    - assets/check_attendance.png
+    - assets/on_duty.png
+    - assets/leave_form.png
+    - assets/mark_attendance.png
+    - assets/student_details.png
+    - assets/my_mentees.png
+
 
 
