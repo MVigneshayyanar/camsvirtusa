@@ -35,15 +35,19 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
       if (query.docs.isNotEmpty) {
         var userDoc = query.docs.first;
         var userData = userDoc.data() as Map<String, dynamic>;
-        String facultyId = userDoc.id; // Get the document ID (Student ID)
 
         if (userData['password'] == password) {
-          // Navigate to Dashboard with Student ID
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.facultyDashboard,
-            arguments: facultyId,
-          );
+          String role = userData['role']; // Get user role
+
+          if (role == 'admin') {
+            // Navigate to Admin Dashboard
+            Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+          } else if (role == 'faculty') {
+            // Navigate to Faculty Dashboard
+            Navigator.pushReplacementNamed(context, AppRoutes.facultyDashboard);
+          } else {
+            setState(() => _errorMessage = "Unauthorized role.");
+          }
         } else {
           setState(() => _errorMessage = "Invalid password. Try again.");
         }
@@ -56,6 +60,7 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
 
     setState(() => _isLoading = false);
   }
+
 
   @override
   Widget build(BuildContext context) {

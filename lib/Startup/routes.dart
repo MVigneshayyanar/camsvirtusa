@@ -6,6 +6,10 @@ import '../Startup/splashScreen.dart';
 import '../Startup/roleSelection.dart';
 import '../Student/studentDashboard.dart';
 import '../Faculty/facultyDashboard.dart';
+import '../Admin/adminDashboard.dart';
+import '../Admin/studentControl.dart'; // Import Student Control Page
+import '../Admin/addStudent.dart'; // Import Add Student Page
+import '../Admin/viewStudent.dart'; // Import View Student Page
 
 class AppRoutes {
   static const String splash = '/';
@@ -15,6 +19,10 @@ class AppRoutes {
   static const String otpVerification = '/otpVerification';
   static const String studentDashboard = '/studentDashboard';
   static const String facultyDashboard = '/facultyDashboard';
+  static const String adminDashboard = '/adminDashboard';
+  static const String studentControl = '/studentControl'; // Student Control Page
+  static const String addStudent = '/addStudent'; // Add Student Page
+  static const String viewStudent = '/viewStudent'; // View Student Page
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -49,8 +57,20 @@ class AppRoutes {
           return _errorRoute("Invalid or Missing Faculty ID", settings);
         }
 
+      case adminDashboard:
+        return _animatedRoute(const AdminDashboard(), settings);
+
+      case studentControl:
+        return _animatedRoute(StudentControlScreen(), settings);
+
+      case addStudent:
+        return _animatedRoute(AddStudentScreen(), settings);
+
+      case viewStudent:
+        return _animatedRoute(ViewStudentScreen(), settings);
+
       default:
-        return _animatedRoute(SplashScreen(), settings);
+        return _errorRoute("Page Not Found", settings);
     }
   }
 
@@ -60,7 +80,7 @@ class AppRoutes {
       settings: settings,
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0); // Start from right
+        const begin = Offset(1.0, 0.0); // Slide from right
         const end = Offset.zero;
         const curve = Curves.easeInOut;
 
