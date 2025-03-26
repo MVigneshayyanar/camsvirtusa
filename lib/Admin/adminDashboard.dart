@@ -31,11 +31,11 @@ class AdminDashboard extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(15),
           children: [
-            _buildDashboardButton(context, "STUDENT", "assets/student.png", AppRoutes.studentControl),
-            _buildDashboardButton(context, "STAFF", "assets/staff.png", "/staff"),
-            _buildDashboardButton(context, "BATCH", "assets/batch.png", "/batch"),
-            _buildDashboardButton(context, "DEPARTMENT", "assets/department.png", "/department"),
-            _buildDashboardButton(context, "TIMETABLE SCHEDULING", "assets/timetable.png", "/timetable"),
+            _buildDashboardButton(context, "STUDENT", "assets/student_ad.png", AppRoutes.studentControl),
+            _buildDashboardButton(context, "STAFF", "assets/staff_ad.png", "/staff"),
+            _buildDashboardButton(context, "BATCH OVERVIEW", "assets/batch_ad.png", "/batch"),
+            _buildDashboardButton(context, "DEPARTMENT OVERVIEW", "assets/department_ad.png", "/department"),
+            _buildDashboardButton(context, "TIMETABLE SCHEDULING", "assets/timetable_ad.png", "/timetable"),
           ],
         ),
       ),

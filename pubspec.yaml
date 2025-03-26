@@ -40,6 +40,11 @@ flutter:
     - assets/mark_attendance.png
     - assets/student_details.png
     - assets/my_mentees.png
+    - assets/student_ad.png
+    - assets/staff_ad.png
+    - assets/batch_ad.png
+    - assets/department_ad.png
+    - assets/timetable_ad.png
 
 
 
