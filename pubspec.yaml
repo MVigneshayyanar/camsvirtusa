@@ -24,9 +24,16 @@ dependencies:
   image_picker: ^1.1.2
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/Home.png"
+
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
 
 flutter:
   uses-material-design: true
@@ -46,6 +53,26 @@ flutter:
     - assets/batch_ad.png
     - assets/department_ad.png
     - assets/timetable_ad.png
+    - assets/Home.png
+funding:
+  -
+dependency_overrides:
+executables:
+topics:
+  -
+documentation:
+ignored_advisories:
+  -
+issue_tracker:
+repository:
+false_secrets:
+  -
+screenshots:
+  -
+homepage:
+platforms:
+
+
 
 
 

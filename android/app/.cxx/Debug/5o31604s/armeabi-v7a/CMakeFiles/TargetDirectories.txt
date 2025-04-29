@@ -1,0 +1,2 @@
+D:/camsvirtusa/android/app/.cxx/Debug/5o31604s/armeabi-v7a/CMakeFiles/edit_cache.dir
+D:/camsvirtusa/android/app/.cxx/Debug/5o31604s/armeabi-v7a/CMakeFiles/rebuild_cache.dir
