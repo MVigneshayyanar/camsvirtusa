@@ -24,7 +24,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
   Future<void> _fetchFacultyData() async {
     try {
       DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('faculties') // ✅ Corrected Collection Name
+          .collection('faculties')
           .doc(widget.facultyId)
           .get();
 
@@ -67,7 +67,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  Widget _buildDashboardButton(String label, String image, Function() onTap, {double imageSize = 80.0}) {
+  Widget _buildDashboardButton(String label, String image, Function() onTap, {double imageSize = 100.0}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -86,12 +86,11 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Image.asset(image, width: imageSize, height: imageSize), // ✅ Uses dynamic image size
+            Image.asset(image, width: imageSize, height: imageSize),
             const SizedBox(height: 10),
             Text(
               label,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
               textAlign: TextAlign.center,
             ),
           ],
@@ -117,7 +116,6 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // ✅ Profile Section
             Row(
               children: [
                 const CircleAvatar(
@@ -138,22 +136,16 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
               ],
             ),
             const SizedBox(height: 30),
-
-            // ✅ Dashboard Buttons Grid
             Expanded(
               child: GridView.count(
                 crossAxisCount: 2,
                 crossAxisSpacing: 15,
                 mainAxisSpacing: 15,
                 children: [
-                  _buildDashboardButton(
-                      "View Profile", 'assets/view_profile.png', _navigateToProfile, imageSize: 100.0),
-                  _buildDashboardButton(
-                      "Mark Attendance", 'assets/mark_attendance.png', () => _navigateTo('Attendance'), imageSize: 100.0),
-                  _buildDashboardButton(
-                      "Student Details", 'assets/student_details.png', () => _navigateTo('Student Details'), imageSize: 100.0),
-                  _buildDashboardButton(
-                      "My Mentees", 'assets/my_mentees.png', () => _navigateTo('Mentees'), imageSize: 100.0),
+                  _buildDashboardButton("View Profile", 'assets/view_profile.png', _navigateToProfile),
+                  _buildDashboardButton("Mark Attendance", 'assets/mark_attendance.png', () => _navigateTo('Attendance')),
+                  _buildDashboardButton("Student Details", 'assets/student_details.png', () => _navigateTo('Student Details')),
+                  _buildDashboardButton("My Mentees", 'assets/my_mentees.png', () => _navigateTo('Mentees')),
                 ],
               ),
             ),
@@ -161,8 +153,8 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
         ),
       )
           : const Center(
-          child: Text("Faculty data not found!",
-              style: TextStyle(color: Colors.white, fontSize: 18))),
+        child: Text("Faculty data not found!", style: TextStyle(color: Colors.white, fontSize: 18)),
+      ),
     );
   }
 }

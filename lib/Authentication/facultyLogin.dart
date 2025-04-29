@@ -25,7 +25,6 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
     String password = _passwordController.text.trim();
 
     try {
-      // Query Firestore to find user by email
       QuerySnapshot query = await FirebaseFirestore.instance
           .collection('faculties')
           .where('email', isEqualTo: email)
@@ -36,15 +35,21 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
         var userDoc = query.docs.first;
         var userData = userDoc.data() as Map<String, dynamic>;
 
-        if (userData['password'] == password) {
-          String role = userData['role']; // Get user role
+        String? storedPassword = userData['password']?.toString();
+        String? role = userData['role']?.toString();
+        String facultyId = userDoc.id;
 
+        if (storedPassword == null || role == null) {
+          setState(() => _errorMessage = "Invalid account data.");
+        } else if (storedPassword == password) {
           if (role == 'admin') {
-            // Navigate to Admin Dashboard
             Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
           } else if (role == 'faculty') {
-            // Navigate to Faculty Dashboard
-            Navigator.pushReplacementNamed(context, AppRoutes.facultyDashboard);
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.facultyDashboard,
+              arguments: facultyId,
+            );
           } else {
             setState(() => _errorMessage = "Unauthorized role.");
           }
@@ -60,7 +65,6 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
 
     setState(() => _isLoading = false);
   }
-
 
   @override
   Widget build(BuildContext context) {

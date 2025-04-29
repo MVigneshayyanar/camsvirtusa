@@ -15,7 +15,7 @@ class StudentControlScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => ViewStudentScreen()),
+                  MaterialPageRoute(builder: (context) => ViewStudent()),
                 );
               },
               child: Text("VIEW STUDENT"),

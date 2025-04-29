@@ -7,10 +7,10 @@ import '../Startup/roleSelection.dart';
 import '../Student/studentDashboard.dart';
 import '../Faculty/facultyDashboard.dart';
 import '../Admin/adminDashboard.dart';
-import '../Admin/studentControl.dart'; // Import Student Control Page
-import '../Admin/addStudent.dart'; // Import Add Student Page
-import '../Admin/viewStudent.dart'; // Import View Student Page
-
+import '../Admin/studentControl.dart';
+import '../Admin/addStudent.dart';
+import '../Admin/viewStudent.dart';
+import '../Admin/facultyOverview.dart';
 class AppRoutes {
   static const String splash = '/';
   static const String roleSelection = '/roleSelection';
@@ -20,9 +20,11 @@ class AppRoutes {
   static const String studentDashboard = '/studentDashboard';
   static const String facultyDashboard = '/facultyDashboard';
   static const String adminDashboard = '/adminDashboard';
-  static const String studentControl = '/studentControl'; // Student Control Page
-  static const String addStudent = '/addStudent'; // Add Student Page
-  static const String viewStudent = '/viewStudent'; // View Student Page
+  static const String studentControl = '/studentControl';
+  static const String addStudent = '/addStudent';
+  static const String viewStudent = '/viewStudent';
+  static const String facultyControl = '/facultyControl';
+
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -67,25 +69,28 @@ class AppRoutes {
         return _animatedRoute(AddStudentScreen(), settings);
 
       case viewStudent:
-        return _animatedRoute(ViewStudentScreen(), settings);
+        return _animatedRoute(ViewStudent(), settings);
+
+      case facultyControl:
+        return _animatedRoute(FacultyOverviewScreen(), settings);
 
       default:
         return _errorRoute("Page Not Found", settings);
     }
   }
 
-  // Function for smooth transition effect (Slide + Fade)
+  // Slide + Fade transition animation
   static PageRouteBuilder _animatedRoute(Widget page, RouteSettings settings) {
     return PageRouteBuilder(
       settings: settings,
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0); // Slide from right
+      pageBuilder: (_, animation, __) => page,
+      transitionsBuilder: (_, animation, __, child) {
+        const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOut;
 
-        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-        var fadeTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        final fadeTween = Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
 
         return SlideTransition(
           position: animation.drive(tween),
@@ -95,16 +100,17 @@ class AppRoutes {
     );
   }
 
-  // Function for handling invalid routes
+  // Error page route
   static PageRouteBuilder _errorRoute(String message, RouteSettings settings) {
     return PageRouteBuilder(
       settings: settings,
-      pageBuilder: (context, animation, secondaryAnimation) => Scaffold(
+      pageBuilder: (_, __, ___) => Scaffold(
         backgroundColor: const Color(0xFF7886C7),
         body: Center(
           child: Text(
             message,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.red),
+            textAlign: TextAlign.center,
           ),
         ),
       ),

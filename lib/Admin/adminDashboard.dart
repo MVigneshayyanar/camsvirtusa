@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:camsvirtusa/Startup/routes.dart'; // Import routes file
+import 'package:camsvirtusa/Startup/routes.dart'; // Route constants
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -21,7 +21,7 @@ class AdminDashboard extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.home, color: Colors.white),
             onPressed: () {
-              // Handle Home button action
+              // Optional: Navigate to home or show a dialog
             },
           ),
         ],
@@ -32,7 +32,7 @@ class AdminDashboard extends StatelessWidget {
           padding: const EdgeInsets.all(15),
           children: [
             _buildDashboardButton(context, "STUDENT", "assets/student_ad.png", AppRoutes.studentControl),
-            _buildDashboardButton(context, "STAFF", "assets/staff_ad.png", "/staff"),
+            _buildDashboardButton(context, "STAFF", "assets/staff_ad.png", AppRoutes.facultyControl), // ✅ Updated route
             _buildDashboardButton(context, "BATCH OVERVIEW", "assets/batch_ad.png", "/batch"),
             _buildDashboardButton(context, "DEPARTMENT OVERVIEW", "assets/department_ad.png", "/department"),
             _buildDashboardButton(context, "TIMETABLE SCHEDULING", "assets/timetable_ad.png", "/timetable"),
