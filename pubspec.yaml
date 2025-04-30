@@ -15,6 +15,7 @@ dependencies:
   firebase_auth: ^4.5.0
   cloud_firestore: ^4.5.3
   firebase_messaging: ^14.5.0
+  google_fonts: ^6.1.0
 
   # State management
   provider: ^6.1.2
@@ -25,6 +26,13 @@ dependencies:
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.3.0
+
+flutter_native_splash:
+  color: "#FFFFFF"        # white background
+  image: logo.png # your app logo (we’ll add this next)
+  android: true
+  ios: true
 flutter_icons:
   android: true
   ios: true
@@ -39,7 +47,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.jpg
+    - assets/logo.png
     - assets/role_top.png
     - assets/view_profile.png
     - assets/check_attendance.png
@@ -55,6 +63,7 @@ flutter:
     - assets/timetable_ad.png
     - assets/Home.png
     - assets/college.png
+    - assets/login_illustration.png
 funding:
   -
 dependency_overrides:
@@ -62,8 +71,7 @@ executables:
 topics:
   -
 documentation:
-ignored_advisories:
-  -
+ignored_advisories: []
 issue_tracker:
 repository:
 false_secrets:

@@ -21,12 +21,12 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF7886C7), // Light teal background
+      backgroundColor: const Color(0xFFEEEEEE), // Light teal background
       body: Center(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(15), // Apply border radius
           child: Image.asset(
-            "assets/logo.jpg",
+            "assets/logo.png",
             width: 150,
           ),
         ),
