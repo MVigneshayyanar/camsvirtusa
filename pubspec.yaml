@@ -54,6 +54,7 @@ flutter:
     - assets/department_ad.png
     - assets/timetable_ad.png
     - assets/Home.png
+    - assets/college.png
 funding:
   -
 dependency_overrides:
