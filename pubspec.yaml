@@ -64,8 +64,15 @@ flutter:
     - assets/Home.png
     - assets/college.png
     - assets/login_illustration.png
-funding:
-  -
+    - assets/cap.png
+    - assets/stick.png
+    - assets/faculty.png
+    - assets/otp.png
+    - assets/student.png
+    - assets/account.png
+    - assets/homeLogo.png
+    - assets/search.png
+    - assets/news.png
 dependency_overrides:
 executables:
 topics:

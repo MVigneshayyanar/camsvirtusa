@@ -19,7 +19,7 @@ class RoleSelectionScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Decorative circular gradient behind logo
+                  // Decorative image
                   Image.asset(
                     "assets/college.png",
                     height: 225,
@@ -31,28 +31,30 @@ class RoleSelectionScreen extends StatelessWidget {
                   const Text(
                     "CHOOSE YOUR ROLE",
                     style: TextStyle(
-                      fontSize: 25,
+                      fontSize: 30,
                       fontWeight: FontWeight.w900,
                       color: Color(0xFF36454F),
                       letterSpacing: 1.5,
-
                     ),
                   ),
 
                   const SizedBox(height: 75),
 
+                  // STUDENT Role Button
                   RoleButton(
-                    icon: Icons.school,
+                    icon: Image.asset("assets/cap.png", height: 300, width: 30),
                     text: "STUDENT",
                     onTap: () {
                       Navigator.pushNamed(context, AppRoutes.studentLogin);
                     },
                   ),
 
+
                   const SizedBox(height: 20),
 
+                  // FACULTY Role Button
                   RoleButton(
-                    icon: Icons.person,
+                    icon: Image.asset("assets/stick.png", height: 10000, width: 1000),
                     text: "FACULTY",
                     onTap: () {
                       Navigator.pushNamed(context, AppRoutes.facultyLogin);
@@ -68,7 +70,6 @@ class RoleSelectionScreen extends StatelessWidget {
   }
 
   List<Widget> _buildBackgroundTiles() {
-    // More tile positions
     List<Offset> positions = [
       const Offset(180, 0),
       const Offset(260, 100),
@@ -89,7 +90,7 @@ class RoleSelectionScreen extends StatelessWidget {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFFD3D3D3),
+            color: Color(0xFFD3D3D3).withOpacity(0.15),
           ),
         ),
       );
@@ -98,7 +99,7 @@ class RoleSelectionScreen extends StatelessWidget {
 }
 
 class RoleButton extends StatelessWidget {
-  final IconData icon;
+  final Widget icon;
   final String text;
   final VoidCallback onTap;
 
@@ -130,12 +131,12 @@ class RoleButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white),
+            SizedBox(width: 24, height: 24, child: icon),
             const SizedBox(width: 12),
             Text(
               text,
               style: const TextStyle(
-                fontSize: 17,
+                fontSize: 25,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
                 letterSpacing: 1.2,

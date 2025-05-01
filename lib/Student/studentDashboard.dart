@@ -1,13 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'studentProfile.dart';
-
-
 
 class StudentDashboard extends StatefulWidget {
   final String studentId;
-
-  const StudentDashboard({super.key, required this.studentId});
+  const StudentDashboard({Key? key, required this.studentId}) : super(key: key);
 
   @override
   _StudentDashboardState createState() => _StudentDashboardState();
@@ -15,46 +12,55 @@ class StudentDashboard extends StatefulWidget {
 
 class _StudentDashboardState extends State<StudentDashboard> {
   Map<String, dynamic>? studentData;
+  Map<String, dynamic>? mentorData;
   bool _isLoading = true;
+
+  static const Color _orange = Color(0xFFFF7F50);
+  static const Color _darkGray = Color(0xFF2D336B);
+  static const Color _lightGrayBg = Color(0xFFF0F0F0);
 
   @override
   void initState() {
     super.initState();
-    _fetchStudentData();
+    _loadAllData();
   }
 
-  Future<void> _fetchStudentData() async {
+  Future<void> _loadAllData() async {
     try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
+      // 1) Fetch student
+      final studentDoc = await FirebaseFirestore.instance
           .collection('students')
           .doc(widget.studentId)
           .get();
+      if (!studentDoc.exists) throw Exception("No student found");
+      studentData = studentDoc.data() as Map<String, dynamic>;
 
-      if (doc.exists) {
-        setState(() {
-          studentData = doc.data() as Map<String, dynamic>;
-          _isLoading = false;
-        });
-      }
+      // 2) Fetch mentor by facultyId field
+      final mentorId = studentData!['mentorid'] as String;
+      final mentorQuery = await FirebaseFirestore.instance
+          .collection('faculties')
+          .where('facultyId', isEqualTo: mentorId)
+          .limit(1)
+          .get();
+      if (mentorQuery.docs.isNotEmpty)
+        mentorData = mentorQuery.docs.first.data() as Map<String, dynamic>;
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      print("Error loading data: $e");
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
-  void _navigateTo(String page) {
+  void _navigateTo(String title) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(title: Text(page)),
-          body: Center(
-            child: Text(
-              '$page Page',
-              style: const TextStyle(fontSize: 24),
-            ),
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: _orange,
+            title: Text(title),
           ),
+          body: Center(child: Text("$title Page", style: TextStyle(fontSize: 24))),
         ),
       ),
     );
@@ -64,41 +70,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StudentProfile(studentId: widget.studentId),
-      ),
-    );
-  }
-
-  Widget _buildDashboardButton(
-      String label, String image, Function() onTap, {double imageSize = 50.0}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF2D336B),
-          borderRadius: BorderRadius.circular(15),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black26,
-              blurRadius: 6,
-              offset: Offset(2, 4),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(image, width: imageSize, height: imageSize),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: const TextStyle(
-                  fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+        builder: (_) => StudentProfile(studentId: widget.studentId),
       ),
     );
   }
@@ -106,133 +78,255 @@ class _StudentDashboardState extends State<StudentDashboard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2D336B),
-        title: const Text("Student Dashboard"),
-        leading: const Icon(Icons.menu, color: Colors.white),
-        actions: const [Icon(Icons.notifications, color: Colors.white)],
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF7886C7), // Original color scheme
-          image: DecorationImage(
-            image: AssetImage('assets/scribbles_texture.png'), // Texture image path
-            fit: BoxFit.cover, // Ensures it spans the full background
-            colorFilter: ColorFilter.mode(
-              Color(0xFF7886C7).withOpacity(0.7), // Blends texture with the color
-              BlendMode.srcATop,
+      // ── DRAWER ─────────────────────────────────────────────────────────────
+      drawer: Drawer(
+        elevation: 0,
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.65,
+            child: Container(
+              color: _lightGrayBg,
+              child: _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : Column(
+                children: [
+                  const SizedBox(height: 40),
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: Colors.white,
+                    child: Icon(Icons.person, size: 40, color: _darkGray),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    studentData!['name'].toString().toUpperCase(),
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 24),
+                  _drawerPill("Mentor : ${mentorData?['name'] ?? '—'}"),
+                  _drawerPill("CGPA : ${studentData!['cgpa']}"),
+                  _drawerPill("Current year : ${studentData!['year']}"),
+                  Spacer(),
+                  Divider(height: 1),
+                  _drawerPill("Report", icon: Icons.info),
+                  _drawerPill("Settings", icon: Icons.settings),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.white))
-            : studentData != null
-            ? Padding(
-          padding: const EdgeInsets.all(20),
+      ),
+
+      // ── APP BAR ─────────────────────────────────────────────────────────────
+      appBar: AppBar(
+        backgroundColor: _orange,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+        ),
+        leading: Builder(
+          builder: (ctx) => IconButton(
+            icon: Icon(Icons.menu, color: Colors.white),
+            onPressed: () => Scaffold.of(ctx).openDrawer(),
+          ),
+        ),
+        title: Text("STUDENT DASHBOARD", style: TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.notifications, color: Colors.white),
+            onPressed: () => _navigateTo("Notifications"),
+          )
+        ],
+      ),
+
+      // ── BODY ────────────────────────────────────────────────────────────────
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ✅ Profile Section
-              Row(
-                children: [
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.grey,
-                    child: Icon(
-                      Icons.account_circle,
-                      size: 80,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    child: Text(
-                      "Welcome ${studentData!['name']}...!",
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+              Text("Welcome ${studentData!['name']}...!",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+
+              // Search Bar
+              Container(
+                height: 40,
+                decoration: BoxDecoration(
+                  color: _lightGrayBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Icon(Icons.search, color: Colors.grey),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: "Search",
+                          border: InputBorder.none,
+                          isDense: true,
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // ✅ Attendance Progress Bar
-              Row(
-                children: [
-                  Expanded(
-                    child: LinearProgressIndicator(
-                      value: 0.96, // Example: 96%
-                      backgroundColor: Colors.red,
-                      color: Colors.green,
-                      minHeight: 10,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  const Text(
-                    "96%",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  Icon(Icons.circle, color: Colors.green, size: 12),
-                  SizedBox(width: 5),
-                  Text("PRESENT"),
-                  SizedBox(width: 15),
-                  Icon(Icons.circle, color: Colors.red, size: 12),
-                  SizedBox(width: 5),
-                  Text("ABSENT"),
-                ],
-              ),
-              const SizedBox(height: 30),
-
-              // ✅ Dashboard Buttons Grid
-              Expanded(
-                child: GridView.count(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 15,
-                  mainAxisSpacing: 15,
-                  children: [
-                    _buildDashboardButton(
-                        "View Profile",
-                        'assets/view_profile.png',
-                        _navigateToProfile,
-                        imageSize: 100.0),
-                    _buildDashboardButton(
-                        "Check Attendance",
-                        'assets/check_attendance.png',
-                            () => _navigateTo('Attendance'),
-                        imageSize: 100.0),
-                    _buildDashboardButton(
-                        "On Duty Form",
-                        'assets/on_duty.png',
-                            () => _navigateTo('On Duty'),
-                        imageSize: 100.0),
-                    _buildDashboardButton(
-                        "Leave Form",
-                        'assets/leave_form.png',
-                            () => _navigateTo('Leave'),
-                        imageSize: 100.0),
                   ],
                 ),
               ),
+
+              const SizedBox(height: 24),
+
+              // Tiles row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // VIEW PROFILE → opens StudentProfile
+                  _tile("VIEW PROFILE", 'assets/view_profile.png', _navigateToProfile),
+                  _tile("CHECK ATTENDANCE", 'assets/check_attendance.png',
+                          () => _navigateTo("Attendance")),
+                ],
+              ),
+
+              const SizedBox(height: 30),
+
+              // News Panel
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    height: 140,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: _darkGray,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.blue, width: 2),
+                    ),
+                  ),
+                  Positioned(
+                    top: -12,
+                    left: -12,
+                    child:
+                    Image.asset('assets/news.png', width: 60, height: 60),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
+              // More news button
+              Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _orange,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+                  ),
+                  onPressed: () {},
+                  child: Text("More news...", style: TextStyle(fontSize: 14)),
+                ),
+              ),
+
+              const SizedBox(height: 80),
             ],
           ),
-        )
-            : const Center(
-          child: Text(
-            "Student data not found!",
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
+        ),
+      ),
+
+      // ── BOTTOM NAVIGATION ───────────────────────────────────────────────────
+      bottomNavigationBar: Container(
+        padding: EdgeInsets.only(top: 12, bottom: 24),
+        decoration: BoxDecoration(
+          color: _lightGrayBg,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            // Search icon
+            InkWell(
+              child: Image.asset(
+                'assets/search.png',
+                width: 28,
+                height: 28,
+              ),
+            ),
+
+            // Home icon
+            InkWell(
+              onTap: (){},
+              child: Image.asset(
+                'assets/homeLogo.png',
+                width: 32,
+                height: 32,
+              ),
+            ),
+
+            // Profile icon (active)
+            InkWell(
+              onTap: () =>_navigateToProfile, // already on profile
+              child: Image.asset(
+                'assets/account.png',
+                width: 28,
+                height: 28,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _drawerPill(String text, {IconData? icon}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            if (icon != null) ...[
+              Icon(icon, color: Colors.black54),
+              SizedBox(width: 8),
+            ],
+            Text(text, style: TextStyle(fontSize: 14)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile(String label, String assetPath, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: (MediaQuery.of(context).size.width - 48) / 2,
+        height: 120,
+        decoration: BoxDecoration(
+          color: _darkGray,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(assetPath, width: 56, height: 56),
+            SizedBox(height: 8),
+            Text(label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600)),
+          ],
         ),
       ),
     );

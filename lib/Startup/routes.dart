@@ -35,7 +35,7 @@ class AppRoutes {
         return _animatedRoute(const RoleSelectionScreen(), settings);
 
       case studentLogin:
-        return _animatedRoute(const LoginPage(), settings);
+        return _animatedRoute(const StudentLoginScreen(), settings);
 
       case facultyLogin:
         return _animatedRoute(const FacultyLoginScreen(), settings);
