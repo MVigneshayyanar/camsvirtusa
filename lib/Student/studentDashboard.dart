@@ -19,7 +19,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
   static const Color _orange = Color(0xFFFF7F50);
   static const Color _darkGray = Color(0xFF2D336B);
   static const Color _lightGrayBg = Color(0xFFF0F0F0);
-
   @override
   void initState() {
     super.initState();
