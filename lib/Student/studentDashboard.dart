@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'studentProfile.dart';
+import 'studentAttendance.dart';
 
 class StudentDashboard extends StatefulWidget {
   final String studentId;
@@ -187,7 +188,10 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   // VIEW PROFILE → opens StudentProfile
                   _tile("VIEW PROFILE", 'assets/view_profile.png', _navigateToProfile),
                   _tile("CHECK ATTENDANCE", 'assets/check_attendance.png',
-                          () => _navigateTo("Attendance")),
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => const AttendancePage()),
+                          ),),
                 ],
               ),
 

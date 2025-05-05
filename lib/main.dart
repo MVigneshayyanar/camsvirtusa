@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/services.dart'; // Add this import for SystemChrome
 import 'Startup/routes.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Ensures Flutter is initialized
@@ -24,7 +26,11 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Presenza',
-      theme: ThemeData(primarySwatch: Colors.teal),
+      theme: ThemeData(
+        textTheme: GoogleFonts.poppinsTextTheme(),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        useMaterial3: true,
+      ),
       initialRoute: AppRoutes.splash,
       onGenerateRoute: AppRoutes.generateRoute, // Use custom route transitions
     );
