@@ -17,7 +17,7 @@ class AppRoutes {
   static const String studentLogin = '/studentLogin';
   static const String facultyLogin = '/facultyLogin';
   static const String otpVerification = '/otpVerification';
-  static const String studentDashboard = '/studentDashboard';
+  static const String studentDashboard = '/StudentDashboard';
   static const String facultyDashboard = '/facultyDashboard';
   static const String adminDashboard = '/adminDashboard';
   static const String studentControl = '/studentControl';

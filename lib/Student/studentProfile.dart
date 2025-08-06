@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'studentDashboard.dart'; // adjust import path as needed
+import 'studentDashboard.dart';
 
 class StudentProfile extends StatefulWidget {
   final String studentId;
@@ -28,27 +28,39 @@ class _StudentProfileState extends State<StudentProfile> {
 
   Future<void> _fetchData() async {
     try {
-      // Load student record
-      final doc = await FirebaseFirestore.instance
-          .collection('students')
+      // Step 1: Fetch student data
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
           .doc(widget.studentId)
           .get();
-      if (doc.exists) studentData = doc.data();
 
-      // Load mentor record by facultyId == studentData['mentorid']
-      final mentorId = studentData?['mentorid'] as String?;
-      if (mentorId != null) {
-        final q = await FirebaseFirestore.instance
-            .collection('faculties')
-            .where('facultyId', isEqualTo: mentorId)
-            .limit(1)
-            .get();
-        if (q.docs.isNotEmpty) mentorData = q.docs.first.data();
+      if (!studentDoc.exists) throw Exception("Student not found");
+
+      studentData = studentDoc.data();
+
+      // Step 2: Search for mentor who has this student in their mentees list
+      final mentorQuery = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('faculties')
+          .collection('all_faculties')
+          .where('mentees', arrayContains: widget.studentId)
+          .limit(1)
+          .get();
+
+      if (mentorQuery.docs.isNotEmpty) {
+        mentorData = mentorQuery.docs.first.data();
       }
     } catch (e) {
       print("Error fetching data: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching profile: $e")),
+      );
     } finally {
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -58,9 +70,14 @@ class _StudentProfileState extends State<StudentProfile> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.white70)),
-          Text(value ?? '—',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(label, style: const TextStyle(color: Colors.white70)),
+          Flexible(
+            child: Text(
+              value ?? '—',
+              textAlign: TextAlign.right,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
         ],
       ),
     );
@@ -82,9 +99,9 @@ class _StudentProfileState extends State<StudentProfile> {
         builder: (_) => Scaffold(
           appBar: AppBar(
             backgroundColor: _orange,
-            title: Text("Search", style: TextStyle(color: Colors.white)),
+            title: const Text("Search", style: TextStyle(color: Colors.white)),
           ),
-          body: Center(child: Text("Search Page")),
+          body: const Center(child: Text("Search Page")),
         ),
       ),
     );
@@ -92,62 +109,59 @@ class _StudentProfileState extends State<StudentProfile> {
 
   @override
   Widget build(BuildContext context) {
+    final name = studentData?['name']?.toString() ?? '';
+    final id = studentData?['id']?.toString();
+    final department = studentData?['department']?.toString();
+    final studentClass = studentData?['class']?.toString();
+    final email = studentData?['email']?.toString();
+    final mentorId = mentorData?['id']?.toString();
+    final mentorName = mentorData?['name']?.toString();
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: _orange,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Center(
+        title: const Center(
           child: Text('STUDENT PROFILE', style: TextStyle(color: Colors.white)),
         ),
         actions: [
           IconButton(
-            icon: Icon(Icons.notifications, color: Colors.white),
+            icon: const Icon(Icons.notifications, color: Colors.white),
             onPressed: () {},
           )
         ],
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         child: Column(
           children: [
-            // Academic year strip
-            Container(
-              width: double.infinity,
-              color: _orange,
-              padding: EdgeInsets.symmetric(vertical: 8),
-            ),
-
             // Header
             Container(
               width: double.infinity,
               color: _orange,
-              padding: EdgeInsets.only(bottom: 30),
+              padding: const EdgeInsets.only(bottom: 30),
               child: Column(
                 children: [
-                  CircleAvatar(
+                  const CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white,
-                    backgroundImage:
-                    AssetImage('assets/default_profile.png'),
+                    backgroundImage: AssetImage('assets/default_profile.png'),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   RichText(
                     text: TextSpan(
                       text: 'Hello! ',
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      style: const TextStyle(color: Colors.white, fontSize: 16),
                       children: [
                         TextSpan(
-                          text: studentData?['name']
-                              ?.toString()
-                              .toUpperCase() ??
-                              '',
-                          style: TextStyle(
+                          text: name.toUpperCase(),
+                          style: const TextStyle(
                               fontWeight: FontWeight.bold, fontSize: 20),
                         ),
                       ],
@@ -157,20 +171,7 @@ class _StudentProfileState extends State<StudentProfile> {
               ),
             ),
 
-            // STUDENT DETAILS
-            SizedBox(height: 16),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('STUDENT DETAILS',
-                    style: TextStyle(
-                        color: _darkGray,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-              ),
-            ),
-            SizedBox(height: 8),
+            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Container(
@@ -178,103 +179,44 @@ class _StudentProfileState extends State<StudentProfile> {
                   color: _cardGray,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: EdgeInsets.all(16),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   children: [
-                    _infoRow(
-                        'Academic Batch', studentData?['batch']?.toString()),
-                    _infoRow(
-                        'Current class', studentData?['year']?.toString()),
-                    _infoRow('Student Status',
-                        studentData?['status']?.toString()),
+                    _infoRow('Name', name),
+                    _infoRow('College ID', id),
+                    _infoRow('Email', email),
+                    _infoRow('Department', department),
+                    _infoRow('Class', studentClass),
+                    _infoRow('Mentor ID', mentorId),
+                    _infoRow('Mentor Name', mentorName),
                   ],
                 ),
               ),
             ),
-
-            // PERSONAL DETAILS
-            SizedBox(height: 20),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text('PERSONAL DETAILS',
-                    style: TextStyle(
-                        color: _darkGray,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
-              ),
-            ),
-            SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _cardGray,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _infoRow('Mentor Name', mentorData?['name']?.toString()),
-                    _infoRow('University No',
-                        studentData?['uno']?.toString()),
-                    _infoRow('College ID',
-                        studentData?['id']?.toString()),
-                    _infoRow('Degree/Branch',
-                        studentData?['dept']?.toString()),
-                    _infoRow('Date of Birth',
-                        studentData?['dob']?.toString()),
-                    _infoRow('CGPA', studentData?['cgpa']?.toString()),
-                  ],
-                ),
-              ),
-            ),
-
-            // spacer to avoid content behind nav bar
-            SizedBox(height: 80),
+            const SizedBox(height: 80),
           ],
         ),
       ),
-
-      // ── CUSTOM ICON BOTTOM NAVIGATION ───────────────────────────────────────
       bottomNavigationBar: Container(
-        padding: EdgeInsets.only(top: 12, bottom: 24),
-        decoration: BoxDecoration(
+        padding: const EdgeInsets.only(top: 12, bottom: 24),
+        decoration: const BoxDecoration(
           color: _lightGrayBg,
           borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            // Search icon
             InkWell(
               onTap: _goToSearch,
-              child: Image.asset(
-                'assets/search.png',
-                width: 28,
-                height: 28,
-              ),
+              child: Image.asset('assets/search.png', width: 28, height: 28),
             ),
-
-            // Home icon
             InkWell(
               onTap: _goToDashboard,
-              child: Image.asset(
-                'assets/homeLogo.png',
-                width: 32,
-                height: 32,
-              ),
+              child: Image.asset('assets/homeLogo.png', width: 32, height: 32),
             ),
-
-            // Profile icon (active)
             InkWell(
               onTap: () {}, // already on profile
-              child: Image.asset(
-                'assets/account.png',
-                width: 28,
-                height: 28,
-              ),
+              child: Image.asset('assets/account.png', width: 28, height: 28),
             ),
           ],
         ),

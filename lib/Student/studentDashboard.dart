@@ -27,39 +27,50 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   Future<void> _loadAllData() async {
     try {
-      // 1) Fetch student
+      // Step 1: Fetch student data
       final studentDoc = await FirebaseFirestore.instance
-          .collection('students')
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
           .doc(widget.studentId)
           .get();
-      if (!studentDoc.exists) throw Exception("No student found");
-      studentData = studentDoc.data() as Map<String, dynamic>;
+      print("Student Document: $studentDoc");
+      if (!studentDoc.exists) throw Exception("Student not found.");
 
-      // 2) Fetch mentor by facultyId field
-      final mentorId = studentData!['mentorid'] as String;
+      final data = studentDoc.data();
+      if (data == null) throw Exception("Student data is null.");
+      studentData = data;
+
+      // Step 2: Find mentor whose 'mentees' array contains this student ID
       final mentorQuery = await FirebaseFirestore.instance
-          .collection('faculties')
-          .where('facultyId', isEqualTo: mentorId)
+          .collection('colleges')
+          .doc('faculties')
+          .collection('all_faculties')
+          .where('mentees', arrayContains: widget.studentId)
           .limit(1)
           .get();
-      if (mentorQuery.docs.isNotEmpty)
-        mentorData = mentorQuery.docs.first.data() as Map<String, dynamic>;
+
+      print(mentorQuery);
+      if (mentorQuery.docs.isNotEmpty) {
+        mentorData = mentorQuery.docs.first.data();
+      }
     } catch (e) {
       print("Error loading data: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to load dashboard: $e")),
+      );
     } finally {
       setState(() => _isLoading = false);
     }
   }
+
 
   void _navigateTo(String title) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: _orange,
-            title: Text(title),
-          ),
+          appBar: AppBar(backgroundColor: _orange, title: Text(title)),
           body: Center(child: Text("$title Page", style: TextStyle(fontSize: 24))),
         ),
       ),
@@ -77,8 +88,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final name = studentData?['name']?.toString().toUpperCase() ?? 'Student';
+    final cgpa = studentData?['cgpa']?.toString() ?? '—';
+    final year = studentData?['year']?.toString() ?? '—';
+    final mentorName = mentorData?['name']?.toString() ?? '—';
+
     return Scaffold(
-      // ── DRAWER ─────────────────────────────────────────────────────────────
       drawer: Drawer(
         elevation: 0,
         child: SafeArea(
@@ -98,14 +113,11 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     child: Icon(Icons.person, size: 40, color: _darkGray),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    studentData!['name'].toString().toUpperCase(),
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  Text(name, style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 24),
-                  _drawerPill("Mentor : ${mentorData?['name'] ?? '—'}"),
-                  _drawerPill("CGPA : ${studentData!['cgpa']}"),
-                  _drawerPill("Current year : ${studentData!['year']}"),
+                  _drawerPill("Mentor : $mentorName"),
+                  _drawerPill("CGPA : $cgpa"),
+                  _drawerPill("Current year : $year"),
                   Spacer(),
                   Divider(height: 1),
                   _drawerPill("Report", icon: Icons.info),
@@ -117,8 +129,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ),
         ),
       ),
-
-      // ── APP BAR ─────────────────────────────────────────────────────────────
       appBar: AppBar(
         backgroundColor: _orange,
         elevation: 0,
@@ -139,8 +149,6 @@ class _StudentDashboardState extends State<StudentDashboard> {
           )
         ],
       ),
-
-      // ── BODY ────────────────────────────────────────────────────────────────
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : SafeArea(
@@ -149,134 +157,111 @@ class _StudentDashboardState extends State<StudentDashboard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Welcome ${studentData!['name']}...!",
+              Text("Welcome $name...!",
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
-
-              // Search Bar
-              Container(
-                height: 40,
-                decoration: BoxDecoration(
-                  color: _lightGrayBg,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Icon(Icons.search, color: Colors.grey),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        decoration: InputDecoration(
-                          hintText: "Search",
-                          border: InputBorder.none,
-                          isDense: true,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
+              _buildSearchBar(),
               const SizedBox(height: 24),
-
-              // Tiles row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // VIEW PROFILE → opens StudentProfile
-                  _tile("VIEW PROFILE", 'assets/view_profile.png', _navigateToProfile),
-                  _tile("CHECK ATTENDANCE", 'assets/check_attendance.png',
-                          () => _navigateTo("Attendance")),
-                ],
-              ),
-
+              _buildTilesRow(),
               const SizedBox(height: 30),
-
-              // News Panel
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    height: 140,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: _darkGray,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue, width: 2),
-                    ),
-                  ),
-                  Positioned(
-                    top: -12,
-                    left: -12,
-                    child:
-                    Image.asset('assets/news.png', width: 60, height: 60),
-                  ),
-                ],
-              ),
-
+              _buildNewsPanel(),
               const SizedBox(height: 12),
-
-              // More news button
-              Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _orange,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
-                  ),
-                  onPressed: () {},
-                  child: Text("More news...", style: TextStyle(fontSize: 14)),
-                ),
-              ),
-
+              _buildMoreNewsButton(),
               const SizedBox(height: 80),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: _buildBottomNavigation(),
+    );
+  }
 
-      // ── BOTTOM NAVIGATION ───────────────────────────────────────────────────
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.only(top: 12, bottom: 24),
-        decoration: BoxDecoration(
-          color: _lightGrayBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+  Widget _buildSearchBar() {
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: _lightGrayBg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 12),
+      child: Row(
+        children: [
+          Icon(Icons.search, color: Colors.grey),
+          SizedBox(width: 8),
+          Expanded(
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Search",
+                border: InputBorder.none,
+                isDense: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTilesRow() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _tile("VIEW PROFILE", 'assets/view_profile.png', _navigateToProfile),
+        _tile("CHECK ATTENDANCE", 'assets/check_attendance.png', () => _navigateTo("Attendance")),
+      ],
+    );
+  }
+
+  Widget _buildNewsPanel() {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 140,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: _darkGray,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue, width: 2),
+          ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            // Search icon
-            InkWell(
-              child: Image.asset(
-                'assets/search.png',
-                width: 28,
-                height: 28,
-              ),
-            ),
-
-            // Home icon
-            InkWell(
-              onTap: (){},
-              child: Image.asset(
-                'assets/homeLogo.png',
-                width: 32,
-                height: 32,
-              ),
-            ),
-
-            // Profile icon (active)
-            InkWell(
-              onTap: () =>_navigateToProfile, // already on profile
-              child: Image.asset(
-                'assets/account.png',
-                width: 28,
-                height: 28,
-              ),
-            ),
-          ],
+        Positioned(
+          top: -12,
+          left: -12,
+          child: Image.asset('assets/news.png', width: 60, height: 60),
         ),
+      ],
+    );
+  }
+
+  Widget _buildMoreNewsButton() {
+    return Center(
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _orange,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          padding: EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+        ),
+        onPressed: () {},
+        child: Text("More news...", style: TextStyle(fontSize: 14)),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigation() {
+    return Container(
+      padding: EdgeInsets.only(top: 12, bottom: 24),
+      decoration: BoxDecoration(
+        color: _lightGrayBg,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          InkWell(child: Image.asset('assets/search.png', width: 28, height: 28)),
+          InkWell(onTap: () {}, child: Image.asset('assets/homeLogo.png', width: 32, height: 32)),
+          InkWell(onTap: _navigateToProfile, child: Image.asset('assets/account.png', width: 28, height: 28)),
+        ],
       ),
     );
   }
@@ -322,10 +307,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
             SizedBox(height: 8),
             Text(label,
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
+                style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
           ],
         ),
       ),

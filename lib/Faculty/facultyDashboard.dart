@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'facultyProfile.dart';
+import 'MarkAttendance.dart';
 
 class FacultyDashboard extends StatefulWidget {
   final String facultyId;
@@ -63,6 +64,14 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
       context,
       MaterialPageRoute(
         builder: (context) => FacultyProfile(facultyId: widget.facultyId),
+      ),
+    );
+  }
+  void _navigateToAdd() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => MarkAttendance(facultyId: widget.facultyId),
       ),
     );
   }
@@ -143,7 +152,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                 mainAxisSpacing: 15,
                 children: [
                   _buildDashboardButton("View Profile", 'assets/view_profile.png', _navigateToProfile),
-                  _buildDashboardButton("Mark Attendance", 'assets/mark_attendance.png', () => _navigateTo('Attendance')),
+                  _buildDashboardButton("Mark Attendance", 'assets/mark_attendance.png', () => _navigateToAdd()),
                   _buildDashboardButton("Student Details", 'assets/student_details.png', () => _navigateTo('Student Details')),
                   _buildDashboardButton("My Mentees", 'assets/my_mentees.png', () => _navigateTo('Mentees')),
                 ],
