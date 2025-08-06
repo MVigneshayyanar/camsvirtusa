@@ -43,7 +43,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
           .limit(1)
           .get();
       if (mentorQuery.docs.isNotEmpty)
-        mentorData = mentorQuery.docs.first.data() as Map<String, dynamic>;
+        mentorData = mentorQuery.docs.first.data();
     } catch (e) {
       print("Error loading data: $e");
     } finally {

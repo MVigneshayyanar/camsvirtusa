@@ -36,7 +36,7 @@ flutter_native_splash:
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/Home.png"
+  image_path: "assets/logo.png"
 
   flutter_test:
     sdk: flutter
@@ -86,7 +86,10 @@ false_secrets:
 screenshots:
   -
 homepage:
+
 platforms:
+  android:
+  ios:
 
 
 

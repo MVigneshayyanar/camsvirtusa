@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// ignore: unnecessary_import
 import 'package:flutter/services.dart';
 import 'dart:math';
 
@@ -11,6 +12,7 @@ class OTPVerificationScreen extends StatefulWidget {
 
 class _OTPVerificationScreenState extends State<OTPVerificationScreen> {
   List<String> otpValues = List.filled(6, '');
+  // ignore: unused_field
   final FocusNode _focusNode = FocusNode();
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
