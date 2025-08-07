@@ -60,8 +60,8 @@ class AppRoutes {
       case adminDashboard:
         return _animatedRoute(const AdminDashboard(), settings);
 
-      // case studentControl:
-      //   return _animatedRoute(const StudentControl(), settings);
+      case studentControl:
+        return _animatedRoute(const StudentControlPage(), settings);
 
       case viewStudent:
         return _animatedRoute(ViewStudent(), settings);
