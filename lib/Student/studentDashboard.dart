@@ -172,7 +172,44 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigation(),
+      bottomNavigationBar: Container(
+        height: 70,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE5E5E5),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset("assets/search.png", height: 26),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset("assets/homeLogo.png", height: 32),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudentProfile(studentId: widget.studentId),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: Image.asset("assets/account.png", height: 26),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudentProfile(studentId: widget.studentId),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
