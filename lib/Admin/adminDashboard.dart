@@ -52,7 +52,7 @@ class AdminDashboard extends StatelessWidget {
             context,
             label: "DEPARTMENTS",
             imagePath: "assets/department_ad.png",
-            route: "/department",
+            route: AppRoutes.departmentControl,
             grey: true,
           ),
           _buildDashboardCard(

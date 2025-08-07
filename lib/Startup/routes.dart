@@ -9,7 +9,10 @@ import '../Faculty/facultyDashboard.dart';
 import '../Admin/adminDashboard.dart';
 import '../Admin/studentControl.dart';
 import '../Admin/viewStudent.dart';
-import '../Admin/facultyControl.dart'; // make sure this file is named facultyControl.dart
+import '../Admin/facultyControl.dart';
+import '../Admin/departmentControl.dart';// make sure this file is named facultyControl.dart
+import '../Admin/departmentControl.dart';
+import '../Admin/classStudent.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -23,6 +26,8 @@ class AppRoutes {
   static const String studentControl = '/studentControl';
   static const String viewStudent = '/viewStudent';
   static const String facultyControl = '/facultyControl';
+  static const String departmentControl = '/departmentControl';
+  static const String classStudents = '/classStudents';
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -49,6 +54,7 @@ class AppRoutes {
           return _errorRoute("Invalid or Missing Student ID", settings);
         }
 
+
       case facultyDashboard:
         final facultyId = settings.arguments as String?;
         if (facultyId != null && facultyId.isNotEmpty) {
@@ -68,6 +74,8 @@ class AppRoutes {
 
       case facultyControl:
         return _animatedRoute(const FacultyOverviewPage(), settings);
+      case departmentControl:
+        return _animatedRoute(const DepartmentControlPage(), settings);
 
       default:
         return _errorRoute("Page Not Found", settings);
