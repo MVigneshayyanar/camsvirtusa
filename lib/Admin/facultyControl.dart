@@ -41,7 +41,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
     return menteeMap;
   }
 
-  void _showFacultyDetailsPopup(BuildContext context, String docId) async {
+  void _showFacultyDetailsPopup(Map<String, dynamic> faculty, String docId) async {
     final docSnapshot = await FirebaseFirestore.instance
         .collection("colleges")
         .doc("faculties")
@@ -55,6 +55,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
     final nameController = TextEditingController(text: data['name']);
     final emailController = TextEditingController(text: data['email']);
     final deptController = TextEditingController(text: data['department']);
+    final passwordController = TextEditingController(text: data['password'] ?? '');
 
     List<String> menteeIds = List<String>.from(data['mentees'] ?? []);
     List<String> classes = List<String>.from(data['classes'] ?? []);
@@ -83,27 +84,31 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                     isEditing
                         ? TextField(
                       controller: nameController,
-                      decoration:
-                      const InputDecoration(labelText: "Name"),
+                      decoration: const InputDecoration(labelText: "Name"),
                     )
                         : Text("Name: ${data['name'] ?? ''}"),
                     isEditing
                         ? TextField(
                       controller: emailController,
-                      decoration:
-                      const InputDecoration(labelText: "Email"),
+                      decoration: const InputDecoration(labelText: "Email"),
                     )
                         : Text("Email: ${data['email'] ?? ''}"),
                     isEditing
                         ? TextField(
                       controller: deptController,
-                      decoration:
-                      const InputDecoration(labelText: "Department"),
+                      decoration: const InputDecoration(labelText: "Department"),
                     )
                         : Text("Department: ${data['department'] ?? ''}"),
+                    isEditing
+                        ? TextField(
+                      controller: passwordController,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: "Password"),
+                    )
+                        : const Text("Password: •••••••••"),
+
                     const SizedBox(height: 10),
-                    const Text("Mentees:",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text("Mentees:", style: TextStyle(fontWeight: FontWeight.bold)),
                     if (isEditing)
                       Column(
                         children: [
@@ -112,8 +117,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                               Expanded(
                                 child: TextField(
                                   controller: menteeController,
-                                  decoration: const InputDecoration(
-                                      hintText: "Add mentee ID"),
+                                  decoration: const InputDecoration(hintText: "Add mentee ID"),
                                 ),
                               ),
                               IconButton(
@@ -121,8 +125,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                                 onPressed: () async {
                                   final id = menteeController.text.trim();
                                   if (id.isNotEmpty && !mentees.containsKey(id)) {
-                                    final nameMap =
-                                    await _fetchStudentNames([id]);
+                                    final nameMap = await _fetchStudentNames([id]);
                                     if (nameMap.containsKey(id)) {
                                       setState(() {
                                         mentees[id] = nameMap[id]!;
@@ -152,13 +155,10 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: mentees.isEmpty
                             ? [const Text("None")]
-                            : mentees.entries
-                            .map((e) => Text("• ${e.value} (${e.key})"))
-                            .toList(),
+                            : mentees.entries.map((e) => Text("• ${e.value} (${e.key})")).toList(),
                       ),
                     const SizedBox(height: 10),
-                    const Text("Classes:",
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text("Classes:", style: TextStyle(fontWeight: FontWeight.bold)),
                     if (isEditing)
                       Column(
                         children: [
@@ -167,17 +167,14 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                               Expanded(
                                 child: TextField(
                                   controller: classController,
-                                  decoration: const InputDecoration(
-                                      hintText: "Add class"),
+                                  decoration: const InputDecoration(hintText: "Add class"),
                                 ),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.add),
                                 onPressed: () {
-                                  final className =
-                                  classController.text.trim();
-                                  if (className.isNotEmpty &&
-                                      !classes.contains(className)) {
+                                  final className = classController.text.trim();
+                                  if (className.isNotEmpty && !classes.contains(className)) {
                                     setState(() {
                                       classes.add(className);
                                       classController.clear();
@@ -203,9 +200,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                     else
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
-                        children: classes.isEmpty
-                            ? [const Text("None")]
-                            : classes.map((e) => Text("• $e")).toList(),
+                        children: classes.isEmpty ? [const Text("None")] : classes.map((e) => Text("• $e")).toList(),
                       ),
                   ],
                 ),
@@ -228,7 +223,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                             context: context,
                             builder: (_) => AlertDialog(
                               title: const Text("Confirm Delete"),
-                              content: const Text("Are you sure you want to delete this faculty? This action cannot be undone."),
+                              content: const Text("Are you sure you want to delete this faculty?"),
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context, false),
@@ -251,8 +246,8 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                                 .doc(docId)
                                 .delete();
 
-                            Navigator.pop(context); // Close the main popup
-                            setState(() {}); // Refresh UI
+                            Navigator.pop(context); // Close popup
+                            setState(() {}); // Refresh
                           }
                         },
                       ),
@@ -269,12 +264,13 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                             "name": nameController.text.trim(),
                             "email": emailController.text.trim(),
                             "department": deptController.text.trim(),
+                            "password": passwordController.text.trim(),
                             "mentees": mentees.keys.toList(),
                             "classes": classes,
                           });
 
                           Navigator.pop(context);
-                          setState(() {}); // refresh
+                          setState(() {}); // Refresh
                         },
                       ),
                     ],
@@ -284,8 +280,6 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
-
-
             );
           },
         );
@@ -494,8 +488,8 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                               flex: 1,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  _showFacultyDetailsPopup(
-                                      context, faculty['id'] ?? '');
+                                  _showFacultyDetailsPopup(faculty, faculty['id']);
+
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFF7F50),
