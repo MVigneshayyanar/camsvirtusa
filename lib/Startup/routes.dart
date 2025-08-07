@@ -8,9 +8,9 @@ import '../Student/studentDashboard.dart';
 import '../Faculty/facultyDashboard.dart';
 import '../Admin/adminDashboard.dart';
 import '../Admin/studentControl.dart';
-import '../Admin/addStudent.dart';
 import '../Admin/viewStudent.dart';
-import '../Admin/facultyOverview.dart';
+import '../Admin/facultyControl.dart'; // make sure this file is named facultyControl.dart
+
 class AppRoutes {
   static const String splash = '/';
   static const String roleSelection = '/roleSelection';
@@ -21,10 +21,8 @@ class AppRoutes {
   static const String facultyDashboard = '/facultyDashboard';
   static const String adminDashboard = '/adminDashboard';
   static const String studentControl = '/studentControl';
-  static const String addStudent = '/addStudent';
   static const String viewStudent = '/viewStudent';
   static const String facultyControl = '/facultyControl';
-
 
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
@@ -62,17 +60,14 @@ class AppRoutes {
       case adminDashboard:
         return _animatedRoute(const AdminDashboard(), settings);
 
-      case studentControl:
-        return _animatedRoute(StudentControlScreen(), settings);
-
-      case addStudent:
-        return _animatedRoute(AddStudentScreen(), settings);
+      // case studentControl:
+      //   return _animatedRoute(const StudentControl(), settings);
 
       case viewStudent:
         return _animatedRoute(ViewStudent(), settings);
 
       case facultyControl:
-        return _animatedRoute(FacultyOverviewScreen(), settings);
+        return _animatedRoute(const FacultyOverviewPage(), settings);
 
       default:
         return _errorRoute("Page Not Found", settings);

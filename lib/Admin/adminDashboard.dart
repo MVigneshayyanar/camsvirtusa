@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:camsvirtusa/Startup/routes.dart'; // Route constants
+import 'package:camsvirtusa/Startup/routes.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({Key? key}) : super(key: key);
@@ -11,57 +11,113 @@ class AdminDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF2D336B),
-        title: const Text(
-          "ADMIN DASHBOARD",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      backgroundColor: Colors.white,
+
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: AppBar(
+          backgroundColor: const Color(0xFFFF8145),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {},
+          ),
+          title: const Text("ADMIN DASHBOARD", style: TextStyle(color: Colors.white)),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications, color: Colors.white),
+              onPressed: () {},
+            ),
+          ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.home, color: Colors.white),
-            onPressed: () {
-              // Optional: Navigate to home or show a dialog
-            },
+      ),
+
+      body: ListView(
+        children: [
+          _buildDashboardCard(
+            context,
+            label: "FACULTIES",
+            imagePath: "assets/staff_ad.png",
+            route: AppRoutes.facultyControl,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "STUDENTS",
+            imagePath: "assets/student_ad.png",
+            route: AppRoutes.studentControl,
+            grey: true,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "DEPARTMENTS",
+            imagePath: "assets/department_ad.png",
+            route: "/department",
+            grey: true,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "TIME TABLE SCHEDULING",
+            imagePath: "assets/timetable_ad.png",
+            route: "/timetable",
+            grey: true,
           ),
         ],
       ),
-      body: Container(
-        color: const Color(0xFF7886C7), // Background color
-        child: ListView(
-          padding: const EdgeInsets.all(15),
+
+      bottomNavigationBar: Container(
+        height: 70,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE5E5E5),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildDashboardButton(context, "STUDENT", "assets/student_ad.png", AppRoutes.studentControl),
-            _buildDashboardButton(context, "STAFF", "assets/staff_ad.png", AppRoutes.facultyControl), // ✅ Updated route
-            _buildDashboardButton(context, "BATCH OVERVIEW", "assets/batch_ad.png", "/batch"),
-            _buildDashboardButton(context, "DEPARTMENT OVERVIEW", "assets/department_ad.png", "/department"),
-            _buildDashboardButton(context, "TIMETABLE SCHEDULING", "assets/timetable_ad.png", "/timetable"),
+            IconButton(
+              icon: Image.asset("assets/search.png", height: 26),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset("assets/homeLogo.png", height: 32),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset("assets/account.png", height: 26),
+              onPressed: () {},
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDashboardButton(BuildContext context, String label, String imagePath, String route) {
-    return GestureDetector(
-      onTap: () => _navigateTo(context, route),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        decoration: BoxDecoration(
-          color: Colors.grey[300], // Card background
-          borderRadius: BorderRadius.circular(15),
-        ),
+  Widget _buildDashboardCard(
+      BuildContext context, {
+        required String label,
+        required String imagePath,
+        required String route,
+        bool grey = false,
+      }) {
+    return Container(
+      color: grey ? const Color(0xFFE0E0E0) : Colors.white,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: () => _navigateTo(context, route),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black),
+            ClipOval(
+              child: Image.asset(
+                imagePath,
+                width: 70,
+                height: 70,
+                fit: BoxFit.cover,
+              ),
             ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(30),
-              child: Image.asset(imagePath, height: 50, width: 50, fit: BoxFit.cover),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(label),
             ),
           ],
         ),
