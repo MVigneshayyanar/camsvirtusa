@@ -180,7 +180,6 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                             ),
                             ElevatedButton(
                               child: const Text("Delete"),
-                              onPressed: () => Navigator.pop(context, true),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFF7F50), // Button color
                                 foregroundColor: Colors.white, // Text color
