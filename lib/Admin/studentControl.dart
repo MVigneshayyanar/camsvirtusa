@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'adminDashboard.dart';
 
 class StudentControlPage extends StatefulWidget {
   const StudentControlPage({Key? key}) : super(key: key);
@@ -28,36 +29,42 @@ class _StudentControlPageState extends State<StudentControlPage> {
   }
 
   Future<void> _fetchStudents() async {
-    final studentSnapshot = await FirebaseFirestore.instance
-        .collection("colleges")
-        .doc("students")
-        .collection("all_students")
-        .get();
+    try {
+      final studentSnapshot = await FirebaseFirestore.instance
+          .collection("colleges")
+          .doc("students")
+          .collection("all_students")
+          .get();
 
-    final facultySnapshot = await FirebaseFirestore.instance
-        .collection("colleges")
-        .doc("faculties")
-        .collection("all_faculties")
-        .get();
+      final facultySnapshot = await FirebaseFirestore.instance
+          .collection("colleges")
+          .doc("faculties")
+          .collection("all_faculties")
+          .get();
 
-    // Create mentor name mapping
-    _mentorNames = {
-      for (var doc in facultySnapshot.docs) doc.id: doc['name'] ?? 'Unknown'
-    };
-
-    final students = studentSnapshot.docs.map((doc) {
-      final data = doc.data();
-      return {
-        ...data,
-        'docId': doc.id,
-        'mentor_name': _mentorNames[data['mentor_id']] ?? 'Unknown',
+      _mentorNames = {
+        for (var doc in facultySnapshot.docs)
+          doc.id: (doc.data()['name'] ?? 'Unknown').toString()
       };
-    }).toList();
 
-    setState(() {
-      _allStudents = students;
-      _filteredStudents = students;
-    });
+      final students = studentSnapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          ...data,
+          'docId': doc.id,
+          'mentor_name': _mentorNames[data['mentor_id']] ?? 'Unknown',
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _allStudents = students;
+          _filteredStudents = students;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching students: $e");
+    }
   }
 
   void _onSearchChanged() {
@@ -82,12 +89,30 @@ class _StudentControlPageState extends State<StudentControlPage> {
     final data = docSnapshot.data();
     if (data == null) return;
 
-    final nameController = TextEditingController(text: data['name']);
-    final emailController = TextEditingController(text: data['email']);
-    final deptController = TextEditingController(text: data['department']);
+    final nameController = TextEditingController(text: data['name'] ?? '');
+    final emailController = TextEditingController(text: data['email'] ?? '');
+    final deptController = TextEditingController(text: data['department'] ?? '');
     final passwordController = TextEditingController(text: data['password'] ?? '');
-    final mentorController = TextEditingController(text: data['mentor_id']);
-    final classController = TextEditingController(text: data['class']);
+    final mentorController = TextEditingController(text: data['mentor_id'] ?? '');
+    final classController = TextEditingController(text: data['class'] ?? '');
+
+    String mentorName = "Unknown";
+    final mentorId = data['mentor_id'];
+    if (mentorId != null && mentorId.toString().isNotEmpty) {
+      try {
+        final mentorSnapshot = await FirebaseFirestore.instance
+            .collection("colleges")
+            .doc("faculties")
+            .collection("all_faculties")
+            .doc(mentorId)
+            .get();
+        if (mentorSnapshot.exists) {
+          mentorName = mentorSnapshot.data()?['name'] ?? "Unknown";
+        }
+      } catch (e) {
+        debugPrint("Error fetching mentor name: $e");
+      }
+    }
 
     bool isEditing = false;
 
@@ -129,7 +154,7 @@ class _StudentControlPageState extends State<StudentControlPage> {
                           ? _buildEditableField("Mentor ID", mentorController)
                           : ListTile(
                         title: const Text("Mentor"),
-                        subtitle: Text("${data['mentor_name']} (${data['mentor_id']})"),
+                        subtitle: Text("$mentorName (${data['mentor_id']})"),
                       ),
                       isEditing
                           ? _buildEditableField("Password", passwordController, obscure: true)
@@ -178,9 +203,7 @@ class _StudentControlPageState extends State<StudentControlPage> {
                             .doc(docId)
                             .delete();
                         Navigator.pop(context);
-                        if (mounted) {
-                          setState(() {});
-                        }
+                        _fetchStudents();
                       }
                     },
                     child: const Text(
@@ -206,9 +229,7 @@ class _StudentControlPageState extends State<StudentControlPage> {
                         "password": passwordController.text.trim(),
                       });
                       Navigator.pop(context);
-                      if (mounted) {
-                        setState(() {});
-                      }
+                      _fetchStudents();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF7F50),
@@ -366,7 +387,7 @@ class _StudentControlPageState extends State<StudentControlPage> {
               });
 
               Navigator.pop(context);
-              setState(() {});
+              _fetchStudents();
             },
           ),
         ],
@@ -512,8 +533,12 @@ class _StudentControlPageState extends State<StudentControlPage> {
             IconButton(
               icon: Image.asset("assets/homeLogo.png", height: 32),
               onPressed: () {
-                Navigator.popUntil(
-                    context, ModalRoute.withName("/admin_dashboard"));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminDashboard(),
+                  ),
+                );
               },
             ),
             IconButton(

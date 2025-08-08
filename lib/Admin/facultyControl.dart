@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'adminDashboard.dart';
 
 class FacultyOverviewPage extends StatefulWidget {
   const FacultyOverviewPage({Key? key}) : super(key: key);
@@ -179,10 +180,18 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                             ),
                             ElevatedButton(
                               child: const Text("Delete"),
-                              style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.red),
                               onPressed: () => Navigator.pop(context, true),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF7F50), // Button color
+                                foregroundColor: Colors.white, // Text color
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10), // Rounded corners
+                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Padding
+                              ),
                             ),
+
+
                           ],
                         ),
                       );
@@ -200,7 +209,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                       }
                     },
                     child: const Text("Delete",
-                        style: TextStyle(color: Colors.red)),
+                        style: TextStyle(color: Color(0xFFFF7F50))),
                   ),
                   const Spacer(),
                   ElevatedButton(
@@ -527,7 +536,7 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 decoration: const BoxDecoration(
                   border: Border(
-                    bottom: BorderSide(color: Colors.orange, width: 1),
+                    bottom: BorderSide(color: Color(0xFFFF7F50), width: 1),
                   ),
                 ),
                 child: Row(
@@ -577,7 +586,12 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
             IconButton(
               icon: Image.asset("assets/homeLogo.png", height: 32),
               onPressed: () {
-                Navigator.popUntil(context, ModalRoute.withName("/admin_dashboard"));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminDashboard(),
+                  ),
+                );
               },
             ),
             IconButton(

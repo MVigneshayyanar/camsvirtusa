@@ -54,6 +54,7 @@ flutter:
     - assets/on_duty.png
     - assets/leave_form.png
     - assets/mark_attendance.png
+    - assets/profile_picture.png
     - assets/student_details.png
     - assets/my_mentees.png
     - assets/student_ad.png

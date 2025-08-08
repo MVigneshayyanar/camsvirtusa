@@ -11,7 +11,8 @@ import '../Admin/studentControl.dart';
 import '../Admin/facultyControl.dart';
 import '../Admin/departmentControl.dart';// make sure this file is named facultyControl.dart
 import '../Admin/departmentControl.dart';
-import '../Admin/classStudent.dart';
+import '../Admin/classesList.dart';
+import '../Admin/adminDashboard.dart';
 
 class AppRoutes {
   static const String splash = '/';

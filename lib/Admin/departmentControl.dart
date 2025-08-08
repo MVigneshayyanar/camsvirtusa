@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'classStudent.dart';
+import 'classesList.dart';
+import 'adminDashboard.dart';
 
 class DepartmentControlPage extends StatefulWidget {
   const DepartmentControlPage({super.key});
@@ -23,31 +24,38 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
       .doc('departments')
       .collection('all_departments');
 
+  Widget _buildDialogHeader(String title, VoidCallback onClose) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFF7F50),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          Text(title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Spacer(),
+          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: onClose),
+        ],
+      ),
+    );
+  }
+
   void _showAddDepartmentPopup() {
     showDialog(
       context: context,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             titlePadding: EdgeInsets.zero,
             title: _buildDialogHeader("Add Department", () => Navigator.pop(context)),
             content: SingleChildScrollView(
               child: Column(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextField(
-                    controller: _deptIdController,
-                    decoration: const InputDecoration(labelText: 'Department ID'),
-                  ),
-                  TextField(
-                    controller: _deptNameController,
-                    decoration: const InputDecoration(labelText: 'Department Name'),
-                  ),
+                  TextField(controller: _deptIdController, decoration: const InputDecoration(labelText: 'Department ID')),
+                  TextField(controller: _deptNameController, decoration: const InputDecoration(labelText: 'Department Name')),
                   TextField(
                     controller: _classController,
                     decoration: const InputDecoration(labelText: 'Add Class'),
@@ -63,17 +71,13 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 8.0,
-                    children: _classes
-                        .map((cls) => Chip(
-                      label: Text(cls),
-                      deleteIcon: const Icon(Icons.close),
-                      onDeleted: () {
-                        setState(() {
-                          _classes.remove(cls);
-                        });
-                      },
-                    ))
-                        .toList(),
+                    children: _classes.map((cls) {
+                      return Chip(
+                        label: Text(cls),
+                        deleteIcon: const Icon(Icons.close),
+                        onDeleted: () => setState(() => _classes.remove(cls)),
+                      );
+                    }).toList(),
                   ),
                 ],
               ),
@@ -81,7 +85,13 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
             actions: [
               TextButton(
                 child: const Text('Close'),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  _deptIdController.clear();
+                  _deptNameController.clear();
+                  _classController.clear();
+                  _classes.clear();
+                  Navigator.pop(context);
+                },
               ),
               ElevatedButton(
                 child: const Text('Save'),
@@ -119,11 +129,7 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           titlePadding: EdgeInsets.zero,
           title: _buildDialogHeader("Edit Classes", () => Navigator.pop(context)),
           content: Column(
@@ -131,30 +137,17 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
             children: [
               ...updatedClasses.map((cls) => ListTile(
                 title: Text(cls),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ClassStudentsPage(
-                        departmentId: deptId,
-                        className: cls,
-                      ),
-                    ),
-                  );
-                },
                 trailing: IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: () {
-                    setState(() {
-                      updatedClasses.remove(cls);
-                    });
+                    setState(() => updatedClasses.remove(cls));
                   },
                 ),
               )),
               TextField(
                 controller: classController,
                 decoration: const InputDecoration(labelText: 'Add new class'),
-                onSubmitted: (value) async {
+                onSubmitted: (value) {
                   if (value.trim().isNotEmpty) {
                     setState(() {
                       updatedClasses.add(value.trim());
@@ -172,43 +165,14 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
             ),
             ElevatedButton(
               onPressed: () async {
-                await departmentsRef.doc(deptId).update({
-                  'classes': updatedClasses,
-                });
+                await departmentsRef.doc(deptId).update({'classes': updatedClasses});
                 Navigator.pop(context);
-                if (mounted) {
-                  setState(() {});
-                }
+                setState(() {});
               },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF7F50),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-              ),
               child: const Text("Save"),
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildDialogHeader(String title, VoidCallback onClose) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFFF7F50),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Row(
-        children: [
-          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
-          const Spacer(),
-          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: onClose),
-        ],
       ),
     );
   }
@@ -229,31 +193,26 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
           title: const Text("DEPARTMENT CONTROL", style: TextStyle(color: Colors.white)),
           centerTitle: true,
           actions: [
-            IconButton(
-              icon: const Icon(Icons.notifications, color: Colors.white),
-              onPressed: () {},
-            ),
+            IconButton(icon: const Icon(Icons.notifications, color: Colors.white), onPressed: () {}),
           ],
         ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.all(12),
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _searchController,
+                    onChanged: (val) => setState(() => _searchText = val),
                     decoration: InputDecoration(
                       hintText: 'Search by ID or Name',
                       prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(40),
-                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(40)),
                       contentPadding: const EdgeInsets.symmetric(vertical: 5),
                     ),
-                    onChanged: (val) => setState(() => _searchText = val),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -264,12 +223,14 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
               ],
             ),
           ),
+
           Container(
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: const Color(0xFF2D2F38),
             child: const Text("DEPARTMENT INFORMATION", style: TextStyle(color: Colors.white)),
           ),
+
           Container(
             color: Colors.black12,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -281,12 +242,14 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
               ],
             ),
           ),
+
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: departmentsRef.snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final docs = snapshot.data!.docs.where((doc) {
+
+                final filteredDocs = snapshot.data!.docs.where((doc) {
                   final data = doc.data() as Map<String, dynamic>;
                   final id = data['id']?.toString().toLowerCase() ?? '';
                   final name = data['name']?.toString().toLowerCase() ?? '';
@@ -295,9 +258,9 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                 }).toList();
 
                 return ListView.builder(
-                  itemCount: docs.length,
+                  itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
+                    final data = filteredDocs[index].data() as Map<String, dynamic>;
                     final id = data['id'] ?? '';
                     final name = data['name'] ?? '';
                     final classes = List<String>.from(data['classes'] ?? []);
@@ -305,9 +268,7 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       decoration: const BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(color: Colors.orange, width: 1),
-                        ),
+                        border: Border(bottom: BorderSide(color: Colors.orange, width: 1)),
                       ),
                       child: Row(
                         children: [
@@ -317,7 +278,14 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                             flex: 1,
                             child: Center(
                               child: ElevatedButton(
-                                onPressed: () => _showEditClassesDialog(id, classes),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ClassesListPage(departmentId: id),
+                                    ),
+                                  );
+                                },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFF7F50),
                                   foregroundColor: Colors.white,
@@ -350,20 +318,19 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            IconButton(
-              icon: Image.asset("assets/search.png", height: 26),
-              onPressed: () {},
-            ),
+            IconButton(icon: Image.asset("assets/search.png", height: 26), onPressed: () {}),
             IconButton(
               icon: Image.asset("assets/homeLogo.png", height: 32),
               onPressed: () {
-                Navigator.popUntil(context, ModalRoute.withName("/admin_dashboard"));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminDashboard(),
+                  ),
+                );
               },
             ),
-            IconButton(
-              icon: Image.asset("assets/account.png", height: 26),
-              onPressed: () {},
-            ),
+            IconButton(icon: Image.asset("assets/account.png", height: 26), onPressed: () {}),
           ],
         ),
       ),
