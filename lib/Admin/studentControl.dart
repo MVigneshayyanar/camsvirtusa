@@ -9,7 +9,25 @@ class StudentControlPage extends StatefulWidget {
 }
 
 class _StudentControlPageState extends State<StudentControlPage> {
-  Future<List<Map<String, dynamic>>> _fetchStudents() async {
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _allStudents = [];
+  List<Map<String, dynamic>> _filteredStudents = [];
+  Map<String, String> _mentorNames = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchStudents();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchStudents() async {
     final studentSnapshot = await FirebaseFirestore.instance
         .collection("colleges")
         .doc("students")
@@ -22,19 +40,38 @@ class _StudentControlPageState extends State<StudentControlPage> {
         .collection("all_faculties")
         .get();
 
-    final mentorMap = {
-      for (var doc in facultySnapshot.docs) doc.id: doc['name']
+    // Create mentor name mapping
+    _mentorNames = {
+      for (var doc in facultySnapshot.docs) doc.id: doc['name'] ?? 'Unknown'
     };
 
-    return studentSnapshot.docs.map((doc) {
+    final students = studentSnapshot.docs.map((doc) {
       final data = doc.data();
-      data['docId'] = doc.id;
-      data['mentor_name'] = mentorMap[data['mentor_id']] ?? 'Unknown';
-      return data;
+      return {
+        ...data,
+        'docId': doc.id,
+        'mentor_name': _mentorNames[data['mentor_id']] ?? 'Unknown',
+      };
     }).toList();
+
+    setState(() {
+      _allStudents = students;
+      _filteredStudents = students;
+    });
   }
 
-  void _showStudentPopup(Map<String, dynamic> student, String docId) async {
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredStudents = _allStudents.where((student) {
+        final name = (student['name'] ?? '').toString().toLowerCase();
+        final id = (student['id'] ?? '').toString().toLowerCase();
+        return name.contains(query) || id.contains(query);
+      }).toList();
+    });
+  }
+
+  void _showStudentDetailsPopup(Map<String, dynamic> student, String docId) async {
     final docSnapshot = await FirebaseFirestore.instance
         .collection("colleges")
         .doc("students")
@@ -48,127 +85,141 @@ class _StudentControlPageState extends State<StudentControlPage> {
     final nameController = TextEditingController(text: data['name']);
     final emailController = TextEditingController(text: data['email']);
     final deptController = TextEditingController(text: data['department']);
-    final passwordController =
-    TextEditingController(text: data['password'] ?? '');
-    final mentorIdController = TextEditingController(text: data['mentor_id']);
+    final passwordController = TextEditingController(text: data['password'] ?? '');
+    final mentorController = TextEditingController(text: data['mentor_id']);
     final classController = TextEditingController(text: data['class']);
 
     bool isEditing = false;
-
-    if (!mounted) return;
 
     showDialog(
       context: context,
       builder: (context) {
         return StatefulBuilder(
-          builder: (ctx, setState) {
+          builder: (context, setDialogState) {
             return AlertDialog(
-              content: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text("ID: ${data['id'] ?? ''}"),
-                    const SizedBox(height: 10),
-                    isEditing
-                        ? TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(labelText: "Name"))
-                        : Text("Name: ${data['name'] ?? ''}"),
-                    isEditing
-                        ? TextField(
-                        controller: emailController,
-                        decoration:
-                        const InputDecoration(labelText: "Email"))
-                        : Text("Email: ${data['email'] ?? ''}"),
-                    isEditing
-                        ? TextField(
-                        controller: deptController,
-                        decoration:
-                        const InputDecoration(labelText: "Department"))
-                        : Text("Department: ${data['department'] ?? ''}"),
-                    isEditing
-                        ? TextField(
-                        controller: mentorIdController,
-                        decoration:
-                        const InputDecoration(labelText: "Mentor ID"))
-                        : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("Mentor ID: ${data['mentor_id'] ?? ''}"),
-                        Text(
-                            "Mentor Name: ${student['mentor_name'] ?? 'Unknown'}"),
-                      ],
-                    ),
-                    isEditing
-                        ? TextField(
-                        controller: classController,
-                        decoration:
-                        const InputDecoration(labelText: "Class"))
-                        : Text("Class: ${data['class'] ?? ''}"),
-                    isEditing
-                        ? TextField(
-                      controller: passwordController,
-                      obscureText: true,
-                      decoration:
-                      const InputDecoration(labelText: "Password"),
-                    )
-                        : const Text("Password: ••••••••"),
-                  ],
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              backgroundColor: Colors.white,
+              titlePadding: EdgeInsets.zero,
+              title: _buildDialogHeader(
+                "Student Details",
+                    () => Navigator.pop(context),
+              ),
+              content: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildReadonlyField("Student ID", data['id'] ?? ''),
+                      isEditing
+                          ? _buildEditableField("Name", nameController)
+                          : _buildReadonlyField("Name", data['name']),
+                      isEditing
+                          ? _buildEditableField("Email", emailController)
+                          : _buildReadonlyField("Email", data['email']),
+                      isEditing
+                          ? _buildEditableField("Department", deptController)
+                          : _buildReadonlyField("Department", data['department']),
+                      isEditing
+                          ? _buildEditableField("Class", classController)
+                          : _buildReadonlyField("Class", data['class']),
+                      isEditing
+                          ? _buildEditableField("Mentor ID", mentorController)
+                          : ListTile(
+                        title: const Text("Mentor"),
+                        subtitle: Text("${data['mentor_name']} (${data['mentor_id']})"),
+                      ),
+                      isEditing
+                          ? _buildEditableField("Password", passwordController, obscure: true)
+                          : const ListTile(
+                        title: Text("Password"),
+                        subtitle: Text("••••••••"),
+                      ),
+                    ],
+                  ),
                 ),
               ),
               actions: [
                 if (!isEditing)
                   TextButton(
-                    child: const Text('Edit'),
-                    onPressed: () {
-                      setState(() => isEditing = true);
+                    child: const Text("Edit"),
+                    onPressed: () => setDialogState(() => isEditing = true),
+                  ),
+                if (isEditing) ...[
+                  TextButton(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: const Text("Confirm Delete"),
+                          content: const Text("Are you sure you want to delete this student?"),
+                          actions: [
+                            TextButton(
+                              child: const Text("Cancel"),
+                              onPressed: () => Navigator.pop(context, false),
+                            ),
+                            ElevatedButton(
+                              child: const Text("Delete"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () => Navigator.pop(context, true),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        await FirebaseFirestore.instance
+                            .collection("colleges")
+                            .doc("students")
+                            .collection("all_students")
+                            .doc(docId)
+                            .delete();
+                        Navigator.pop(context);
+                        if (mounted) {
+                          setState(() {});
+                        }
+                      }
                     },
+                    child: const Text(
+                      "Delete",
+                      style: TextStyle(color: Colors.red),
+                    ),
                   ),
-                if (isEditing)
-                  Row(
-                    children: [
-                      TextButton(
-                        child: const Text('Delete',
-                            style: TextStyle(color: Colors.red)),
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection("colleges")
-                              .doc("students")
-                              .collection("all_students")
-                              .doc(docId)
-                              .delete();
-                          Navigator.pop(context);
-                          setState(() {});
-                        },
+                  const Spacer(),
+                  ElevatedButton(
+                    child: const Text("Save"),
+                    onPressed: () async {
+                      await FirebaseFirestore.instance
+                          .collection("colleges")
+                          .doc("students")
+                          .collection("all_students")
+                          .doc(docId)
+                          .update({
+                        "name": nameController.text.trim(),
+                        "email": emailController.text.trim(),
+                        "department": deptController.text.trim(),
+                        "class": classController.text.trim(),
+                        "mentor_id": mentorController.text.trim(),
+                        "password": passwordController.text.trim(),
+                      });
+                      Navigator.pop(context);
+                      if (mounted) {
+                        setState(() {});
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF7F50),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const Spacer(),
-                      TextButton(
-                        child: const Text('Save'),
-                        onPressed: () async {
-                          await FirebaseFirestore.instance
-                              .collection("colleges")
-                              .doc("students")
-                              .collection("all_students")
-                              .doc(docId)
-                              .update({
-                            "name": nameController.text.trim(),
-                            "email": emailController.text.trim(),
-                            "department": deptController.text.trim(),
-                            "mentor_id": mentorIdController.text.trim(),
-                            "class": classController.text.trim(),
-                            "password": passwordController.text.trim(),
-                          });
-
-                          Navigator.pop(context);
-                          setState(() {});
-                        },
-                      ),
-                    ],
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    ),
                   ),
-                TextButton(
-                  child: const Text('Close'),
-                  onPressed: () => Navigator.pop(context),
-                ),
+                ],
               ],
             );
           },
@@ -177,11 +228,56 @@ class _StudentControlPageState extends State<StudentControlPage> {
     );
   }
 
+  Widget _buildReadonlyField(String label, String? value) {
+    return ListTile(
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(value ?? 'N/A'),
+    );
+  }
+
+  Widget _buildEditableField(String label, TextEditingController controller, {bool obscure = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        decoration: InputDecoration(labelText: label),
+      ),
+    );
+  }
+
+  Widget _buildDialogHeader(String title, VoidCallback onClose) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFF7F50),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: onClose,
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showAddStudentDialog(BuildContext context) {
     final _idController = TextEditingController();
     final _nameController = TextEditingController();
     final _emailController = TextEditingController();
-    final _deptController = TextEditingController();
+    final _departmentController = TextEditingController();
     final _mentorController = TextEditingController();
     final _classController = TextEditingController();
     final _passwordController = TextEditingController();
@@ -189,52 +285,70 @@ class _StudentControlPageState extends State<StudentControlPage> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Add New Student'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        elevation: 8,
+        titlePadding: EdgeInsets.zero,
+        title: _buildDialogHeader("Add New Student", () => Navigator.pop(context)),
         content: SingleChildScrollView(
           child: Column(
             children: [
               TextField(
-                  controller: _idController,
-                  decoration:
-                  const InputDecoration(labelText: 'Student ID')),
+                controller: _idController,
+                decoration: const InputDecoration(labelText: 'Student ID'),
+              ),
               TextField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(labelText: 'Name')),
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
+              ),
               TextField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(labelText: 'Email')),
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
               TextField(
-                  controller: _deptController,
-                  decoration: const InputDecoration(labelText: 'Department')),
+                controller: _departmentController,
+                decoration: const InputDecoration(labelText: 'Department'),
+              ),
               TextField(
-                  controller: _mentorController,
-                  decoration: const InputDecoration(labelText: 'Mentor ID')),
+                controller: _classController,
+                decoration: const InputDecoration(labelText: 'Class'),
+              ),
               TextField(
-                  controller: _classController,
-                  decoration: const InputDecoration(labelText: 'Class')),
+                controller: _mentorController,
+                decoration: const InputDecoration(labelText: 'Mentor ID'),
+              ),
               TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password')),
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
             ],
           ),
         ),
         actions: [
           TextButton(
-              child: const Text('Cancel'),
-              onPressed: () => Navigator.pop(context)),
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF7F50),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
             child: const Text('Add'),
             onPressed: () async {
               final id = _idController.text.trim();
               final name = _nameController.text.trim();
+              if (id.isEmpty || name.isEmpty) return;
+
               final email = _emailController.text.trim();
-              final dept = _deptController.text.trim();
+              final dept = _departmentController.text.trim();
               final mentor = _mentorController.text.trim();
               final studentClass = _classController.text.trim();
               final password = _passwordController.text.trim();
-
-              if (id.isEmpty || name.isEmpty) return;
 
               await FirebaseFirestore.instance
                   .collection("colleges")
@@ -246,27 +360,10 @@ class _StudentControlPageState extends State<StudentControlPage> {
                 "name": name,
                 "email": email,
                 "department": dept,
-                "mentor_id": mentor,
                 "class": studentClass,
+                "mentor_id": mentor,
                 "password": password,
               });
-
-              final mentorRef = FirebaseFirestore.instance
-                  .collection("colleges")
-                  .doc("faculties")
-                  .collection("all_faculties")
-                  .doc(mentor);
-
-              final mentorDoc = await mentorRef.get();
-
-              if (mentorDoc.exists) {
-                final currentMentees =
-                List<String>.from(mentorDoc.data()?['mentees'] ?? []);
-                if (!currentMentees.contains(id)) {
-                  currentMentees.add(id);
-                  await mentorRef.update({'mentees': currentMentees});
-                }
-              }
 
               Navigator.pop(context);
               setState(() {});
@@ -290,9 +387,17 @@ class _StudentControlPageState extends State<StudentControlPage> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
-          title: const Text("STUDENT CONTROL",
-              style: TextStyle(color: Colors.white)),
+          title: const Text(
+            "STUDENT CONTROL",
+            style: TextStyle(color: Colors.white),
+          ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications, color: Colors.white),
+              onPressed: () {},
+            ),
+          ],
         ),
       ),
       body: Column(
@@ -303,20 +408,24 @@ class _StudentControlPageState extends State<StudentControlPage> {
               children: [
                 Expanded(
                   child: TextField(
+                    controller: _searchController,
                     decoration: InputDecoration(
-                      hintText: 'Search',
+                      hintText: 'Search by ID or Name',
                       prefixIcon: const Icon(Icons.search),
                       border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(40)),
-                      contentPadding:
-                      const EdgeInsets.symmetric(vertical: 5),
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 5),
                     ),
                   ),
                 ),
                 const SizedBox(width: 10),
                 IconButton(
-                  icon: const Icon(Icons.add_circle,
-                      size: 32, color: Color(0xFFFF7F50)),
+                  icon: const Icon(
+                    Icons.add_circle,
+                    size: 32,
+                    color: Color(0xFFFF7F50),
+                  ),
                   onPressed: () => _showAddStudentDialog(context),
                 ),
               ],
@@ -326,14 +435,16 @@ class _StudentControlPageState extends State<StudentControlPage> {
             alignment: Alignment.centerLeft,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             color: const Color(0xFF2D2F38),
-            child: const Text("STUDENT INFORMATION",
-                style: TextStyle(color: Colors.white)),
+            child: const Text(
+              "STUDENT INFORMATION",
+              style: TextStyle(color: Colors.white),
+            ),
           ),
           Container(
             color: Colors.black12,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: const [
+            child: const Row(
+              children: [
                 Expanded(flex: 2, child: Text("STUDENT ID")),
                 Expanded(flex: 3, child: Text("NAME")),
                 Expanded(flex: 1, child: Text("DETAILS")),
@@ -341,49 +452,44 @@ class _StudentControlPageState extends State<StudentControlPage> {
             ),
           ),
           Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _fetchStudents(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text("No student data available."));
-                }
-
-                final studentList = snapshot.data!;
-                return ListView.builder(
-                  itemCount: studentList.length,
-                  itemBuilder: (context, index) {
-                    final student = studentList[index];
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
-                      decoration: const BoxDecoration(
-                        border:
-                        Border(bottom: BorderSide(color: Colors.orange)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(flex: 2, child: Text(student['id'] ?? '')),
-                          Expanded(flex: 3, child: Text(student['name'] ?? '')),
-                          Expanded(
-                            flex: 1,
-                            child: ElevatedButton(
-                              onPressed: () =>
-                                  _showStudentPopup(student, student['id']),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFF7F50),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20)),
+            child: ListView.builder(
+              itemCount: _filteredStudents.length,
+              itemBuilder: (context, index) {
+                final student = _filteredStudents[index];
+                return Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.orange, width: 1),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 2, child: Text(student['id'] ?? '')),
+                      Expanded(flex: 3, child: Text(student['name'] ?? '')),
+                      Expanded(
+                        flex: 1,
+                        child: Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _showStudentDetailsPopup(student, student['docId']);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF7F50),
+                              foregroundColor: Colors.white,
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 0,
+                                horizontal: 0,
                               ),
-                              child: const Text("View"),
                             ),
+                            child: const Text('View'),
                           ),
-                        ],
+                        ),
                       ),
-                    );
-                  },
+                    ],
+                  ),
                 );
               },
             ),

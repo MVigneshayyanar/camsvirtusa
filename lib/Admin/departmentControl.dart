@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'classStudent.dart';// ake sure this exists and is implemented
+import 'classStudent.dart';
 
 class DepartmentControlPage extends StatefulWidget {
   const DepartmentControlPage({super.key});
@@ -29,7 +29,13 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
-            title: const Text("Add Department"),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            backgroundColor: Colors.white,
+            titlePadding: EdgeInsets.zero,
+            title: _buildDialogHeader("Add Department", () => Navigator.pop(context)),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -113,7 +119,13 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text("Edit Classes"),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          backgroundColor: Colors.white,
+          titlePadding: EdgeInsets.zero,
+          title: _buildDialogHeader("Edit Classes", () => Navigator.pop(context)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -130,6 +142,14 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                     ),
                   );
                 },
+                trailing: IconButton(
+                  icon: const Icon(Icons.delete),
+                  onPressed: () {
+                    setState(() {
+                      updatedClasses.remove(cls);
+                    });
+                  },
+                ),
               )),
               TextField(
                 controller: classController,
@@ -139,9 +159,6 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                     setState(() {
                       updatedClasses.add(value.trim());
                       classController.clear();
-                    });
-                    await departmentsRef.doc(deptId).update({
-                      'classes': updatedClasses,
                     });
                   }
                 },
@@ -159,7 +176,18 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                   'classes': updatedClasses,
                 });
                 Navigator.pop(context);
+                if (mounted) {
+                  setState(() {});
+                }
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7F50),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+              ),
               child: const Text("Save"),
             ),
           ],
@@ -168,138 +196,139 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
     );
   }
 
-  List<QueryDocumentSnapshot> _filterDepartments(QuerySnapshot snapshot) {
-    return snapshot.docs.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final id = data['id']?.toString().toLowerCase() ?? '';
-      final name = data['name']?.toString().toLowerCase() ?? '';
-      return id.contains(_searchText.toLowerCase()) ||
-          name.contains(_searchText.toLowerCase());
-    }).toList();
+  Widget _buildDialogHeader(String title, VoidCallback onClose) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFFF7F50),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          const Spacer(),
+          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: onClose),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70),
+        child: AppBar(
+          backgroundColor: const Color(0xFFFF7F50),
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: const Text("DEPARTMENT CONTROL", style: TextStyle(color: Colors.white)),
+          centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.notifications, color: Colors.white),
+              onPressed: () {},
+            ),
+          ],
+        ),
+      ),
       body: Column(
         children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFD7E45),
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.menu, color: Colors.white),
-                const SizedBox(width: 12),
-                const Text(
-                  "FACULTY OVERVIEW",
-                  style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
-                ),
-                const Spacer(),
-                const Icon(Icons.notifications, color: Colors.white),
-              ],
-            ),
-          ),
-
-          // Search + Add
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.all(12.0),
             child: Row(
               children: [
                 Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F1F1),
-                      borderRadius: BorderRadius.circular(25),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Search',
-                        border: InputBorder.none,
-                        icon: Icon(Icons.search),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by ID or Name',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(40),
                       ),
-                      onChanged: (val) => setState(() => _searchText = val),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 5),
                     ),
+                    onChanged: (val) => setState(() => _searchText = val),
                   ),
                 ),
+                const SizedBox(width: 10),
                 IconButton(
+                  icon: const Icon(Icons.add_circle, size: 32, color: Color(0xFFFF7F50)),
                   onPressed: _showAddDepartmentPopup,
-                  icon: const Icon(Icons.add_circle, size: 32),
                 ),
               ],
             ),
           ),
-
-          // Department Label
           Container(
             alignment: Alignment.centerLeft,
-            margin: const EdgeInsets.only(left: 12),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: const BoxDecoration(
-              color: Color(0xFF3A3A3A),
-              borderRadius: BorderRadius.only(
-                topRight: Radius.circular(10),
-                bottomRight: Radius.circular(10),
-              ),
-            ),
-            child: const Text(
-              "DEPARTMENTS",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: const Color(0xFF2D2F38),
+            child: const Text("DEPARTMENT INFORMATION", style: TextStyle(color: Colors.white)),
           ),
-
-          // Table Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            color: const Color(0xFFF5F5F5),
+            color: Colors.black12,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: const Row(
               children: [
-                Expanded(flex: 2, child: Text("DEPT", style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 5, child: Text("NAME", style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(child: Text("DETAILS", style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 2, child: Text("DEPT ID")),
+                Expanded(flex: 3, child: Text("NAME")),
+                Expanded(flex: 1, child: Text("DETAILS")),
               ],
             ),
           ),
-
-          // Department List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: departmentsRef.snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                final docs = _filterDepartments(snapshot.data!);
-                return ListView.separated(
+                final docs = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final id = data['id']?.toString().toLowerCase() ?? '';
+                  final name = data['name']?.toString().toLowerCase() ?? '';
+                  return id.contains(_searchText.toLowerCase()) ||
+                      name.contains(_searchText.toLowerCase());
+                }).toList();
+
+                return ListView.builder(
                   itemCount: docs.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
                     final id = data['id'] ?? '';
                     final name = data['name'] ?? '';
                     final classes = List<String>.from(data['classes'] ?? []);
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.orange, width: 1),
+                        ),
+                      ),
                       child: Row(
                         children: [
-                          Expanded(flex: 2, child: Text(id, style: const TextStyle(fontWeight: FontWeight.w600))),
-                          Expanded(flex: 5, child: Text(name)),
+                          Expanded(flex: 2, child: Text(id)),
+                          Expanded(flex: 3, child: Text(name)),
                           Expanded(
-                            child: ElevatedButton(
-                              onPressed: () => _showEditClassesDialog(id, classes),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFFD7E45),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                                padding: const EdgeInsets.symmetric(vertical: 6),
+                            flex: 1,
+                            child: Center(
+                              child: ElevatedButton(
+                                onPressed: () => _showEditClassesDialog(id, classes),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF7F50),
+                                  foregroundColor: Colors.white,
+                                  shape: const StadiumBorder(),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 0,
+                                    horizontal: 0,
+                                  ),
+                                ),
+                                child: const Text('View'),
                               ),
-                              child: const Text("View", style: TextStyle(color: Colors.white)),
                             ),
                           ),
                         ],
@@ -310,18 +339,33 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
               },
             ),
           ),
-
-          // Bottom nav
-          Container(
-            height: 70,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-            ),
-            child: const Center(child: Icon(Icons.home, color: Colors.orange, size: 36)),
-          ),
         ],
+      ),
+      bottomNavigationBar: Container(
+        height: 70,
+        decoration: const BoxDecoration(
+          color: Color(0xFFE5E5E5),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset("assets/search.png", height: 26),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset("assets/homeLogo.png", height: 32),
+              onPressed: () {
+                Navigator.popUntil(context, ModalRoute.withName("/admin_dashboard"));
+              },
+            ),
+            IconButton(
+              icon: Image.asset("assets/account.png", height: 26),
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
     );
   }

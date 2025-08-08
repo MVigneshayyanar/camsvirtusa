@@ -8,7 +8,6 @@ import '../Student/studentDashboard.dart';
 import '../Faculty/facultyDashboard.dart';
 import '../Admin/adminDashboard.dart';
 import '../Admin/studentControl.dart';
-import '../Admin/viewStudent.dart';
 import '../Admin/facultyControl.dart';
 import '../Admin/departmentControl.dart';// make sure this file is named facultyControl.dart
 import '../Admin/departmentControl.dart';
@@ -69,8 +68,6 @@ class AppRoutes {
       case studentControl:
         return _animatedRoute(const StudentControlPage(), settings);
 
-      case viewStudent:
-        return _animatedRoute(ViewStudent(), settings);
 
       case facultyControl:
         return _animatedRoute(const FacultyOverviewPage(), settings);
