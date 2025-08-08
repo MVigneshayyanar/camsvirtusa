@@ -1,5 +1,7 @@
+// lib/Authentication/studentLogin.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Startup/routes.dart';
 
 class StudentLoginScreen extends StatefulWidget {
@@ -17,17 +19,36 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
   String? _errorMessage;
   bool _obscurePassword = true;
 
+  // If user manually reaches the login screen while already logged in,
+  // we can auto-redirect. Optional because Splash should normally handle it.
+  @override
+  void initState() {
+    super.initState();
+    _maybeAutoRedirect();
+  }
+
+  Future<void> _maybeAutoRedirect() async {
+    final prefs = await SharedPreferences.getInstance();
+    final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+    final role = prefs.getString('role');
+    final studentId = prefs.getString('studentId');
+    if (isLoggedIn && role == 'student' && studentId != null) {
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, AppRoutes.studentDashboard, arguments: studentId);
+    }
+  }
+
   Future<void> _login() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    String studentId = _studentIdController.text.trim();
-    String password = _passwordController.text.trim();
+    final String studentId = _studentIdController.text.trim();
+    final String password = _passwordController.text.trim();
 
     try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
+      final DocumentSnapshot doc = await FirebaseFirestore.instance
           .collection('colleges')
           .doc('students')
           .collection('all_students')
@@ -35,9 +56,16 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
           .get();
 
       if (doc.exists) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-
+        final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         if (data['password'] == password) {
+          // ======= SAVE LOGIN STATE =======
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('isLoggedIn', true);
+          await prefs.setString('role', 'student');
+          await prefs.setString('studentId', studentId);
+
+          // Navigate using named route and pass the studentId as argument
+          if (!mounted) return;
           Navigator.pushReplacementNamed(
             context,
             AppRoutes.studentDashboard,
@@ -51,13 +79,14 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       }
     } catch (e) {
       setState(() => _errorMessage = "Login failed: ${e.toString()}");
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    setState(() => _isLoading = false);
   }
 
   @override
   Widget build(BuildContext context) {
+    // (your existing UI unchanged)
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(

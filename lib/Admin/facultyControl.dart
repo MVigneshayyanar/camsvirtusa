@@ -180,7 +180,6 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                             ),
                             ElevatedButton(
                               child: const Text("Delete"),
-                              onPressed: () => Navigator.pop(context, true),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFFFF7F50), // Button color
                                 foregroundColor: Colors.white, // Text color
@@ -188,7 +187,9 @@ class _FacultyOverviewPageState extends State<FacultyOverviewPage> {
                                   borderRadius: BorderRadius.circular(10), // Rounded corners
                                 ),
                                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20), // Padding
-                              ),
+                              ), onPressed: () {
+                                Navigator.pop(context, true);
+                            },
                             ),
 
 
