@@ -16,6 +16,7 @@ dependencies:
   cloud_firestore: ^4.5.3
   firebase_messaging: ^14.5.0
   google_fonts: ^6.1.0
+  shared_preferences: ^2.2.2
 
   # State management
   provider: ^6.1.2
@@ -33,10 +34,11 @@ flutter_native_splash:
   image: logo.png # your app logo (we’ll add this next)
   android: true
   ios: true
+
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/Home.png"
+  image_path: "assets/logo.png"
 
   flutter_test:
     sdk: flutter
@@ -62,7 +64,6 @@ flutter:
     - assets/batch_ad.png
     - assets/department_ad.png
     - assets/timetable_ad.png
-    - assets/Home.png
     - assets/college.png
     - assets/login_illustration.png
     - assets/cap.png
