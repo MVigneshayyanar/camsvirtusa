@@ -128,7 +128,7 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
                 Image.asset("assets/faculty.png", height: 150),
                 const SizedBox(height: 30),
                 const Text(
-                  "FACULTY / ADMIN LOGIN",
+                  "FACULTY LOGIN",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
@@ -140,7 +140,7 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
                 TextField(
                   controller: _facultyIdController,
                   decoration: InputDecoration(
-                    hintText: "Faculty/Admin ID",
+                    hintText: "Faculty ID",
                     filled: true,
                     fillColor: const Color(0xFFE5E5E5),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),

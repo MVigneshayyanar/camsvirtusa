@@ -43,7 +43,7 @@ class AdminDashboard extends StatelessWidget {
             backgroundColor: const Color(0xFFFFD700),
             child: ClipOval(
               child: Image.asset(
-                "assets/profile_picture.png",
+                "assets/account.png",
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
@@ -59,7 +59,6 @@ class AdminDashboard extends StatelessWidget {
       ),
     );
   }
-
   Widget _buildDashboardGrid(BuildContext context) {
     return Expanded(
       child: GridView.count(

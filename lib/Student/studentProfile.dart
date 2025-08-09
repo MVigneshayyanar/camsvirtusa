@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'studentDashboard.dart';
 
 class StudentProfile extends StatefulWidget {
@@ -28,7 +29,6 @@ class _StudentProfileState extends State<StudentProfile> {
 
   Future<void> _fetchData() async {
     try {
-      // Step 1: Fetch student data
       final studentDoc = await FirebaseFirestore.instance
           .collection('colleges')
           .doc('students')
@@ -40,7 +40,6 @@ class _StudentProfileState extends State<StudentProfile> {
 
       studentData = studentDoc.data();
 
-      // Step 2: Search for mentor who has this student in their mentees list
       final mentorQuery = await FirebaseFirestore.instance
           .collection('colleges')
           .doc('faculties')
@@ -107,6 +106,59 @@ class _StudentProfileState extends State<StudentProfile> {
     );
   }
 
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(), // Cancel
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close dialog
+                _performLogout();
+              },
+              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _performLogout() async {
+    try {
+      // Clear all stored user data from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+
+      // Navigate to login page and clear all previous routes
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/roleSelection', // Replace with your login route
+            (Route<dynamic> route) => false,
+      );
+
+
+      print("User logged out successfully - SharedPreferences cleared");
+
+    } catch (e) {
+      print("Error during logout: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout error: $e'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final name = studentData?['name']?.toString() ?? '';
@@ -120,28 +172,20 @@ class _StudentProfileState extends State<StudentProfile> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: _orange,
-        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Center(
-          child: Text('STUDENT PROFILE', style: TextStyle(color: Colors.white)),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications, color: Colors.white),
-            onPressed: () {},
-          )
-        ],
+        title: const Text('STUDENT PROFILE', style: TextStyle(color: Colors.white)),
+        centerTitle: true, // This centers the title
+        backgroundColor: const Color(0xFFFF7F50),
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
         child: Column(
           children: [
-            // Header
             Container(
               width: double.infinity,
               color: _orange,
@@ -151,7 +195,7 @@ class _StudentProfileState extends State<StudentProfile> {
                   const CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white,
-                    backgroundImage: AssetImage('assets/default_profile.png'),
+                    backgroundImage: AssetImage('assets/account.png'),
                   ),
                   const SizedBox(height: 8),
                   RichText(
@@ -193,7 +237,10 @@ class _StudentProfileState extends State<StudentProfile> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+
             const SizedBox(height: 80),
+
           ],
         ),
       ),
@@ -219,6 +266,18 @@ class _StudentProfileState extends State<StudentProfile> {
               child: Image.asset('assets/account.png', width: 28, height: 28),
             ),
           ],
+        ),
+      ),
+      floatingActionButton: Container(
+        width: 100, // Set desired width
+        height: 40, // Set desired height
+        child: FloatingActionButton(
+          onPressed: _logout,
+          backgroundColor: const Color(0xFFFF7F50),
+          child: const Text(
+            'Log out',
+            style: TextStyle(color: Colors.white), // Change text color to white
+          ),
         ),
       ),
     );
