@@ -1,3 +1,4 @@
+import 'package:camsvirtusa/Student/studentLeave.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'studentProfile.dart';
@@ -91,7 +92,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StudentAttendancePage(),
+        builder: (context) => LeaveApplicationForm(),
       ),
     );
   }
