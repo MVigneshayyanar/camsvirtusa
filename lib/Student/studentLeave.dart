@@ -2,8 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class LeaveApplicationForm extends StatefulWidget {
+  final String studentId;
+  const LeaveApplicationForm({Key? key, required this.studentId}) : super(key: key);
+
   @override
-  _LeaveApplicationFormState createState() => _LeaveApplicationFormState();
+  _LeaveApplicationFormState createState() {
+    return _LeaveApplicationFormState();
+  }
 }
 
 class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
@@ -11,6 +16,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   DateTime? toDate;
   int numberOfDays = 0;
   String? selectedLeaveType;
+
   final List<String> leaveTypes = [
     'SICK LEAVE',
     'PERSONAL LEAVE',
@@ -25,6 +31,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
 
   static const Color _orange = Color(0xFFFF7F50);
   static const Color _lightGrayBg = Color(0xFFF0F0F0);
+  static const Color _dropdownColor = Color(0xFFD3D3D3);
 
   void _calculateDays() {
     if (fromDate != null && toDate != null) {
@@ -87,11 +94,16 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: _orange,
-        title: Text("LEAVE FORM", style: TextStyle(color: Colors.white)),
+        title: Center(
+          child: Text(
+            "LEAVE FORM",
+            style: TextStyle(color: Colors.white),
+          ),
+        ),
         leading: IconButton(
-          icon: Icon(Icons.menu),
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Scaffold.of(context).openDrawer(); // Handle menu navigation
+            Navigator.of(context).pop(); // Return to the previous page
           },
         ),
       ),
@@ -105,13 +117,13 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
               SizedBox(height: 10),
               _buildDateField(label: "To:", date: toDate, isFromDate: false),
               SizedBox(height: 10),
-              _buildNumberOfDaysField(),
+              _buildNumberOfDaysField(), // Include number of days field
               SizedBox(height: 10),
               _buildLeaveTypeDropdown(),
               SizedBox(height: 10),
               _buildReasonField(),
               SizedBox(height: 20),
-              _buildSubmitButton(),
+              Center(child: _buildSubmitButton()), // Center the apply button
             ],
           ),
         ),
@@ -142,13 +154,18 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   }
 
   Widget _buildNumberOfDaysField() {
-    return TextField(
-      readOnly: true,
-      decoration: InputDecoration(
-        labelText: "Number of Days",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      controller: TextEditingController(text: numberOfDays.toString()),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Number of Days:", style: TextStyle(fontSize: 16)),
+        TextField(
+          readOnly: true,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          controller: TextEditingController(text: numberOfDays.toString()),
+        ),
+      ],
     );
   }
 
@@ -172,6 +189,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
           }).toList(),
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: _dropdownColor, // Set the color of the dropdown
           ),
         ),
       ],
@@ -185,7 +204,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
         Text("Reason:", style: TextStyle(fontSize: 16)),
         TextFormField(
           controller: reasonController,
-          maxLines: 5,
+          maxLines: 10, // Increased height to 10 lines
           decoration: InputDecoration(
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
             hintText: 'Enter your reason here...',

@@ -18,7 +18,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     'Internship',
     'Employment',
     'Symposium',
-    'Workshops and Confrence',
+    'Workshops and Conferences',
     'OTHERS',
   ];
 
