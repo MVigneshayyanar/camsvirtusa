@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:camsvirtusa/Startup/routes.dart';
 
+import '../Startup/routes.dart';
+
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({Key? key}) : super(key: key);
 

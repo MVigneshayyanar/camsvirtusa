@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'adminDashboard.dart';
+import 'classControl.dart'; // Import the new ClassControlPage
 
 class ClassStudentsPage extends StatefulWidget {
   final String departmentId;
@@ -145,6 +146,15 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
     );
   }
 
+  void _onClassControl() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClassControlPage(className: widget.className),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -158,9 +168,18 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
-          title: Text(
-            "${widget.className.toUpperCase()} STUDENTS",
-            style: const TextStyle(color: Colors.white),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "${widget.className.toUpperCase()} STUDENTS",
+                style: const TextStyle(color: Colors.white),
+              ),
+              IconButton(
+                icon: const Icon(Icons.settings, color: Colors.white), // Change icon as needed
+                onPressed: _onClassControl,
+              ),
+            ],
           ),
           centerTitle: true,
         ),
@@ -235,7 +254,6 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
               },
             ),
           ),
-
         ],
       ),
       bottomNavigationBar: Container(
