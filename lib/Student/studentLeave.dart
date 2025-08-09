@@ -25,6 +25,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
 
   static const Color _orange = Color(0xFFFF7F50);
   static const Color _lightGrayBg = Color(0xFFF0F0F0);
+  static const Color _textFieldColor = Colors.white;
+  static const Color _leaveTypeFieldColor = Color(0xFFD3D3D3);
 
   void _calculateDays() {
     if (fromDate != null && toDate != null) {
@@ -38,7 +40,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: isFromDate ? (fromDate ?? DateTime.now()) : (toDate ?? DateTime.now()),
-      firstDate: DateTime(2000),
+      firstDate: DateTime(1950),
       lastDate: DateTime(2101),
     );
     if (picked != null) {
@@ -88,31 +90,34 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
       appBar: AppBar(
         backgroundColor: _orange,
         title: Text("LEAVE FORM", style: TextStyle(color: Colors.white)),
+        centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.menu),
+          icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Scaffold.of(context).openDrawer(); // Handle menu navigation
+            Navigator.of(context).pop(); // Go back to previous page
           },
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDateField(label: "From:", date: fromDate, isFromDate: true),
-              SizedBox(height: 10),
-              _buildDateField(label: "To:", date: toDate, isFromDate: false),
-              SizedBox(height: 10),
-              _buildNumberOfDaysField(),
-              SizedBox(height: 10),
-              _buildLeaveTypeDropdown(),
-              SizedBox(height: 10),
-              _buildReasonField(),
-              SizedBox(height: 20),
-              _buildSubmitButton(),
-            ],
+          child: Center( // Centering the form
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildDateField(label: "From:", date: fromDate, isFromDate: true),
+                SizedBox(height: 10),
+                _buildDateField(label: "To:", date: toDate, isFromDate: false),
+                SizedBox(height: 10),
+                _buildNumberOfDaysField(),
+                SizedBox(height: 10),
+                _buildLeaveTypeDropdown(),
+                SizedBox(height: 10),
+                _buildReasonField(),
+                SizedBox(height: 20),
+                _buildSubmitButton(),
+              ],
+            ),
           ),
         ),
       ),
@@ -133,7 +138,9 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
               icon: Icon(Icons.calendar_today),
               onPressed: () => _selectDate(context, isFromDate),
             ),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+            filled: true,
+            fillColor: _textFieldColor,
           ),
           controller: TextEditingController(text: date == null ? '' : DateFormat('dd/MM/yyyy').format(date)),
         ),
@@ -142,13 +149,20 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   }
 
   Widget _buildNumberOfDaysField() {
-    return TextField(
-      readOnly: true,
-      decoration: InputDecoration(
-        labelText: "Number of Days",
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-      controller: TextEditingController(text: numberOfDays.toString()),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Number of Days:", style: TextStyle(fontSize: 16)),
+        TextField(
+          readOnly: true,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+            filled: true,
+            fillColor: _textFieldColor,
+          ),
+          controller: TextEditingController(text: numberOfDays.toString()),
+        ),
+      ],
     );
   }
 
@@ -171,7 +185,9 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
             );
           }).toList(),
           decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+            filled: true,
+            fillColor: _leaveTypeFieldColor,
           ),
         ),
       ],
@@ -185,10 +201,12 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
         Text("Reason:", style: TextStyle(fontSize: 16)),
         TextFormField(
           controller: reasonController,
-          maxLines: 5,
+          maxLines: 10,
           decoration: InputDecoration(
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
             hintText: 'Enter your reason here...',
+            filled: true,
+            fillColor: _textFieldColor,
           ),
         ),
       ],
@@ -196,14 +214,16 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   }
 
   Widget _buildSubmitButton() {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: _orange,
-        padding: EdgeInsets.symmetric(vertical: 15),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    return Center( // Centering the button
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _orange,
+          padding: EdgeInsets.symmetric(vertical: 15),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+        onPressed: _submitForm,
+        child: Text("APPLY", style: TextStyle(color: Colors.white)),
       ),
-      onPressed: _submitForm,
-      child: Text("APPLY", style: TextStyle(color: Colors.white)),
     );
   }
 
