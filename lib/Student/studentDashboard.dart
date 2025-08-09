@@ -93,70 +93,174 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LeaveApplicationForm(),
+        builder: (context) => LeaveApplicationForm(studentId: widget.studentId),
+      ),
+    );
+  }
+
+  void _goToSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFFF7F50),
+            title: const Text("Search", style: TextStyle(color: Colors.white)),
+          ),
+          body: const Center(child: Text("Search Page")),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    final mediaQuery = MediaQuery.of(context);
+    final double bottomSafeArea = mediaQuery.padding.bottom;
+    final double screenWidth = mediaQuery.size.width;
+
+    return Container(
+      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5E5E5),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset(
+                "assets/search.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: _goToSearch,
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/homeLogo.png",
+                height: screenWidth > 600 ? 36 : 32, // Responsive height
+              ),
+              onPressed: () {}, // Already on dashboard
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/account.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudentProfile(studentId: widget.studentId),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Get media query data for responsive design
+    final MediaQueryData mediaQuery = MediaQuery.of(context);
+    final double screenHeight = mediaQuery.size.height;
+    final double screenWidth = mediaQuery.size.width;
+    final double bottomSafeArea = mediaQuery.padding.bottom;
+
     final name = studentData?['name']?.toString() ?? '';
-    var p=60;
+    var p = 60;
     final attendancePercent = (studentData?['attendancePercent'] ?? p).toInt();
 
     return Scaffold(
-      backgroundColor: Colors.white, // Set scaffold background to white
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Center(
-          child: Text('STUDENT DASHBOARD', style: TextStyle(color: Colors.white)),
+        title: Center(
+          child: Text(
+            'STUDENT DASHBOARD',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: screenWidth > 600 ? 30 : 22, // Responsive title size
+            ),
+          ),
         ),
         backgroundColor: const Color(0xFFFF7F50),
         elevation: 0,
-        automaticallyImplyLeading: false, // Removes the back button
+        automaticallyImplyLeading: false,
       ),
       body: Container(
         decoration: const BoxDecoration(
-          color: Colors.white, // Container background is now white
+          color: Colors.white,
         ),
         child: _isLoading
             ? Center(child: CircularProgressIndicator())
             : Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth > 600 ? 24 : 16, // Responsive padding
+            vertical: 16,
+          ),
           child: Column(
             children: [
               // User Welcome Section
               Row(
                 children: [
                   CircleAvatar(
-                    radius: 30,
+                    radius: screenWidth > 600 ? 35 : 30, // Responsive avatar size
                     backgroundImage: const AssetImage('assets/account.png'),
                   ),
-                  const SizedBox(width: 16),
+                  SizedBox(width: screenWidth > 600 ? 20 : 16),
                   Expanded(
-                    child: Text("Welcome $name!", style: const TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      "Welcome $name...!!",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: screenWidth > 600 ? 22 : 18, // Responsive font size
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: screenHeight > 600 ? 32 : 24),
 
               // Attendance Section
               Row(
                 children: [
-                  const Expanded(child: Text("Attendance:", style: TextStyle(color: Colors.black))),
+                  Expanded(
+                    child: Text(
+                      "Attendance:",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: screenWidth > 600 ? 20 : 18, // Responsive font size
+                      ),
+                    ),
+                  ),
                   Container(
-                    width: 200,
-                    height: 20,
-                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: Colors.red),
+                    width: screenWidth > 600 ? 250 : 200, // Responsive progress bar width
+                    height: screenWidth > 600 ? 25 : 20, // Responsive height
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.red,
+                    ),
                     child: Stack(
                       children: [
                         Container(
-                          width: 196 * (p / 100),
-                          decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: const Color(0xFF32C425)),
+                          width: (screenWidth > 600 ? 246 : 196) * (p / 100),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: const Color(0xFF32C425),
+                          ),
                         ),
                         Positioned(
                           right: 0,
                           child: Container(
-                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(10), color: Colors.red),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.red,
+                            ),
                             width: 4,
                           ),
                         ),
@@ -164,10 +268,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
                     ),
                   ),
                   const SizedBox(width: 4),
-                  Text("$attendancePercent%", style: const TextStyle(color: Colors.black)),
+                  Text(
+                    "$attendancePercent%",
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: screenWidth > 600 ? 16 : 14, // Responsive font size
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: screenHeight > 600 ? 32 : 24),
 
               // Dashboard Grid
               _buildDashboardGrid(context),
@@ -180,10 +291,17 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget _buildDashboardGrid(BuildContext context) {
+    final MediaQueryData mediaQuery = MediaQuery.of(context);
+    final double screenWidth = mediaQuery.size.width;
+    final double screenHeight = mediaQuery.size.height;
+
     return Expanded(
       child: GridView.count(
-        padding: const EdgeInsets.all(20.0),
-        crossAxisCount: 2,
+        padding: EdgeInsets.all(screenWidth > 600 ? 24.0 : 16.0), // Responsive padding
+        crossAxisCount: screenWidth > 800 ? 3 : 2, // More columns on larger screens
+        crossAxisSpacing: screenWidth > 600 ? 20 : 16, // Responsive spacing
+        mainAxisSpacing: screenWidth > 600 ? 20 : 16,
+        childAspectRatio: screenWidth > 600 ? 1.1 : 1.0, // Better aspect ratio on tablets
         children: [
           _buildDashboardCard(
             context,
@@ -215,54 +333,39 @@ class _StudentDashboardState extends State<StudentDashboard> {
   }
 
   Widget _buildDashboardCard(BuildContext context, {required String label, required String imagePath, required VoidCallback onTap}) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      color: const Color(0xFF36454F), // Box color updated
-      child: InkWell(
-        borderRadius: BorderRadius.circular(10),
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(imagePath, height: 60), // Adjust height as necessary
-            const SizedBox(height: 8),
-            Text(label, style: const TextStyle(color: Colors.white, fontSize: 16)), // Text color updated
-          ],
-        ),
-      ),
-    );
-  }
+    final screenWidth = MediaQuery.of(context).size.width;
 
-  Widget _buildBottomNavigationBar() {
-    return Container(
-      height: 70,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10), // Responsive border radius
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(
-            icon: Image.asset("assets/search.png", height: 26),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Image.asset("assets/homeLogo.png", height: 32),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Image.asset("assets/account.png", height: 26),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => StudentProfile(studentId: widget.studentId),
+      color: const Color(0xFF36454F),
+      elevation: screenWidth > 600 ? 6 : 4, // Responsive elevation
+      child: InkWell(
+        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12), // Responsive padding
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                imagePath,
+                height: screenWidth > 600 ? 80 : 60, // Responsive image size
+              ),
+              SizedBox(height: screenWidth > 600 ? 12 : 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: screenWidth > 600 ? 18 : 16, // Responsive font size
+                  fontWeight: FontWeight.w500,
                 ),
-              );
-            },
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

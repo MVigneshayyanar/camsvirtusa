@@ -137,13 +137,11 @@ class _StudentProfileState extends State<StudentProfile> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
 
-
       // Navigate to login page and clear all previous routes
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/roleSelection', // Replace with your login route
             (Route<dynamic> route) => false,
       );
-
 
       print("User logged out successfully - SharedPreferences cleared");
 
@@ -159,8 +157,55 @@ class _StudentProfileState extends State<StudentProfile> {
     }
   }
 
+  Widget _buildBottomNavigationBar() {
+    final mediaQuery = MediaQuery.of(context);
+    final double bottomSafeArea = mediaQuery.padding.bottom;
+    final double screenWidth = mediaQuery.size.width;
+
+    return Container(
+      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5E5E5),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset(
+                "assets/search.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: _goToSearch,
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/homeLogo.png",
+                height: screenWidth > 600 ? 36 : 32, // Responsive height
+              ),
+              onPressed: _goToDashboard,
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/account.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: () {}, // Already on profile page
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final double screenWidth = mediaQuery.size.width;
+    final double screenHeight = mediaQuery.size.height;
+
     final name = studentData?['name']?.toString() ?? '';
     final id = studentData?['id']?.toString();
     final department = studentData?['department']?.toString();
@@ -176,24 +221,35 @@ class _StudentProfileState extends State<StudentProfile> {
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('STUDENT PROFILE', style: TextStyle(color: Colors.white)),
-        centerTitle: true, // This centers the title
+        title: Text(
+          'STUDENT PROFILE',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: screenWidth > 600 ? 30 : 24, // Responsive title
+          ),
+        ),
+        centerTitle: true,
         backgroundColor: const Color(0xFFFF7F50),
         elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: screenHeight > 600 ? 100 : 80, // Responsive bottom padding
+        ),
         child: Column(
           children: [
             Container(
               width: double.infinity,
               color: _orange,
-              padding: const EdgeInsets.only(bottom: 30),
+              padding: EdgeInsets.only(
+                bottom: screenHeight > 600 ? 40 : 30, // Responsive padding
+              ),
               child: Column(
                 children: [
-                  const CircleAvatar(
-                    radius: 50,
+                  CircleAvatar(
+                    radius: screenWidth > 600 ? 60 : 50, // Responsive avatar size
                     backgroundColor: Colors.white,
                     backgroundImage: AssetImage('assets/account.png'),
                   ),
@@ -201,12 +257,17 @@ class _StudentProfileState extends State<StudentProfile> {
                   RichText(
                     text: TextSpan(
                       text: 'Hello! ',
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth > 600 ? 18 : 16, // Responsive font
+                      ),
                       children: [
                         TextSpan(
                           text: name.toUpperCase(),
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 20),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: screenWidth > 600 ? 22 : 20, // Responsive font
+                          ),
                         ),
                       ],
                     ),
@@ -215,15 +276,17 @@ class _StudentProfileState extends State<StudentProfile> {
               ),
             ),
 
-            const SizedBox(height: 16),
+            SizedBox(height: screenHeight > 600 ? 20 : 16),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth > 600 ? 32 : 16, // Responsive padding
+              ),
               child: Container(
                 decoration: BoxDecoration(
                   color: _cardGray,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(screenWidth > 600 ? 20 : 16),
                 child: Column(
                   children: [
                     _infoRow('Name', name),
@@ -237,46 +300,24 @@ class _StudentProfileState extends State<StudentProfile> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-
-            const SizedBox(height: 80),
-
+            SizedBox(height: screenHeight > 600 ? 20 : 16),
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.only(top: 12, bottom: 24),
-        decoration: const BoxDecoration(
-          color: _lightGrayBg,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            InkWell(
-              onTap: _goToSearch,
-              child: Image.asset('assets/search.png', width: 28, height: 28),
-            ),
-            InkWell(
-              onTap: _goToDashboard,
-              child: Image.asset('assets/homeLogo.png', width: 32, height: 32),
-            ),
-            InkWell(
-              onTap: () {}, // already on profile
-              child: Image.asset('assets/account.png', width: 28, height: 28),
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
       floatingActionButton: Container(
-        width: 100, // Set desired width
-        height: 40, // Set desired height
+        width: screenWidth > 600 ? 120 : 100, // Responsive width
+        height: screenWidth > 600 ? 45 : 40, // Responsive height
         child: FloatingActionButton(
           onPressed: _logout,
           backgroundColor: const Color(0xFFFF7F50),
-          child: const Text(
+          elevation: 0, // Remove shadow
+          child: Text(
             'Log out',
-            style: TextStyle(color: Colors.white), // Change text color to white
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: screenWidth > 600 ? 14 : 12, // Responsive font size
+            ),
           ),
         ),
       ),
