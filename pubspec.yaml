@@ -59,6 +59,7 @@ flutter:
     - assets/check_attendance.png
     - assets/on_duty.png
     - assets/leave_form.png
+    - assets/MTechVtt.png
     - assets/mark_attendance.png
     - assets/account.png
     - assets/student_details.png

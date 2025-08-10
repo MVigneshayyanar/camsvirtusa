@@ -1,7 +1,14 @@
+import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
+import 'studentDashboard.dart'; // Add this import
 
 class OnDutyFormPage extends StatefulWidget {
+
+  final String studentId;
+
+  const OnDutyFormPage({Key? key, required this.studentId}) : super(key: key);
+
   @override
   _OnDutyFormPageState createState() => _OnDutyFormPageState();
 }
@@ -90,6 +97,15 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
         SnackBar(content: Text('Please fill all fields correctly.')),
       );
     }
+  }
+
+  void _goToDashboard() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentDashboard(studentId: widget.studentId),
+      ),
+    );
   }
 
   Widget _buildDateField(String label, bool isFromDate) {
@@ -293,14 +309,21 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
                 "assets/homeLogo.png",
                 height: screenWidth > 600 ? 36 : 32, // Responsive height
               ),
-              onPressed: () {},
+              onPressed: _goToDashboard,
             ),
             IconButton(
               icon: Image.asset(
                 "assets/account.png",
                 height: screenWidth > 600 ? 30 : 26, // Responsive height
               ),
-              onPressed: () {},
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudentProfile(studentId: widget.studentId),
+                  ),
+                );
+              },
             ),
           ],
         ),

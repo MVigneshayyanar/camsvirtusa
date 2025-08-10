@@ -1,6 +1,7 @@
 import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'studentDashboard.dart'; // Add this import
 
 class LeaveApplicationForm extends StatefulWidget {
   final String studentId;
@@ -88,6 +89,15 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
         SnackBar(content: Text('Please fill all fields correctly.')),
       );
     }
+  }
+
+  void _goToDashboard() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentDashboard(studentId: widget.studentId),
+      ),
+    );
   }
 
   @override
@@ -255,7 +265,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
                 "assets/homeLogo.png",
                 height: screenWidth > 600 ? 36 : 32, // Responsive height
               ),
-              onPressed: () {},
+              onPressed: _goToDashboard,
             ),
             IconButton(
               icon: Image.asset(
