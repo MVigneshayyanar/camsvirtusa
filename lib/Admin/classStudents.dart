@@ -150,7 +150,7 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ClassControlPage(className: widget.className),
+        builder: (context) => ClassControlPage(className: widget.className,departmentId:widget.departmentId),
       ),
     );
   }

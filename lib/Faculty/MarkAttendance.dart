@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+
+// Custom Color Palette
+const Color kPrimary = Color(0xFFFF7043);
+const Color kBackground = Color(0xFFF9F9F9);
+const Color kShadow = Color(0x22000000);
 
 class MarkAttendance extends StatefulWidget {
   final String facultyId;
-
   const MarkAttendance({Key? key, required this.facultyId}) : super(key: key);
 
   @override
-  _MarkAttendanceState createState() => _MarkAttendanceState();
+  State<MarkAttendance> createState() => _MarkAttendanceState();
 }
 
 class _MarkAttendanceState extends State<MarkAttendance> {
@@ -32,7 +37,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           .doc(widget.facultyId)
           .get();
 
-      if (!doc.exists) {
+      if (!doc.exists || doc.data() == null) {
         setState(() {
           error = 'Faculty not found';
           isLoading = false;
@@ -40,18 +45,17 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         return;
       }
 
-      final data = doc.data();
-      facultyName = data?['name'] ?? 'Unknown Faculty';
-      departmentId = data?['department'] ?? '';
-
-      if (data != null && data['classes'] != null) {
-        classes = List<String>.from(data['classes']);
-      } else {
-        classes = [];
-      }
-      error = '';
+      final data = doc.data()!;
+      setState(() {
+        facultyName = data['name'] ?? 'Unknown Faculty';
+        departmentId = data['department'] ?? '';
+        classes = List<String>.from(data['classes'] ?? []);
+        error = '';
+      });
     } catch (e) {
-      error = 'Error loading classes: $e';
+      setState(() {
+        error = 'Error loading faculty details: $e';
+      });
     } finally {
       setState(() => isLoading = false);
     }
@@ -73,37 +77,62 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: kBackground,
       appBar: AppBar(
-        title: Text(facultyName.isNotEmpty
-            ? 'Mark Attendance - $facultyName'
-            : 'Mark Attendance'),
-        backgroundColor: Colors.deepOrangeAccent,
+        backgroundColor: kPrimary,
+        title: Text(
+          facultyName.isNotEmpty
+              ? 'Attendance Register ($facultyName)'
+              : 'Attendance Register',
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save_alt_rounded, color: Colors.white),
+            onPressed: () {},
+          ),
+        ],
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: () {},
+        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
-          : (error.isNotEmpty
+          : error.isNotEmpty
           ? Center(child: Text(error))
           : classes.isEmpty
           ? const Center(child: Text('No classes assigned'))
           : ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: classes.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        separatorBuilder: (_, __) =>
+        const SizedBox(height: 12),
         itemBuilder: (context, idx) {
           final className = classes[idx];
           return Card(
+            color: Colors.white,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+                borderRadius: BorderRadius.circular(14)),
+            elevation: 2,
             child: ListTile(
-              title: Text(className,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.bold)),
-              trailing: const Icon(Icons.arrow_forward_ios),
+              leading: const Icon(Icons.class_, color: kPrimary),
+              title: Text(
+                className,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87),
+              ),
+              trailing: const Icon(Icons.arrow_forward_ios,
+                  color: kPrimary),
               onTap: () => _openClassAttendance(className),
             ),
           );
         },
-      )),
+      ),
     );
   }
 }
@@ -120,13 +149,47 @@ class ClassAttendanceScreen extends StatefulWidget {
     required this.className,
   }) : super(key: key);
 
+  Future<String?> getAttendanceStatus({
+    required String studentId,
+    required DateTime date,
+    required String hour, // "1" for 1st hour, "2" for 2nd, etc.
+    required String subject,
+  }) async {
+    final dateKey = DateFormat('dd-MM-yyyy').format(date);
+    final hourIdx = (int.tryParse(hour) ?? 1) - 1; // 0-based indexing
+
+    final docRef = FirebaseFirestore.instance
+        .collection('colleges')
+        .doc('students')
+        .collection('all_students')
+        .doc(studentId);
+
+    final docSnap = await docRef.get();
+    if (!docSnap.exists) return null;
+
+    final data = docSnap.data();
+    if (data == null || data[dateKey] == null) return null;
+
+    final dailyAttendance = Map<String, dynamic>.from(data[dateKey]);
+    final hourEntry = dailyAttendance["$hourIdx"];
+    if (hourEntry == null) return null;
+
+    // hourEntry is like: { "JAVA PROGRAMMING": "A" }
+    if (hourEntry is Map) {
+      if (hourEntry.containsKey(subject)) {
+        return hourEntry[subject]; // "P" or "A"
+      }
+    }
+    return null;
+  }
   @override
-  _ClassAttendanceScreenState createState() => _ClassAttendanceScreenState();
+  State<ClassAttendanceScreen> createState() => _ClassAttendanceScreenState();
 }
 
 class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   bool isLoading = true;
   bool subjectsLoading = false;
+  bool isSaving = false;
   String error = '';
 
   List<Map<String, dynamic>> students = [];
@@ -135,37 +198,50 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   List<String> subjects = [];
   String? selectedSubject;
 
-  final List<String> semesters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+  final List<String> semesters = [
+    'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'
+  ];
   String? selectedSemester;
 
-  // Faculty-subject mapping for this class and semester
   List<Map<String, dynamic>> facultySubjectMappings = [];
+
+  DateTime selectedDate = DateTime.now();
+  String searchQuery = '';
+  String? selectedHour;
+  final List<String> hours = ['1', '2', '3', '4', '5', '6', '7', '8'];
 
   @override
   void initState() {
     super.initState();
-    _fetchClassData();
+    _initData();
   }
 
-  Future<void> _fetchClassData() async {
-    await _fetchStudentsForClass();
-    setState(() {
+  Future<void> _initData() async {
+    try {
+      await _fetchStudentsForClass();
       selectedSemester = semesters.first;
-    });
-    await _fetchSubjectsForSemester(selectedSemester!);
-    await _fetchFacultySubjectMapping(selectedSemester!);
-    setState(() {
-      isLoading = false;
-    });
+      await _loadSemesterData(selectedSemester!);
+    } catch (e) {
+      setState(() {
+        error = 'Initialization failed: $e';
+      });
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
 
-    _printFacultyIdAndSubject(selectedSemester!);
+  Future<void> _loadSemesterData(String semester) async {
+    await _fetchSubjectsForSemester(semester);
+    await _fetchFacultySubjectMapping(semester);
+    setState(() {
+      selectedSubject = getSubjectsForThisFaculty().isNotEmpty
+          ? getSubjectsForThisFaculty().first
+          : null;
+    });
   }
 
   Future<void> _fetchSubjectsForSemester(String semester) async {
-    setState(() {
-      subjectsLoading = true;
-      selectedSubject = null; // reset when semester changes
-    });
+    setState(() => subjectsLoading = true);
     try {
       final doc = await FirebaseFirestore.instance
           .collection('colleges')
@@ -176,22 +252,18 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .doc(widget.className)
           .get();
 
-      if (doc.exists && doc.data() != null) {
-        final data = doc.data()!;
-        if (data.containsKey(semester) && data[semester] is List) {
-          subjects = List<String>.from(data[semester]);
-          selectedSubject = subjects.isNotEmpty ? subjects.first : null;
-        } else {
-          subjects = [];
-          selectedSubject = null;
-        }
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        subjects = List<String>.from(data[semester] ?? []);
+      } else {
+        subjects = [];
       }
     } catch (e) {
-      error = 'Error loading subjects: $e';
-    } finally {
       setState(() {
-        subjectsLoading = false;
+        error = 'Error loading subjects: $e';
       });
+    } finally {
+      setState(() => subjectsLoading = false);
     }
   }
 
@@ -202,38 +274,19 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .doc('departments')
           .collection('all_departments')
           .doc(widget.departmentId)
-          .collection('classes')
+          .collection('clasees')
           .doc(widget.className)
           .get();
-      print(doc);
 
-      if (!doc.exists || doc.data() == null) {
-        facultySubjectMappings = [];
-        return;
-      }
-
-      final data = doc.data()!;
-      final facultyMap = data['faculty'];
-      if (facultyMap == null || facultyMap[semester] == null) {
-        facultySubjectMappings = [];
-        return;
-      }
-
-      facultySubjectMappings = List<Map<String, dynamic>>.from(facultyMap[semester]);
+      final data = doc.data() ?? {};
+      facultySubjectMappings = List<Map<String, dynamic>>.from(
+        (data['faculty']?[semester] ?? []),
+      );
     } catch (e) {
-      print('Error fetching faculty-subject mapping: $e');
+      setState(() {
+        error = 'Error fetching faculty-subject mapping: $e';
+      });
       facultySubjectMappings = [];
-    }
-  }
-
-  // Print each facultyId and subject for the current selectedSemester
-  void _printFacultyIdAndSubject(String semester) {
-    for (final mapping in facultySubjectMappings) {
-      final facultyId = mapping['facultyId'];
-      final subject = mapping['subject'];
-      if (facultyId != null && subject != null) {
-        print('Faculty ID: $facultyId, Subject: $subject');
-      }
     }
   }
 
@@ -246,55 +299,81 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .where('class', isEqualTo: widget.className)
           .get();
 
-      final fetchedStudents = query.docs.map((d) {
+      students = query.docs.map((d) {
         final data = d.data();
-        final id = d.id;
-        final name = (data['name'] ?? 'Unknown').toString();
-        return {'id': id, 'name': name, ...data};
+        return {
+          'id': d.id,
+          'name': data['name'] ?? 'Unknown',
+          ...data,
+        };
       }).toList();
 
-      students = fetchedStudents;
-      attendance = {for (var s in students) s['id'].toString(): false};
+      attendance = {for (var s in students) s['id']: false};
     } catch (e) {
-      error = 'Error fetching students: $e';
+      setState(() {
+        error = 'Error fetching students: $e';
+      });
     }
   }
 
+  List<String> getSubjectsForThisFaculty() {
+    return facultySubjectMappings
+        .where((m) => m['facultyId'] == widget.facultyId)
+        .map((m) => m['subject'] as String)
+        .toList();
+  }
+
+  // ... all your imports and previous code ...
+
   Future<void> _saveAttendance() async {
-    if (students.isEmpty || selectedSubject == null || selectedSemester == null) {
+    if (students.isEmpty ||
+        selectedSubject == null ||
+        selectedSemester == null ||
+        selectedHour == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Please select semester, subject and have students')),
+            content: Text('Please select semester, subject, hour and have students')),
       );
       return;
     }
 
-    try {
-      final batch = FirebaseFirestore.instance.batch();
+    setState(() => isSaving = true);
 
+    try {
+      final dateKey = DateFormat('dd-MM-yyyy').format(selectedDate);
+
+      // For each student, update their doc in colleges/students/all_students/{studentId}
+      // Under a field with dateKey, set an array for each hour
       for (final s in students) {
-        final studentId = s['id'].toString();
+        final studentId = s['id'];
         final isPresent = attendance[studentId] ?? false;
+        final status = isPresent ? "P" : "A";
+        final subject = selectedSubject!;
 
         final docRef = FirebaseFirestore.instance
             .collection('colleges')
-            .doc('departments')
-            .collection('all_departments')
-            .doc(widget.departmentId)
-            .collection('classes')
-            .doc(widget.className)
-            .collection('attendance')
-            .doc(selectedSemester!)
-            .collection(selectedSubject!)
+            .doc('students')
+            .collection('all_students')
             .doc(studentId);
 
-        batch.set(docRef, {
-          'present': isPresent,
-          'timestamp': FieldValue.serverTimestamp(),
-        });
-      }
+        // Get the existing doc to avoid overwriting previous hours
+        final docSnap = await docRef.get();
+        final data = docSnap.data() ?? {};
 
-      await batch.commit();
+        Map<String, dynamic> attendanceDay = {};
+        if (data[dateKey] != null) {
+          // Already has attendance for this date, keep existing structure
+          attendanceDay = Map<String, dynamic>.from(data[dateKey]);
+        }
+
+        // Prepare the value for this hour (0-indexed)
+        // Each hour is a map where key=subject, value=status
+        int hourIdx = int.tryParse(selectedHour!) != null ? int.parse(selectedHour!) - 1 : 0;
+        attendanceDay["$hourIdx"] = {subject: status};
+
+        // Update the dateKey field with the new attendanceDay map
+        await docRef.set({dateKey: attendanceDay}, SetOptions(merge: true));
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Attendance saved successfully')),
@@ -303,186 +382,409 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Save failed: $e')),
       );
+    } finally {
+      setState(() => isSaving = false);
     }
   }
 
-  List<String> getSubjectsForThisFaculty() {
-    final facultyId = widget.facultyId;
-    return facultySubjectMappings
-        .where((m) => m['facultyId'] == facultyId)
-        .map((m) => m['subject'] as String)
-        .toList();
+  void _markAll(bool present) {
+    setState(() {
+      for (var key in attendance.keys) {
+        attendance[key] = present;
+      }
+    });
   }
 
-  // Show subject count popup
-  void _showSubjectCountDialog(int count) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Subject Count'),
-        content: Text('There are $count subjects for the selected semester.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
+  List<DateTime> getDateList() {
+    final now = DateTime.now();
+    return List.generate(4, (i) => now.subtract(Duration(days: 3 - i)));
   }
 
   @override
   Widget build(BuildContext context) {
+    if (isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (error.isNotEmpty) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Attendance — ${widget.className}'),
+          backgroundColor: kPrimary,
+        ),
+        body: Center(child: Text(error)),
+      );
+    }
+
+    final filteredStudents = students
+        .where((s) =>
+    s['name'].toLowerCase().contains(searchQuery.toLowerCase()) ||
+        s['id'].toLowerCase().contains(searchQuery.toLowerCase()))
+        .toList();
+
     return Scaffold(
+      backgroundColor: kBackground,
       appBar: AppBar(
-        title: Text('Attendance — ${widget.className}'),
-        backgroundColor: Colors.deepOrangeAccent,
+        backgroundColor: kPrimary,
+        elevation: 0,
+        title: const Text(
+          'ATTENDENCE REGISTER',
+          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save, color: Colors.white),
+            onPressed: isSaving ? null : _saveAttendance,
+          ),
+        ],
+        leading: const BackButton(color: Colors.white),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : error.isNotEmpty
-          ? Center(child: Text(error))
-          : students.isEmpty
-          ? const Center(child: Text('No students found for this class'))
-          : Column(
+      body: Column(
         children: [
+          // Top Dropdowns: Semester and Subject
           Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
             child: Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: selectedSemester,
-                    decoration: const InputDecoration(
-                      labelText: "Select Semester",
-                      border: OutlineInputBorder(),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    items: semesters
-                        .map((sem) => DropdownMenuItem(
-                      value: sem,
-                      child: Text(sem),
-                    ))
-                        .toList(),
-                    onChanged: (value) async {
-                      if (value != null) {
-                        setState(() {
-                          selectedSemester = value;
-                        });
-                        await _fetchSubjectsForSemester(value);
-                        await _fetchFacultySubjectMapping(value);
-                        setState(() {
-                          selectedSubject = null;
-                        });
-                        _printFacultyIdAndSubject(value);
-
-                        // Show subject count popup
-                        int subjectCount = facultySubjectMappings.length;
-                        _showSubjectCountDialog(subjectCount);
-                      }
-                    },
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedSemester,
+                        isExpanded: true,
+                        hint: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('Select Sem'),
+                        ),
+                        onChanged: (v) async {
+                          if (v != null) {
+                            setState(() => selectedSemester = v);
+                            await _loadSemesterData(v);
+                          }
+                        },
+                        items: semesters
+                            .map((e) =>
+                            DropdownMenuItem(
+                              value: e,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(e),
+                              ),
+                            ))
+                            .toList(),
+                      ),
+                    ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: subjectsLoading
-                      ? Container(
-                    height: 60,
-                    alignment: Alignment.center,
-                    child: const CircularProgressIndicator(),
-                  )
-                      : DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    value: selectedSubject,
-                    decoration: const InputDecoration(
-                      labelText: "Select Subject",
-                      border: OutlineInputBorder(),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    items: getSubjectsForThisFaculty()
-                        .map((sub) => DropdownMenuItem(
-                      value: sub,
-                      child: Text(sub),
-                    ))
-                        .toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        selectedSubject = value;
-                      });
-                    },
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedSubject,
+                        isExpanded: true,
+                        hint: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text('Select Subject'),
+                        ),
+                        onChanged: (v) {
+                          setState(() => selectedSubject = v);
+                        },
+                        items: getSubjectsForThisFaculty()
+                            .map((e) =>
+                            DropdownMenuItem(
+                              value: e,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(e),
+                              ),
+                            ))
+                            .toList(),
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          // --- Display facultyId and subject on the screen ---
-          if (facultySubjectMappings.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "Faculty & Subject for Semester",
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  ...facultySubjectMappings.map((mapping) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 2.0),
-                    child: Text(
-                      'Faculty ID: ${mapping['facultyId']} | Subject: ${mapping['subject']}',
-                      style: const TextStyle(fontSize: 15),
+          // Calendar Row (date picker)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: SizedBox(
+              height: 62,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: getDateList().map((date) {
+                  final isSelected = DateFormat('yyyy-MM-dd').format(date) ==
+                      DateFormat('yyyy-MM-dd').format(selectedDate);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    child: GestureDetector(
+                      onTap: () => setState(() => selectedDate = date),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isSelected ? kPrimary : Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                                color: kShadow,
+                                blurRadius: 6,
+                                offset: Offset(1, 4))
+                          ],
+                        ),
+                        width: 62,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              DateFormat('dd').format(date),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 18,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black87,
+                              ),
+                            ),
+                            Text(
+                              DateFormat('EEE').format(date),
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.black54,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  )),
-                ],
+                  );
+                }).toList(),
               ),
             ),
+          ),
+          // Search & Hour
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: [
+                        BoxShadow(
+                          color: kShadow,
+                          blurRadius: 3,
+                          offset: Offset(1, 2),
+                        ),
+                      ],
+                    ),
+                    child: TextField(
+                      decoration: const InputDecoration(
+                        hintText: "Search",
+                        border: InputBorder.none,
+                        prefixIcon: Icon(Icons.search),
+                        contentPadding:
+                        EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      ),
+                      onChanged: (val) =>
+                          setState(() => searchQuery = val),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  flex: 1,
+                  child: Container(
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF222F3E),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedHour,
+                        isExpanded: true,
+                        dropdownColor: Color(0xFF222F3E),
+                        hint: const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 8.0),
+                          child: Text(
+                            'Hour',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        onChanged: (v) => setState(() => selectedHour = v),
+                        style: const TextStyle(color: Colors.white),
+                        iconEnabledColor: Colors.white,
+                        items: hours
+                            .map((e) =>
+                            DropdownMenuItem(
+                              value: e,
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(
+                                  e,
+                                  style:
+                                  const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ))
+                            .toList(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Table Headers
+          Padding(
+            padding: const EdgeInsets.only(top: 10, left: 4, right: 4),
+            child: Container(
+              decoration: BoxDecoration(
+                color: kBackground,
+                border: const Border(
+                  bottom: BorderSide(color: kPrimary, width: 2),
+                  top: BorderSide(color: kPrimary, width: 2),
+                ),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Row(
+                  children: const [
+                    Expanded(
+                      flex: 2,
+                      child: Text("STUDENT ID",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: Text("NAME",
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: Text("MARK ATTENDANCE",
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Student List
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(12),
-              itemCount: students.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
+            child: filteredStudents.isEmpty
+                ? const Center(child: Text("No students found."))
+                : ListView.separated(
+              itemCount: filteredStudents.length,
+              separatorBuilder: (_, __) =>
+                  Divider(
+                    color: kPrimary,
+                    height: 1,
+                    thickness: 0.7,
+                  ),
               itemBuilder: (context, i) {
-                final s = students[i];
-                final sid = s['id'].toString();
-                final sname = s['name']?.toString() ?? sid;
+                final s = filteredStudents[i];
+                final sid = s['id'];
+                final sname = s['name'];
                 final present = attendance[sid] ?? false;
 
-                return ListTile(
-                  leading: const CircleAvatar(
-                    backgroundImage: AssetImage(
-                      'assets/images/158a1f26-5b1e-4436-a68d-e75b9d98649b.png',
-                    ),
-                    backgroundColor: Colors.transparent,
-                  ),
-                  title: Text(sname),
-                  subtitle: Text('ID: $sid'),
-                  trailing: Checkbox(
-                    value: present,
-                    onChanged: (v) {
-                      setState(() {
-                        attendance[sid] = v ?? false;
-                      });
-                    },
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            sid,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: Text(
+                          sname,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w400,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: Switch(
+                            value: present,
+                            activeColor: Colors.green,
+                            inactiveThumbColor: Colors.red,
+                            onChanged: (v) =>
+                                setState(() {
+                                  attendance[sid] = v;
+                                }),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
+          // Bottom Navigation
+          Container(
+            height: 62,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              boxShadow: [BoxShadow(color: kShadow, blurRadius: 6)],
+            ),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.save),
-                    label: const Text('Save Attendance'),
-                    style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepOrangeAccent),
-                    onPressed: _saveAttendance,
+                IconButton(
+                  icon: Image.asset(
+                    'assets/images/158a1f26-5b1e-4436-a68d-e75b9d98649b.png',
+                    width: 34,
                   ),
-                )
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.home, size: 34, color: kPrimary),
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: const Icon(Icons.person, size: 34, color: kPrimary),
+                  onPressed: () {},
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
