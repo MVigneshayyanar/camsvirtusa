@@ -62,7 +62,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  void _navigateToAdd() {
+  void _navigateToMarkAttendance() {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -71,56 +71,105 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  void _navigateTo(String page) {
+  void _navigateToTimeTable() {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => Scaffold(
-          appBar: AppBar(title: Text(page)),
-          body: Center(child: Text('$page Page', style: const TextStyle(fontSize: 24))),
+          appBar: AppBar(
+            title: const Text('Time Table'),
+            backgroundColor: const Color(0xFFFF7F50),
+          ),
+          body: const Center(child: Text('Time Table Page', style: TextStyle(fontSize: 24))),
         ),
       ),
     );
   }
 
-  Widget _buildButton({
-    required String label,
-    required String assetPath,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(20),
+  void _navigateToMentees() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('My Mentees'),
+            backgroundColor: const Color(0xFFFF7F50),
+          ),
+          body: const Center(child: Text('My Mentees Page', style: TextStyle(fontSize: 24))),
         ),
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+      ),
+    );
+  }
+
+  void _navigateToRequests() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: const Text('Requests'),
+            backgroundColor: const Color(0xFFFF7F50),
+          ),
+          body: const Center(child: Text('Requests Page', style: TextStyle(fontSize: 24))),
+        ),
+      ),
+    );
+  }
+
+  void _goToSearch() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: const Color(0xFFFF7F50),
+            title: const Text("Search", style: TextStyle(color: Colors.white)),
+          ),
+          body: const Center(child: Text("Search Page")),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar() {
+    final mediaQuery = MediaQuery.of(context);
+    final double bottomSafeArea = mediaQuery.padding.bottom;
+    final double screenWidth = mediaQuery.size.width;
+
+    return Container(
+      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
+      decoration: const BoxDecoration(
+        color: Color(0xFFE5E5E5),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
+            IconButton(
+              icon: Image.asset(
+                "assets/search.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
               ),
-              padding: const EdgeInsets.all(10),
-              child: Image.asset(
-                assetPath,
-                width: 60,
-                height: 60,
-                fit: BoxFit.contain,
-              ),
+              onPressed: _goToSearch,
             ),
-            const SizedBox(height: 12),
-            Text(
-              label.toUpperCase(),
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Colors.black87,
+            IconButton(
+              icon: Image.asset(
+                "assets/homeLogo.png",
+                height: screenWidth > 600 ? 36 : 32, // Responsive height
               ),
-            )
+              onPressed: () {
+                // Already on home, maybe refresh or do nothing
+              },
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/account.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: _navigateToProfile,
+            ),
           ],
         ),
       ),
@@ -129,110 +178,152 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    // Get media query data for responsive design
+    final MediaQueryData mediaQuery = MediaQuery.of(context);
+    final double screenHeight = mediaQuery.size.height;
+    final double screenWidth = mediaQuery.size.width;
+
+    final name = facultyData?['name']?.toString() ?? '';
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
 
-    final name = facultyData?['name']?.toString().toUpperCase() ?? 'USER';
-
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.deepOrangeAccent,
-            borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(20),
-              bottomRight: Radius.circular(20),
+      appBar: AppBar(
+        title: Center(
+          child: Text(
+            'FACULTY DASHBOARD',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: screenWidth > 600 ? 30 : 22, // Responsive title size
             ),
-          ),
-          padding: const EdgeInsets.only(left: 16, top: 18, bottom: 18),
-          alignment: Alignment.centerLeft,
-          child: const Text(
-            "FACULTY DASHBOARD",
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
           ),
         ),
+        backgroundColor: const Color(0xFFFF7F50),
+        elevation: 0,
+        automaticallyImplyLeading: false,
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 30, 20, 10),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                const CircleAvatar(
-                  radius: 40,
-                  backgroundImage: AssetImage('assets/profile.png'),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: RichText(
-                    text: TextSpan(
-                      children: [
-                        const TextSpan(
-                          text: 'Hello!\n',
-                          style: TextStyle(fontSize: 18, color: Colors.black54, fontStyle: FontStyle.italic),
-                        ),
-                        TextSpan(
-                          text: name,
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-            Expanded(
-              child: GridView.count(
-                crossAxisCount: 2,
-                mainAxisSpacing: 25,
-                crossAxisSpacing: 25,
-                childAspectRatio: 1,
+      body: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: screenWidth > 600 ? 24 : 16, // Responsive padding
+            vertical: 16,
+          ),
+          child: Column(
+            children: [
+              // User Welcome Section
+              Row(
                 children: [
-                  _buildButton(
-                    label: "Time Table",
-                    assetPath: 'assets/time_table_icon.png',
-                    onTap: () => _navigateTo('Time Table'),
+                  CircleAvatar(
+                    radius: screenWidth > 600 ? 35 : 30, // Responsive avatar size
+                    backgroundImage: const AssetImage('assets/profile.png'),
                   ),
-                  _buildButton(
-                    label: "Mark Attendance",
-                    assetPath: 'assets/mark_attendance_icon.png',
-                    onTap: _navigateToAdd,
-                  ),
-                  _buildButton(
-                    label: "My Mentees",
-                    assetPath: 'assets/my_mentees_icon.png',
-                    onTap: () => _navigateTo('Mentees'),
-                  ),
-                  _buildButton(
-                    label: "Requests",
-                    assetPath: 'assets/requests_icon.png',
-                    onTap: () => _navigateTo('Requests'),
+                  SizedBox(width: screenWidth > 600 ? 20 : 16),
+                  Expanded(
+                    child: Text(
+                      "Welcome $name...!!",
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: screenWidth > 600 ? 22 : 18, // Responsive font size
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+              SizedBox(height: screenHeight > 600 ? 48 : 32),
+
+              // Dashboard Grid
+              _buildDashboardGrid(context),
+            ],
+          ),
         ),
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-        decoration: BoxDecoration(
-          color: Colors.grey.shade200,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Icon(Icons.search, size: 28, color: Colors.deepOrangeAccent),
-            Icon(Icons.home, size: 28, color: Colors.black87),
-            Icon(Icons.person_outline, size: 28, color: Colors.black87),
-          ],
+      bottomNavigationBar: _buildBottomNavigationBar(),
+    );
+  }
+
+  Widget _buildDashboardGrid(BuildContext context) {
+    final MediaQueryData mediaQuery = MediaQuery.of(context);
+    final double screenWidth = mediaQuery.size.width;
+
+    return Expanded(
+      child: GridView.count(
+        padding: EdgeInsets.all(screenWidth > 600 ? 24.0 : 16.0), // Responsive padding
+        crossAxisCount: screenWidth > 800 ? 3 : 2, // More columns on larger screens
+        crossAxisSpacing: screenWidth > 600 ? 20 : 16, // Responsive spacing
+        mainAxisSpacing: screenWidth > 600 ? 20 : 16,
+        childAspectRatio: screenWidth > 600 ? 1.1 : 1.0, // Better aspect ratio on tablets
+        children: [
+          _buildDashboardCard(
+            context,
+            label: "TIME TABLE",
+            imagePath: "assets/time_table_icon.png",
+            onTap: _navigateToTimeTable,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "MARK ATTENDANCE",
+            imagePath: "assets/mark_attendance_icon.png",
+            onTap: _navigateToMarkAttendance,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "MY MENTEES",
+            imagePath: "assets/my_mentees_icon.png",
+            onTap: _navigateToMentees,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "REQUESTS",
+            imagePath: "assets/requests_icon.png",
+            onTap: _navigateToRequests,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDashboardCard(BuildContext context, {required String label, required String imagePath, required VoidCallback onTap}) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Card(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10), // Responsive border radius
+      ),
+      color: const Color(0xFF36454F),
+      elevation: screenWidth > 600 ? 6 : 4, // Responsive elevation
+      child: InkWell(
+        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10),
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12), // Responsive padding
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                imagePath,
+                height: screenWidth > 600 ? 80 : 60, // Responsive image size
+              ),
+              SizedBox(height: screenWidth > 600 ? 12 : 8),
+              Text(
+                label,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: screenWidth > 600 ? 18 : 16, // Responsive font size
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );

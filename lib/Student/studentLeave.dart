@@ -1,3 +1,4 @@
+import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -31,7 +32,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
 
   static const Color _orange = Color(0xFFFF7F50);
   static const Color _lightGrayBg = Color(0xFFF0F0F0);
-  static const Color _dropdownColor = Color(0xFFD3D3D3);
+  static const Color _dropdownColor = Color(0xFFFFFFFF);
 
   void _calculateDays() {
     if (fromDate != null && toDate != null) {
@@ -92,16 +93,16 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: _orange,
-        title: Center(
-          child: Text(
-            "LEAVE FORM",
-            style: TextStyle(color: Colors.white),
-          ),
+        title: Text(
+          "LEAVE FORM",
+          style: TextStyle(color: Colors.white),
         ),
+        centerTitle: true, // This centers the title
         leading: IconButton(
-          icon: Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: Colors.white), // White back arrow
           onPressed: () {
             Navigator.of(context).pop(); // Return to the previous page
           },
@@ -218,7 +219,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: _orange,
-        padding: EdgeInsets.symmetric(vertical: 15),
+        padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30), // Added horizontal padding
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onPressed: _submitForm,
@@ -227,19 +228,51 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   }
 
   Widget _buildBottomNavigationBar() {
+    final mediaQuery = MediaQuery.of(context);
+    final double bottomSafeArea = mediaQuery.padding.bottom;
+    final double screenWidth = mediaQuery.size.width;
+
     return Container(
-      height: 70,
+      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
       decoration: BoxDecoration(
-        color: _lightGrayBg,
+        color: const Color(0xFFE5E5E5),
         borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(icon: Icon(Icons.search), onPressed: () {}),
-          IconButton(icon: Icon(Icons.home), onPressed: () {}),
-          IconButton(icon: Icon(Icons.person), onPressed: () {}),
-        ],
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset(
+                "assets/search.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/homeLogo.png",
+                height: screenWidth > 600 ? 36 : 32, // Responsive height
+              ),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/account.png",
+                height: screenWidth > 600 ? 30 : 26, // Responsive height
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudentProfile(studentId: widget.studentId),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
