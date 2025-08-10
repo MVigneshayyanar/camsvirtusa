@@ -1,726 +1,270 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+import 'adminDashboard.dart';
 
-class ClassControlPage extends StatefulWidget {
-  final String className;
-  final String departmentId;
-
-  const ClassControlPage({
-    Key? key,
-    required this.className,
-    required this.departmentId,
-  }) : super(key: key);
+class StudentControlPage extends StatefulWidget {
+  const StudentControlPage({Key? key}) : super(key: key);
 
   @override
-  _ClassControlPageState createState() => _ClassControlPageState();
+  State<StudentControlPage> createState() => _StudentControlPageState();
 }
 
-class _ClassControlPageState extends State<ClassControlPage> {
-  final TextEditingController _facultyIdController = TextEditingController();
-  final TextEditingController _subjectController = TextEditingController();
-
-  String? _selectedSemester;
-  String? selectedClassId;
-
-  final List<String> _semesters = [
-    'I',
-    'II',
-    'III',
-    'IV',
-    'V',
-    'VI',
-    'VII',
-    'VIII',
-    'IX',
-    'X'
-  ];
-
-  List<Map<String, dynamic>> _facultyList = [];
-  Map<String, String> _facultyNames = {};
-
-  // semester time period
-  DateTime? _semesterStartDate;
-  DateTime? _semesterEndDate;
-
-  DateTime? semesterStartDate;
-  DateTime? semesterEndDate;
-
-  Future<void> _pickDate(bool isStart) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (picked != null) {
-      setState(() {
-        if (isStart) {
-          semesterStartDate = picked;
-        } else {
-          semesterEndDate = picked;
-        }
-      });
-    }
-  }
-
-  Future<void> _saveSemesterDates(String classId) async {
-    if (semesterStartDate == null || semesterEndDate == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select both start and end dates")),
-      );
-      return;
-    }
-
-    await FirebaseFirestore.instance
-        .collection('classes')
-        .doc(classId)
-        .update({
-      'semesterStart': semesterStartDate!.toIso8601String(),
-      'semesterEnd': semesterEndDate!.toIso8601String(),
-    });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Semester dates updated successfully")),
-    );
-  }
-
-  // semester history
-  Map<String, Map<String, dynamic>> _semesterHistory = {};
-  Map<String, dynamic> _semesterHistoryFromKeys = {};
-  String? _currentSemester;
-
-  // Loading state
-  bool _isLoadingSemesterHistory = true;
-  bool _isLoadingFaculty = false;
-
-  // Firestore path parts
-  final String collegePath = 'colleges';
-  final String departmentsDoc = 'departments';
-  final String allDepartmentsCollection = 'all_departments';
-  final String classesCollection = 'clasees'; // Keep your spelling
+class _StudentControlPageState extends State<StudentControlPage> {
+  final TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> _allStudents = [];
+  List<Map<String, dynamic>> _filteredStudents = [];
+  Map<String, String> _mentorNames = {};
 
   @override
   void initState() {
     super.initState();
-    _initializeData();
+    _fetchStudents();
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
-    _facultyIdController.dispose();
-    _subjectController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _deleteClass() async {
+  Future<void> _fetchStudents() async {
     try {
-      final classDocRef = await getClassDocRef();
-      print("Deleting class document: ${classDocRef.path}");
+      final studentSnapshot = await FirebaseFirestore.instance
+          .collection("colleges")
+          .doc("students")
+          .collection("all_students")
+          .get();
 
-      // Check if document exists before attempting deletion
-      final docSnapshot = await classDocRef.get();
-      if (!docSnapshot.exists) {
-        _showSnackBar("Class document not found");
-        return;
-      }
-
-      await classDocRef.delete();
-      _showSnackBar("Class deleted successfully");
-      Navigator.pop(context);
-    } catch (e) {
-      debugPrint("Error deleting class: $e");
-      _showSnackBar("Failed to delete class: $e");
-    }
-  }
-
-  Future<void> _fetchAllFacultyNames() async {
-    try {
-      final snapshot = await FirebaseFirestore.instance
+      final facultySnapshot = await FirebaseFirestore.instance
           .collection("colleges")
           .doc("faculties")
           .collection("all_faculties")
           .get();
 
-      final namesMap = <String, String>{};
-      for (final doc in snapshot.docs) {
+      _mentorNames = {
+        for (var doc in facultySnapshot.docs)
+          doc.id: (doc.data()['name'] ?? 'Unknown').toString()
+      };
+
+      final students = studentSnapshot.docs.map((doc) {
         final data = doc.data();
-        final id = doc.id;
-        final name = (data['name'] ?? "Unknown").toString();
-        namesMap[id] = name;
-      }
-
-      if (mounted) {
-        setState(() {
-          _facultyNames = namesMap;
-        });
-      }
-    } catch (e) {
-      debugPrint("Failed to fetch faculty names: $e");
-      _showSnackBar("Failed to fetch faculty names: $e");
-    }
-  }
-
-  Future<void> _initializeData() async {
-    print("Initializing data for class: ${widget.className}, department: ${widget.departmentId}");
-    await _fetchAllFacultyNames();
-    await _ensureClassDocumentExists();
-    await _fetchSemesterHistory();
-  }
-
-  Future<void> _ensureClassDocumentExists() async {
-    try {
-      final classDocRef = await getClassDocRef();
-      final docSnapshot = await classDocRef.get();
-
-      if (!docSnapshot.exists) {
-        print("Creating class document for: ${widget.className}");
-        // Create the document with basic structure
-        await classDocRef.set({
-          'className': widget.className,
-          'departmentId': widget.departmentId,
-          'createdAt': FieldValue.serverTimestamp(),
-          'faculty': {},
-          'semesterHistory': {},
-        });
-        print("Class document created successfully");
-      }
-    } catch (e) {
-      debugPrint("Error ensuring class document exists: $e");
-      _showSnackBar("Error initializing class: $e");
-    }
-  }
-
-  Future<DocumentReference> getClassDocRef() {
-    // Normalize class name to handle different formats
-    String normalizedClassName = widget.className.trim();
-
-    final docRef = FirebaseFirestore.instance
-        .collection(collegePath)
-        .doc(departmentsDoc)
-        .collection(allDepartmentsCollection)
-        .doc(widget.departmentId)
-        .collection(classesCollection)
-        .doc(normalizedClassName);
-
-    print("Class document reference: ${docRef.path}");
-    return Future.value(docRef);
-  }
-
-  Future<void> _fetchSemesterHistory() async {
-    if (!mounted) return;
-    setState(() {
-      _isLoadingSemesterHistory = true;
-    });
-
-    try {
-      final classDocRef = await getClassDocRef();
-      final snapshot = await classDocRef.get();
-
-      if (snapshot.exists) {
-        final data = snapshot.data() as Map<String, dynamic>? ?? {};
-        print("Fetched class data: $data");
-
-        // Process semester history with better error handling
-        final Map<String, Map<String, dynamic>> semesterHistoryProcessed = {};
-
-        // 1) Handle canonical 'semesterHistory' field
-        final semesterHistoryRaw = data['semesterHistory'];
-        if (semesterHistoryRaw != null && semesterHistoryRaw is Map<String, dynamic>) {
-          semesterHistoryRaw.forEach((k, v) {
-            if (v is Map<String, dynamic>) {
-              semesterHistoryProcessed[k] = Map<String, dynamic>.from(v);
-            } else if (v != null) {
-              // Handle non-map values
-              semesterHistoryProcessed[k] = {'value': v};
-            }
-          });
-        }
-
-        // 2) Handle keys that start with "semesterHistory"
-        final Map<String, dynamic> semesterHistoryFromKeys = {};
-        data.forEach((key, value) {
-          if (key.toString().startsWith("semesterHistory") && key != "semesterHistory") {
-            semesterHistoryFromKeys[key] = value;
-          }
-        });
-
-        // 3) Process and merge semesterHistoryFromKeys
-        semesterHistoryFromKeys.forEach((rawKey, rawValue) {
-          String normalizedKey = rawKey;
-          if (normalizedKey.startsWith("semesterHistory.")) {
-            normalizedKey = normalizedKey.split(".").last;
-          } else if (normalizedKey.startsWith("semesterHistory_")) {
-            normalizedKey = normalizedKey.split("_").last;
-          } else if (normalizedKey.startsWith("semesterHistory")) {
-            normalizedKey = normalizedKey.replaceFirst("semesterHistory", "");
-          }
-          normalizedKey = normalizedKey.trim();
-
-          if (normalizedKey.isNotEmpty) {
-            if (rawValue is Map<String, dynamic>) {
-              semesterHistoryProcessed[normalizedKey] = Map<String, dynamic>.from(rawValue);
-            } else if (rawValue != null) {
-              semesterHistoryProcessed[normalizedKey] = {'value': rawValue};
-            }
-          }
-        });
-
-        // 4) Read currentSemester
-        String? currentSemester;
-        final currentSemesterRaw = data['currentSemester'];
-        if (currentSemesterRaw != null) {
-          if (currentSemesterRaw is String) {
-            currentSemester = currentSemesterRaw;
-          } else if (currentSemesterRaw is Map<String, dynamic>) {
-            currentSemester = currentSemesterRaw['semester'] as String?;
-          }
-        }
-
-        if (mounted) {
-          setState(() {
-            _semesterHistory = semesterHistoryProcessed;
-            _semesterHistoryFromKeys = semesterHistoryFromKeys;
-            _currentSemester = currentSemester;
-            _isLoadingSemesterHistory = false;
-          });
-        }
-      } else {
-        print("Class document does not exist, creating it...");
-        await _ensureClassDocumentExists();
-
-        if (mounted) {
-          setState(() {
-            _semesterHistory = {};
-            _semesterHistoryFromKeys = {};
-            _currentSemester = null;
-            _isLoadingSemesterHistory = false;
-          });
-        }
-      }
-    } catch (e, st) {
-      if (mounted) {
-        setState(() {
-          _isLoadingSemesterHistory = false;
-        });
-      }
-      debugPrint("Error fetching semester history: $e\n$st");
-      _showSnackBar("Failed to fetch semester history: $e");
-    }
-  }
-
-  Future<void> _fetchFaculty() async {
-    if (_selectedSemester == null) return;
-
-    setState(() {
-      _isLoadingFaculty = true;
-    });
-
-    try {
-      final docRef = await getClassDocRef();
-      final snapshot = await docRef.get();
-
-      if (!snapshot.exists) {
-        await _ensureClassDocumentExists();
-        if (mounted) {
-          setState(() {
-            _facultyList = [];
-            _isLoadingFaculty = false;
-          });
-        }
-        return;
-      }
-
-      final data = snapshot.data() as Map<String, dynamic>? ?? {};
-      final facultyMap = data['faculty'] as Map<String, dynamic>? ?? {};
-      final semesterFaculty = facultyMap[_selectedSemester] as List<dynamic>? ?? [];
-
-      final list = semesterFaculty.map((e) {
-        if (e is Map<String, dynamic>) return Map<String, dynamic>.from(e);
-        return <String, dynamic>{};
+        return {
+          ...data,
+          'docId': doc.id,
+          'mentor_name': _mentorNames[data['mentor_id']] ?? 'Unknown',
+        };
       }).toList();
 
       if (mounted) {
         setState(() {
-          _facultyList = list;
-          _isLoadingFaculty = false;
+          _allStudents = students;
+          _filteredStudents = students;
         });
       }
-    } catch (e, st) {
-      if (mounted) setState(() => _isLoadingFaculty = false);
-      debugPrint("Error fetching faculty: $e\n$st");
-      _showSnackBar("Failed to fetch faculty: $e");
+    } catch (e) {
+      debugPrint("Error fetching students: $e");
     }
   }
 
-  Future<void> _setCurrentSemester(String semester) async {
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
     setState(() {
-      _selectedSemester = semester;
+      _filteredStudents = _allStudents.where((student) {
+        final name = (student['name'] ?? '').toString().toLowerCase();
+        final id = (student['id'] ?? '').toString().toLowerCase();
+        return name.contains(query) || id.contains(query);
+      }).toList();
     });
-    await _fetchFaculty();
-    await _showSemesterTimeDialog();
   }
 
-  Future<void> _setExistingSemesterAsCurrent(String semester) async {
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text("Setting current semester..."),
-            ],
-          ),
-        ),
-      );
+  void _showStudentDetailsPopup(Map<String, dynamic> student, String docId) async {
+    final docSnapshot = await FirebaseFirestore.instance
+        .collection("colleges")
+        .doc("students")
+        .collection("all_students")
+        .doc(docId)
+        .get();
 
-      final classDocRef = await getClassDocRef();
-      final semesterData = _semesterHistory[semester];
+    final data = docSnapshot.data();
+    if (data == null) return;
 
-      if (semesterData != null) {
-        await classDocRef.set({
-          'currentSemester': {
-            'semester': semester,
-            'startDate': semesterData['startDate'],
-            'endDate': semesterData['endDate'],
-            'updatedAt': FieldValue.serverTimestamp(),
-          }
-        }, SetOptions(merge: true));
+    final nameController = TextEditingController(text: data['name'] ?? '');
+    final emailController = TextEditingController(text: data['email'] ?? '');
+    final deptController = TextEditingController(text: data['department'] ?? '');
+    final passwordController = TextEditingController(text: data['password'] ?? '');
+    final mentorController = TextEditingController(text: data['mentor_id'] ?? '');
+    final classController = TextEditingController(text: data['class'] ?? '');
 
-        // Update students with better error handling
-        await _updateStudentsForClass(semester, semesterData);
-
-        setState(() {
-          _currentSemester = semester;
-          _selectedSemester = semester;
-        });
-
-        if (Navigator.canPop(context)) Navigator.pop(context);
-        await _fetchFaculty();
-      } else {
-        if (Navigator.canPop(context)) Navigator.pop(context);
-        _showSnackBar("No data found for semester $semester");
-      }
-    } catch (e, st) {
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      debugPrint("Error setting existing semester: $e\n$st");
-      _showSnackBar("Failed to set current semester: $e");
-    }
-  }
-
-  // FIXED: Better student update method with comprehensive debugging
-  Future<void> _updateStudentsForClass(String semester, Map<String, dynamic> semesterData) async {
-    try {
-      print("=== UPDATING STUDENTS FOR CLASS ===");
-      print("Class: ${widget.className}");
-      print("Department: ${widget.departmentId}");
-      print("Semester: $semester");
-
-      // Get all students in the system
-      final studentsRef = FirebaseFirestore.instance
-          .collection("colleges")
-          .doc("students")
-          .collection("all_students");
-
-      // Create a query that matches your class naming pattern
-      final querySnapshot = await studentsRef
-          .where("class", isGreaterThanOrEqualTo: widget.className.toLowerCase())
-          .where("class", isLessThanOrEqualTo: widget.className.toLowerCase() + '\uf8ff')
-          .get();
-
-      print("Found ${querySnapshot.docs.length} potential matching students");
-
-      // Use batch for efficient updates
-      WriteBatch batch = FirebaseFirestore.instance.batch();
-      int updatedCount = 0;
-
-      for (var doc in querySnapshot.docs) {
-        final studentData = doc.data();
-        final studentClass = studentData['class']?.toString().trim() ?? '';
-        final studentDept = studentData['departmentId']?.toString().trim() ?? '';
-
-        // More precise matching
-        if (studentClass == widget.className && studentDept == widget.departmentId) {
-          batch.update(doc.reference, {
-            'currentSemester': semester,
-            'semesterStartDate': semesterData['startDate'],
-            'semesterEndDate': semesterData['endDate'],
-            'lastUpdated': FieldValue.serverTimestamp(),
-          });
-          updatedCount++;
-
-          // Commit in batches of 400 to avoid Firestore limits
-          if (updatedCount % 400 == 0) {
-            await batch.commit();
-            batch = FirebaseFirestore.instance.batch();
-          }
+    String mentorName = "Unknown";
+    final mentorId = data['mentor_id'];
+    if (mentorId != null && mentorId.toString().isNotEmpty) {
+      try {
+        final mentorSnapshot = await FirebaseFirestore.instance
+            .collection("colleges")
+            .doc("faculties")
+            .collection("all_faculties")
+            .doc(mentorId)
+            .get();
+        if (mentorSnapshot.exists) {
+          mentorName = mentorSnapshot.data()?['name'] ?? "Unknown";
         }
+      } catch (e) {
+        debugPrint("Error fetching mentor name: $e");
       }
-
-      // Commit any remaining updates
-      if (updatedCount % 400 != 0) {
-        await batch.commit();
-      }
-
-      print("Successfully updated $updatedCount students");
-      _showSnackBar("Updated semester for $updatedCount students");
-
-    } catch (e, stackTrace) {
-      debugPrint("Error updating students: $e\n$stackTrace");
-      _showSnackBar("Failed to update students: $e");
     }
-  }
 
-  Future<void> _showSemesterTimeDialog() async {
-    DateTime? startDate;
-    DateTime? endDate;
+    bool isEditing = false;
 
-    await showDialog(
+    showDialog(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (context, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            titlePadding: EdgeInsets.zero,
-            title: _buildDialogHeader(
-                "Set Semester Time Period", () => Navigator.pop(context)),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    "Semester: ${_selectedSemester ?? ''}",
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              backgroundColor: Colors.white,
+              titlePadding: EdgeInsets.zero,
+              title: _buildDialogHeader(
+                "Student Details",
+                    () => Navigator.pop(context),
+              ),
+              content: Container(
+                width: MediaQuery.of(context).size.width * 0.9,
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildReadonlyField("Student ID", data['id'] ?? ''),
+                      isEditing
+                          ? _buildEditableField("Name", nameController)
+                          : _buildReadonlyField("Name", data['name']),
+                      isEditing
+                          ? _buildEditableField("Email", emailController)
+                          : _buildReadonlyField("Email", data['email']),
+                      isEditing
+                          ? _buildEditableField("Department", deptController)
+                          : _buildReadonlyField("Department", data['department']),
+                      isEditing
+                          ? _buildEditableField("Class", classController)
+                          : _buildReadonlyField("Class", data['class']),
+                      isEditing
+                          ? _buildEditableField("Mentor ID", mentorController)
+                          : ListTile(
+                        title: const Text("Mentor"),
+                        subtitle: Text("$mentorName (${data['mentor_id']})"),
+                      ),
+                      isEditing
+                          ? _buildEditableField("Password", passwordController, obscure: true)
+                          : const ListTile(
+                        title: Text("Password"),
+                        subtitle: Text("••••••••"),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  ListTile(
-                    title: Text(
-                      "Start Date: ${_formatDate(startDate)}",
-                    ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
+                ),
+              ),
+              actions: [
+                if (!isEditing)
+                  TextButton(
+                    child: const Text("Edit"),
+                    onPressed: () => setDialogState(() => isEditing = true),
+                  ),
+                if (isEditing) ...[
+                  TextButton(
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
                         context: context,
-                        initialDate: DateTime.now(),
-                        firstDate: DateTime(2020),
-                        lastDate: DateTime(2030),
+                        builder: (_) => AlertDialog(
+                          title: const Text("Confirm Delete"),
+                          content: const Text("Are you sure you want to delete this student?"),
+                          actions: [
+                            TextButton(
+                              child: const Text("Cancel"),
+                              onPressed: () => Navigator.pop(context, false),
+                            ),
+                            ElevatedButton(
+                              child: const Text("Delete"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              onPressed: () => Navigator.pop(context, true),
+                            ),
+                          ],
+                        ),
                       );
-                      if (picked != null) {
-                        setDialogState(() => startDate = picked);
+                      if (confirm == true) {
+                        await FirebaseFirestore.instance
+                            .collection("colleges")
+                            .doc("students")
+                            .collection("all_students")
+                            .doc(docId)
+                            .delete();
+                        Navigator.pop(context);
+                        _fetchStudents();
                       }
                     },
-                  ),
-                  ListTile(
-                    title: Text(
-                      "End Date: ${_formatDate(endDate)}",
+                    child: const Text(
+                      "Delete",
+                      style: TextStyle(color: Colors.red),
                     ),
-                    trailing: const Icon(Icons.calendar_today),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: startDate ?? DateTime.now(),
-                        firstDate: startDate ?? DateTime(2020),
-                        lastDate: DateTime(2030),
-                      );
-                      if (picked != null) {
-                        setDialogState(() => endDate = picked);
-                      }
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    child: const Text("Save"),
+                    onPressed: () async {
+                      await FirebaseFirestore.instance
+                          .collection("colleges")
+                          .doc("students")
+                          .collection("all_students")
+                          .doc(docId)
+                          .update({
+                        "name": nameController.text.trim(),
+                        "email": emailController.text.trim(),
+                        "department": deptController.text.trim(),
+                        "class": classController.text.trim(),
+                        "mentor_id": mentorController.text.trim(),
+                        "password": passwordController.text.trim(),
+                      });
+                      Navigator.pop(context);
+                      _fetchStudents();
                     },
-                  )
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF7F50),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    ),
+                  ),
                 ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text("Cancel"),
-              ),
-              ElevatedButton(
-                onPressed: startDate != null && endDate != null
-                    ? () {
-                  _semesterStartDate = startDate;
-                  _semesterEndDate = endDate;
-                  Navigator.pop(context);
-                  _updateSemesterForAllStudents();
-                }
-                    : null,
-                child: const Text("Update"),
-              ),
-            ],
-          );
-        });
+              ],
+            );
+          },
+        );
       },
     );
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return "Not selected";
-    return "${date.day}/${date.month}/${date.year}";
+  Widget _buildReadonlyField(String label, String? value) {
+    return ListTile(
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(value ?? 'N/A'),
+    );
   }
 
-  // IMPROVED: Better semester update method
-  Future<void> _updateSemesterForAllStudents() async {
-    if (_selectedSemester == null ||
-        _semesterStartDate == null ||
-        _semesterEndDate == null) {
-      _showSnackBar("Please select semester and time period first");
-      return;
-    }
-
-    try {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => const AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 20),
-              Text("Updating students..."),
-            ],
-          ),
-        ),
-      );
-
-      final classDocRef = await getClassDocRef();
-      final semesterData = {
-        'semester': _selectedSemester,
-        'startDate': Timestamp.fromDate(_semesterStartDate!),
-        'endDate': Timestamp.fromDate(_semesterEndDate!),
-        'createdAt': FieldValue.serverTimestamp(),
-      };
-
-      // Update class document
-      await classDocRef.set({
-        'currentSemester': {
-          'semester': _selectedSemester,
-          'startDate': Timestamp.fromDate(_semesterStartDate!),
-          'endDate': Timestamp.fromDate(_semesterEndDate!),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        'semesterHistory.$_selectedSemester': semesterData,
-      }, SetOptions(merge: true));
-
-      print("Class document updated successfully");
-
-      // Update students
-      await _updateStudentsForClass(_selectedSemester!, {
-        'startDate': Timestamp.fromDate(_semesterStartDate!),
-        'endDate': Timestamp.fromDate(_semesterEndDate!),
-      });
-
-      if (Navigator.canPop(context)) Navigator.pop(context);
-
-      setState(() {
-        _currentSemester = _selectedSemester;
-      });
-
-      await _fetchSemesterHistory();
-    } catch (e, st) {
-      if (Navigator.canPop(context)) Navigator.pop(context);
-      debugPrint("Error updating semester: $e\n$st");
-      _showSnackBar("Failed to update semester: $e");
-    }
-  }
-
-  Future<void> _addFaculty() async {
-    final facultyId = _facultyIdController.text.trim();
-    final subject = _subjectController.text.trim();
-
-    if (_selectedSemester == null || facultyId.isEmpty || subject.isEmpty) {
-      _showSnackBar("All fields are required");
-      return;
-    }
-
-    try {
-      final docRef = await getClassDocRef();
-      final snapshot = await docRef.get();
-      final data = snapshot.exists ? snapshot.data() as Map<String, dynamic> : {};
-
-      Map<String, dynamic> facultyMap = data['faculty'] != null
-          ? Map<String, dynamic>.from(data['faculty'] as Map<String, dynamic>)
-          : {};
-
-      List<dynamic> semesterFaculty = facultyMap[_selectedSemester] != null
-          ? List<dynamic>.from(facultyMap[_selectedSemester] as List<dynamic>)
-          : [];
-
-      final duplicate = semesterFaculty.any((f) {
-        if (f is Map<String, dynamic>) {
-          return f['facultyId'] == facultyId && f['subject'] == subject;
-        }
-        return false;
-      });
-
-      if (duplicate) {
-        _showSnackBar("Faculty with this subject already exists in selected semester");
-        return;
-      }
-
-      semesterFaculty.add({
-        'facultyId': facultyId,
-        'subject': subject,
-        'addedAt': FieldValue.serverTimestamp(),
-      });
-
-      facultyMap[_selectedSemester!] = semesterFaculty;
-
-      await docRef.set({'faculty': facultyMap}, SetOptions(merge: true));
-
-      _facultyIdController.clear();
-      _subjectController.clear();
-
-      _showSnackBar("Faculty added successfully");
-      await _fetchFaculty();
-    } catch (e, st) {
-      debugPrint("Error adding faculty: $e\n$st");
-      _showSnackBar("Failed to add faculty: $e");
-    }
-  }
-
-  Future<void> _removeFaculty(String facultyId, String subject) async {
-    if (_selectedSemester == null) return;
-
-    try {
-      final docRef = await getClassDocRef();
-      final snapshot = await docRef.get();
-      if (!snapshot.exists) return;
-
-      final data = snapshot.data() as Map<String, dynamic>;
-      Map<String, dynamic> facultyMap = data['faculty'] != null
-          ? Map<String, dynamic>.from(data['faculty'] as Map<String, dynamic>)
-          : {};
-
-      List<dynamic> semesterFaculty = facultyMap[_selectedSemester] != null
-          ? List<dynamic>.from(facultyMap[_selectedSemester] as List<dynamic>)
-          : [];
-
-      semesterFaculty.removeWhere((f) {
-        if (f is Map<String, dynamic>) {
-          return f['facultyId'] == facultyId && f['subject'] == subject;
-        }
-        return false;
-      });
-
-      facultyMap[_selectedSemester!] = semesterFaculty;
-      await docRef.set({'faculty': facultyMap}, SetOptions(merge: true));
-
-      _showSnackBar("Faculty removed successfully");
-      await _fetchFaculty();
-    } catch (e, st) {
-      debugPrint("Error removing faculty: $e\n$st");
-      _showSnackBar("Failed to remove faculty: $e");
-    }
-  }
-
-  void _showSnackBar(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
-    }
+  Widget _buildEditableField(String label, TextEditingController controller, {bool obscure = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: TextField(
+        controller: controller,
+        obscureText: obscure,
+        decoration: InputDecoration(labelText: label),
+      ),
+    );
   }
 
   Widget _buildDialogHeader(String title, VoidCallback onClose) {
@@ -732,161 +276,123 @@ class _ClassControlPageState extends State<ClassControlPage> {
       ),
       child: Row(
         children: [
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
           const Spacer(),
           IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: onClose),
+            icon: const Icon(Icons.close, color: Colors.white),
+            onPressed: onClose,
+          ),
         ],
       ),
     );
   }
 
-  void _showAddFacultyDialog() {
+  void _showAddStudentDialog(BuildContext context) {
+    final _idController = TextEditingController();
+    final _nameController = TextEditingController();
+    final _emailController = TextEditingController();
+    final _departmentController = TextEditingController();
+    final _mentorController = TextEditingController();
+    final _classController = TextEditingController();
+    final _passwordController = TextEditingController();
+
     showDialog(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setState) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            titlePadding: EdgeInsets.zero,
-            title: _buildDialogHeader("Add Faculty & Subject", () => Navigator.pop(context)),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedSemester,
-                    hint: const Text("Select Semester"),
-                    items: _semesters
-                        .map((sem) => DropdownMenuItem(value: sem, child: Text(sem)))
-                        .toList(),
-                    onChanged: (val) {
-                      setState(() {
-                        _selectedSemester = val;
-                      });
-                    },
-                    decoration: const InputDecoration(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _facultyIdController,
-                    decoration: const InputDecoration(labelText: "Faculty ID"),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _subjectController,
-                    decoration: const InputDecoration(labelText: "Subject"),
-                  ),
-                ],
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: Colors.white,
+        elevation: 8,
+        titlePadding: EdgeInsets.zero,
+        title: _buildDialogHeader("Add New Student", () => Navigator.pop(context)),
+        content: SingleChildScrollView(
+          child: Column(
+            children: [
+              TextField(
+                controller: _idController,
+                decoration: const InputDecoration(labelText: 'Student ID'),
               ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  _facultyIdController.clear();
-                  _subjectController.clear();
-                  Navigator.pop(context);
-                },
-                child: const Text("Cancel"),
+              TextField(
+                controller: _nameController,
+                decoration: const InputDecoration(labelText: 'Name'),
               ),
-              ElevatedButton(
-                onPressed: () async {
-                  await _addFaculty();
-                  Navigator.pop(context);
-                },
-                child: const Text("Add"),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              TextField(
+                controller: _departmentController,
+                decoration: const InputDecoration(labelText: 'Department'),
+              ),
+              TextField(
+                controller: _classController,
+                decoration: const InputDecoration(labelText: 'Class'),
+              ),
+              TextField(
+                controller: _mentorController,
+                decoration: const InputDecoration(labelText: 'Mentor ID'),
+              ),
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
               ),
             ],
           ),
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF7F50),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Add'),
+            onPressed: () async {
+              final id = _idController.text.trim();
+              final name = _nameController.text.trim();
+              if (id.isEmpty || name.isEmpty) return;
+
+              final email = _emailController.text.trim();
+              final dept = _departmentController.text.trim();
+              final mentor = _mentorController.text.trim();
+              final studentClass = _classController.text.trim();
+              final password = _passwordController.text.trim();
+
+              await FirebaseFirestore.instance
+                  .collection("colleges")
+                  .doc("students")
+                  .collection("all_students")
+                  .doc(id)
+                  .set({
+                "id": id,
+                "name": name,
+                "email": email,
+                "department": dept,
+                "class": studentClass,
+                "mentor_id": mentor,
+                "password": password,
+              });
+
+              Navigator.pop(context);
+              _fetchStudents();
+            },
+          ),
+        ],
+      ),
     );
-  }
-
-  // DEBUG: Method to check student document structure - Updated for your structure
-  Future<void> _debugStudentDocuments() async {
-    try {
-      print("=== DEBUGGING STUDENT DOCUMENTS ===");
-      print("Looking for class: '${widget.className}' and department: '${widget.departmentId}'");
-
-      final studentSnapshot = await FirebaseFirestore.instance
-          .collection("colleges")
-          .doc("students")
-          .collection("all_students") // Check first 10 students
-          .get();
-
-      print("Sample of ${studentSnapshot.docs.length} student documents:");
-
-      for (var doc in studentSnapshot.docs) {
-        final data = doc.data();
-        print("Student ID: ${doc.id}");
-        print("  - class: '${data['class'] ?? 'NOT SET'}'");
-        print("  - department: '${data['department'] ?? 'NOT SET'}'");
-        print("  - departmentId: '${data['departmentId'] ?? 'NOT SET'}'");
-        print("  - name: '${data['name'] ?? 'NOT SET'}'");
-        print("  - All fields: ${data.keys.toList()}");
-        print("---");
-      }
-
-      // Try direct query with exact class name
-      print("=== DIRECT QUERY TEST ===");
-      final directQuery1 = await FirebaseFirestore.instance
-          .collection("colleges")
-          .doc("students")
-          .collection("all_students")
-          .where("class", isEqualTo: widget.className.toLowerCase())
-          .limit(3)
-          .get();
-
-      print("Query 1 - class='${widget.className.toLowerCase()}': Found ${directQuery1.docs.length} students");
-
-      final directQuery2 = await FirebaseFirestore.instance
-          .collection("colleges")
-          .doc("students")
-          .collection("all_students")
-          .where("department", isEqualTo: widget.departmentId.toLowerCase())
-          .limit(3)
-          .get();
-
-      print("Query 2 - department='${widget.departmentId.toLowerCase()}': Found ${directQuery2.docs.length} students");
-
-      // Try compound query
-      final compoundQuery = await FirebaseFirestore.instance
-          .collection("colleges")
-          .doc("students")
-          .collection("all_students")
-          .where("class", isEqualTo: widget.className.toLowerCase())
-          .where("department", isEqualTo: widget.departmentId.toLowerCase())
-          .limit(5)
-          .get();
-
-      print(compoundQuery);
-
-      print("Compound query - class='${widget.className.toLowerCase()}' AND department='${widget.departmentId.toLowerCase()}': Found ${compoundQuery.docs.length} students");
-
-      for (var doc in compoundQuery.docs) {
-        print("Matching student: ${doc.id} - class: ${doc.data()['class']}, dept: ${doc.data()['department']}");
-      }
-
-    } catch (e) {
-      print("Debug error: $e");
-    }
-  }
-
-  Future<void> _refreshData() async {
-    await _fetchSemesterHistory();
-    if (_selectedSemester != null) {
-      await _fetchFaculty();
-    }
-
-    // Add debug call - remove this in production
-    await _debugStudentDocuments();
   }
 
   @override
@@ -902,386 +408,145 @@ class _ClassControlPageState extends State<ClassControlPage> {
             icon: const Icon(Icons.arrow_back, color: Colors.white),
             onPressed: () => Navigator.pop(context),
           ),
-          title: Text("${widget.className.toUpperCase()} CLASS CONTROL",
-              style: const TextStyle(color: Colors.white)),
+          title: const Text(
+            "STUDENT CONTROL",
+            style: TextStyle(color: Colors.white),
+          ),
           centerTitle: true,
           actions: [
             IconButton(
-                icon: const Icon(Icons.refresh, color: Colors.white),
-                onPressed: _refreshData),
-            IconButton(
-              icon: const Icon(Icons.delete, color: Colors.white),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text("Delete Class"),
-                      content: const Text(
-                          "Are you sure you want to delete this class? This action cannot be undone."),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          child: const Text("Cancel"),
-                        ),
-                        TextButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _deleteClass();
-                          },
-                          child: const Text("Delete"),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
+              icon: const Icon(Icons.notifications, color: Colors.white),
+              onPressed: () {},
             ),
           ],
         ),
       ),
-
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Semester selector + Add button
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _selectedSemester,
-                      hint: const Text("Select Semester"),
-                      items: _semesters
-                          .map((sem) => DropdownMenuItem(value: sem, child: Text(sem)))
-                          .toList(),
-                      onChanged: (val) {
-                        setState(() {
-                          _selectedSemester = val;
-                        });
-                        _fetchFaculty();
-                      },
-                      decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(40)),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: InputDecoration(
+                      hintText: 'Search by ID or Name',
+                      prefixIcon: const Icon(Icons.search),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(40),
                       ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 5),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    onPressed: _showAddFacultyDialog,
-                    icon: const Icon(Icons.add_circle_outline),
-                    label: const Text("Add Faculty"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF7F50),
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
-                    ),
+                ),
+                const SizedBox(width: 10),
+                IconButton(
+                  icon: const Icon(
+                    Icons.add_circle,
+                    size: 32,
+                    color: Color(0xFFFF7F50),
                   ),
-                ],
-              ),
+                  onPressed: () => _showAddStudentDialog(context),
+                ),
+              ],
             ),
-
-            // Main content
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _refreshData,
-                child: ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    if (selectedClassId != null) ...[
-                      const SizedBox(height: 20),
-                      Text("Semester Start: ${semesterStartDate != null ? semesterStartDate!.toLocal().toString().split(' ')[0] : 'Not set'}"),
-                      ElevatedButton(
-                        onPressed: () => _pickDate(true),
-                        child: const Text("Edit Start Date"),
-                      ),
-                      const SizedBox(height: 10),
-                      Text("Semester End: ${semesterEndDate != null ? semesterEndDate!.toLocal().toString().split(' ')[0] : 'Not set'}"),
-                      ElevatedButton(
-                        onPressed: () => _pickDate(false),
-                        child: const Text("Edit End Date"),
-                      ),
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () => _saveSemesterDates(selectedClassId!),
-                        child: const Text("Save Dates"),
-                      ),
-                    ],
-
-                    // Semester history container
-                    Container(
-                      margin: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.grey.withOpacity(0.1),
-                              spreadRadius: 1,
-                              blurRadius: 5,
-                              offset: const Offset(0, 2)),
-                        ],
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF2D2F38),
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                            ),
-                            child: const Row(
-                              children: [
-                                Icon(Icons.history, color: Colors.white, size: 20),
-                                SizedBox(width: 8),
-                                Text("SEMESTER HISTORY",
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16)),
-                              ],
-                            ),
-                          ),
-                          if (_isLoadingSemesterHistory)
-                            const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(
-                                  child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        CircularProgressIndicator(),
-                                        SizedBox(width: 12),
-                                        Text("Loading semester history...")
-                                      ])),
-                            )
-                          else if (_semesterHistory.isEmpty)
-                            const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Text("No semester history found"))
-                          else
-                            Column(
-                              children: _semesterHistory.keys.map((semester) {
-                                final semesterData = _semesterHistory[semester]!;
-                                final startDate =
-                                (semesterData['startDate'] as Timestamp?)?.toDate();
-                                final endDate =
-                                (semesterData['endDate'] as Timestamp?)?.toDate();
-                                final isCurrentSemester = _currentSemester == semester;
-
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  color: isCurrentSemester
-                                      ? const Color(0xFFFF7F50).withOpacity(0.1)
-                                      : null,
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        flex: 2,
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Text("Semester $semester",
-                                                    style: TextStyle(
-                                                        fontWeight: FontWeight.bold,
-                                                        fontSize: 16,
-                                                        color: isCurrentSemester
-                                                            ? const Color(0xFFFF7F50)
-                                                            : Colors.black87)),
-                                                if (isCurrentSemester) ...[
-                                                  const SizedBox(width: 8),
-                                                  Container(
-                                                    padding: const EdgeInsets.symmetric(
-                                                        horizontal: 8, vertical: 2),
-                                                    decoration: BoxDecoration(
-                                                        color: const Color(0xFFFF7F50),
-                                                        borderRadius:
-                                                        BorderRadius.circular(10)),
-                                                    child: const Text("CURRENT",
-                                                        style: TextStyle(
-                                                            color: Colors.white,
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.bold)),
-                                                  ),
-                                                ],
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            if (startDate != null && endDate != null)
-                                              Text(
-                                                  "${startDate.day}/${startDate.month}/${startDate.year} - ${endDate.day}/${endDate.month}/${endDate.year}",
-                                                  style: TextStyle(
-                                                      color: Colors.grey[600],
-                                                      fontSize: 12)),
-                                          ],
-                                        ),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: isCurrentSemester
-                                            ? null
-                                            : () => _setExistingSemesterAsCurrent(semester),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: isCurrentSemester
-                                              ? const Color(0xFFFF7F50)
-                                              : Colors.green,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                              borderRadius: BorderRadius.circular(8)),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 12, vertical: 6),
-                                        ),
-                                        child: Text(
-                                            isCurrentSemester ? "Current" : "Set Current",
-                                            style: const TextStyle(fontSize: 12)),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                        ],
-                      ),
+          ),
+          Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            color: const Color(0xFF2D2F38),
+            child: const Text(
+              "STUDENT INFORMATION",
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+          Container(
+            color: Colors.black12,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: const Row(
+              children: [
+                Expanded(flex: 2, child: Text("STUDENT ID")),
+                Expanded(flex: 3, child: Text("NAME")),
+                Expanded(flex: 1, child: Text("DETAILS")),
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: _filteredStudents.length,
+              itemBuilder: (context, index) {
+                final student = _filteredStudents[index];
+                return Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: Colors.orange, width: 1),
                     ),
-
-                    // Add new semester buttons
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text("ADD NEW SEMESTER:",
-                            style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.black87)),
-                        const SizedBox(height: 12),
-                        Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _semesters.map((semester) {
-                              final alreadyExists = _semesterHistory.containsKey(semester);
-                              return ElevatedButton(
-                                onPressed: alreadyExists
-                                    ? null
-                                    : () => _setCurrentSemester(semester),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: alreadyExists
-                                      ? Colors.grey[300]
-                                      : (_selectedSemester == semester
-                                      ? const Color(0xFFFF7F50)
-                                      : Colors.blue[100]),
-                                  foregroundColor: alreadyExists
-                                      ? Colors.grey[600]
-                                      : (_selectedSemester == semester
-                                      ? Colors.white
-                                      : Colors.black87),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20)),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
-                                  minimumSize: const Size(50, 36),
-                                ),
-                                child: Text(semester,
-                                    style: const TextStyle(
-                                        fontSize: 14, fontWeight: FontWeight.bold)),
-                              );
-                            }).toList()),
-                        if (_semesterHistory.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8),
-                            child: Text(
-                                "Note: Disabled buttons are semesters that already exist",
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey[600],
-                                    fontStyle: FontStyle.italic)),
-                          ),
-                      ]),
-                    ),
-
-                    const SizedBox(height: 10),
-
-                    // Faculty information header
-                    Container(
-                        alignment: Alignment.centerLeft,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        color: const Color(0xFF2D2F38),
-                        child: const Text("FACULTY INFORMATION",
-                            style: TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.bold))),
-                    Container(
-                        color: Colors.black12,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: const Row(children: [
-                          Expanded(flex: 3, child: Text("FACULTY NAME")),
-                          Expanded(flex: 3, child: Text("SUBJECT")),
-                          Expanded(flex: 1, child: Center(child: Text("REMOVE")))
-                        ])),
-
-                    // Faculty list
-                    _isLoadingFaculty
-                        ? const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: CircularProgressIndicator()))
-                        : _facultyList.isEmpty
-                        ? const Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(child: Text("No faculty found")))
-                        : Column(
-                      children: _facultyList.map((faculty) {
-                        final facultyId =
-                        (faculty['facultyId'] ?? "Unknown").toString();
-                        final subject =
-                        (faculty['subject'] ?? "Unknown").toString();
-                        final facultyName = _facultyNames[facultyId] ?? facultyId;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 12),
-                          decoration: const BoxDecoration(
-                              border: Border(
-                                  bottom: BorderSide(
-                                      color: Colors.orange, width: 1))),
-                          child: Row(children: [
-                            Expanded(flex: 3, child: Text(facultyName)),
-                            Expanded(flex: 3, child: Text(subject)),
-                            Expanded(
-                              flex: 1,
-                              child: Center(
-                                child: IconButton(
-                                    icon: const Icon(Icons.delete,
-                                        color: Colors.red),
-                                    onPressed: () =>
-                                        _removeFaculty(facultyId, subject)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(flex: 2, child: Text(student['id'] ?? '')),
+                      Expanded(flex: 3, child: Text(student['name'] ?? '')),
+                      Expanded(
+                        flex: 1,
+                        child: Center(
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _showStudentDetailsPopup(student, student['docId']);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFF7F50),
+                              foregroundColor: Colors.white,
+                              shape: const StadiumBorder(),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 0,
+                                horizontal: 0,
                               ),
                             ),
-                          ]),
-                        );
-                      }).toList(),
-                    ),
-                    const SizedBox(height: 80),
-                  ],
-                ),
-              ),
+                            child: const Text('View'),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         height: 70,
         decoration: const BoxDecoration(
-            color: Color(0xFFE5E5E5),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-          IconButton(
-              icon: Image.asset("assets/search.png", height: 26), onPressed: () {}),
-          IconButton(
+          color: Color(0xFFE5E5E5),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset("assets/search.png", height: 26),
+              onPressed: () {},
+            ),
+            IconButton(
               icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () => Navigator.pop(context)),
-          IconButton(
-              icon: Image.asset("assets/account.png", height: 26), onPressed: () {}),
-        ]),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AdminDashboard(),
+                  ),
+                );
+              },
+            ),
+            IconButton(
+              icon: Image.asset("assets/account.png", height: 26),
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
     );
   }
