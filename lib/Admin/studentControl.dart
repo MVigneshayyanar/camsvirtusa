@@ -397,6 +397,8 @@ class _StudentControlPageState extends State<StudentControlPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
@@ -518,34 +520,37 @@ class _StudentControlPageState extends State<StudentControlPage> {
         ],
       ),
       bottomNavigationBar: Container(
-        height: 70,
+        height: 70 + bottomPadding,
         decoration: const BoxDecoration(
           color: Color(0xFFE5E5E5),
           borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset("assets/search.png", height: 26),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminDashboard(),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              icon: Image.asset("assets/account.png", height: 26),
-              onPressed: () {},
-            ),
-          ],
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomPadding),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Image.asset("assets/search.png", height: 26),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: Image.asset("assets/homeLogo.png", height: 32),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminDashboard(),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Image.asset("assets/account.png", height: 26),
+                onPressed: () {},
+              ),
+            ],
+          ),
         ),
       ),
     );
