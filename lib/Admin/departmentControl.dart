@@ -18,11 +18,50 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
 
   List<String> _classes = [];
   String _searchText = '';
+  Stream<QuerySnapshot>? _departmentsStream;
+  bool _isLoading = false;
 
   final CollectionReference departmentsRef = FirebaseFirestore.instance
       .collection('colleges')
       .doc('departments')
       .collection('all_departments');
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshData();
+  }
+
+  void _refreshData() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _searchText = '';
+      _searchController.clear();
+      _departmentsStream = null;
+    });
+
+    try {
+      // Add a small delay to show the refresh is happening
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      if (mounted) {
+        setState(() {
+          _departmentsStream = departmentsRef.snapshots();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error refreshing departments: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _departmentsStream = departmentsRef.snapshots();
+        });
+      }
+    }
+  }
 
   Widget _buildDialogHeader(String title, VoidCallback onClose) {
     return Container(
@@ -94,6 +133,10 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                 },
               ),
               ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF7F50),
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Save'),
                 onPressed: () async {
                   final id = _deptIdController.text.trim();
@@ -112,6 +155,7 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
                   _classes.clear();
 
                   Navigator.pop(context);
+                  _refreshData();
                 },
               ),
             ],
@@ -167,7 +211,7 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
               onPressed: () async {
                 await departmentsRef.doc(deptId).update({'classes': updatedClasses});
                 Navigator.pop(context);
-                setState(() {});
+                _refreshData();
               },
               child: const Text("Save"),
             ),
@@ -182,7 +226,7 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: const Size.fromHeight(58),
         child: AppBar(
           backgroundColor: const Color(0xFFFF7F50),
           elevation: 0,
@@ -193,145 +237,180 @@ class _DepartmentControlPageState extends State<DepartmentControlPage> {
           title: const Text("DEPARTMENT CONTROL", style: TextStyle(color: Colors.white)),
           centerTitle: true,
           actions: [
-            IconButton(icon: const Icon(Icons.notifications, color: Colors.white), onPressed: () {}),
+            IconButton(
+              icon: _isLoading
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+                  : const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _isLoading ? null : _refreshData,
+            ),
           ],
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (val) => setState(() => _searchText = val),
-                    decoration: InputDecoration(
-                      hintText: 'Search by ID or Name',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(40)),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 5),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) => setState(() => _searchText = val),
+                      decoration: InputDecoration(
+                        hintText: 'Search by ID or Name',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(40)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 5),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, size: 32, color: Color(0xFFFF7F50)),
-                  onPressed: _showAddDepartmentPopup,
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle, size: 32, color: Color(0xFFFF7F50)),
+                    onPressed: _showAddDepartmentPopup,
+                  ),
+                ],
+              ),
             ),
-          ),
 
-          Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: const Color(0xFF2D2F38),
-            child: const Text("DEPARTMENT INFORMATION", style: TextStyle(color: Colors.white)),
-          ),
-
-          Container(
-            color: Colors.black12,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: const Row(
-              children: [
-                Expanded(flex: 2, child: Text("DEPT ID")),
-                Expanded(flex: 3, child: Text("NAME")),
-                Expanded(flex: 1, child: Text("DETAILS")),
-              ],
+            Container(
+              color: const Color(0xFF36454F),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: const Row(
+                children: [
+                  Expanded(flex: 2, child: Text("DEPT ID", style: TextStyle(color: Colors.white))),
+                  Expanded(flex: 3, child: Text("NAME", style: TextStyle(color: Colors.white))),
+                  Expanded(flex: 1, child: Text("DETAILS", style: TextStyle(color: Colors.white))),
+                ],
+              ),
             ),
-          ),
 
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: departmentsRef.snapshots(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
-                final filteredDocs = snapshot.data!.docs.where((doc) {
-                  final data = doc.data() as Map<String, dynamic>;
-                  final id = data['id']?.toString().toLowerCase() ?? '';
-                  final name = data['name']?.toString().toLowerCase() ?? '';
-                  return id.contains(_searchText.toLowerCase()) ||
-                      name.contains(_searchText.toLowerCase());
-                }).toList();
-
-                return ListView.builder(
-                  itemCount: filteredDocs.length,
-                  itemBuilder: (context, index) {
-                    final data = filteredDocs[index].data() as Map<String, dynamic>;
-                    final id = data['id'] ?? '';
-                    final name = data['name'] ?? '';
-                    final classes = List<String>.from(data['classes'] ?? []);
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      decoration: const BoxDecoration(
-                        border: Border(bottom: BorderSide(color: Colors.orange, width: 1)),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(flex: 2, child: Text(id)),
-                          Expanded(flex: 3, child: Text(name)),
-                          Expanded(
-                            flex: 1,
-                            child: Center(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ClassesListPage(departmentId: id),
-                                    ),
-                                  );
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: const Color(0xFFFF7F50),
-                                  foregroundColor: Colors.white,
-                                  shape: const StadiumBorder(),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 0,
-                                    horizontal: 0,
-                                  ),
-                                ),
-                                child: const Text('View'),
-                              ),
-                            ),
-                          ),
-                        ],
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFFFF7F50),
+                ),
+              )
+                  : StreamBuilder<QuerySnapshot>(
+                stream: _departmentsStream,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFFFF7F50),
                       ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  final filteredDocs = snapshot.data!.docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final id = data['id']?.toString().toLowerCase() ?? '';
+                    final name = data['name']?.toString().toLowerCase() ?? '';
+                    return id.contains(_searchText.toLowerCase()) ||
+                        name.contains(_searchText.toLowerCase());
+                  }).toList();
+
+                  return ListView.builder(
+                    padding: EdgeInsets.only(
+                      bottom: 90 + MediaQuery.of(context).padding.bottom, // Add padding for bottom nav
+                    ),
+                    itemCount: filteredDocs.length,
+                    itemBuilder: (context, index) {
+                      final data = filteredDocs[index].data() as Map<String, dynamic>;
+                      final id = data['id'] ?? '';
+                      final name = data['name'] ?? '';
+                      final classes = List<String>.from(data['classes'] ?? []);
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: const BoxDecoration(
+                          border: Border(bottom: BorderSide(color: Colors.orange, width: 1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(flex: 2, child: Text(id)),
+                            Expanded(flex: 3, child: Text(name)),
+                            Expanded(
+                              flex: 1,
+                              child: Center(
+                                child: ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ClassesListPage(departmentId: id),
+                                      ),
+                                    );
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFFF7F50),
+                                    foregroundColor: Colors.white,
+                                    shape: const StadiumBorder(),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 0,
+                                      horizontal: 0,
+                                    ),
+                                  ),
+                                  child: const Text('View'),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
-        height: 70,
+        height: 70 + MediaQuery.of(context).padding.bottom,
         decoration: const BoxDecoration(
           color: Color(0xFFE5E5E5),
           borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(icon: Image.asset("assets/search.png", height: 26), onPressed: () {}),
-            IconButton(
-              icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminDashboard(),
-                  ),
-                );
-              },
+        child: SafeArea(
+          minimum: EdgeInsets.zero,
+          child: Container(
+            height: 70,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                IconButton(
+                    icon: Image.asset("assets/search.png", height: 26),
+                    onPressed: () {}
+                ),
+                IconButton(
+                  icon: Image.asset("assets/homeLogo.png", height: 32),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AdminDashboard(),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                    icon: Image.asset("assets/account.png", height: 26),
+                    onPressed: () {}
+                ),
+              ],
             ),
-            IconButton(icon: Image.asset("assets/account.png", height: 26), onPressed: () {}),
-          ],
+          ),
         ),
       ),
     );

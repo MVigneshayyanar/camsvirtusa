@@ -15,7 +15,7 @@ class AdminDashboard extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: const Size.fromHeight(58),
         child: AppBar(
           backgroundColor: const Color(0xFFFF8145),
           elevation: 0,
@@ -31,7 +31,7 @@ class AdminDashboard extends StatelessWidget {
           _buildDashboardGrid(context),
         ],
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
+      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
@@ -135,29 +135,34 @@ class AdminDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
+  Widget _buildBottomNavigationBar(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Container(
-      height: 70,
+      height: 70 + bottomPadding,
       decoration: BoxDecoration(
         color: const Color(0xFFE5E5E5),
         borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          IconButton(
-            icon: Image.asset("assets/search.png", height: 26),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Image.asset("assets/homeLogo.png", height: 32),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Image.asset("assets/account.png", height: 26),
-            onPressed: () {},
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomPadding),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset("assets/search.png", height: 26),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset("assets/homeLogo.png", height: 32),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset("assets/account.png", height: 26),
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
     );
   }

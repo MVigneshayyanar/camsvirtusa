@@ -14,6 +14,7 @@ class _StudentControlPageState extends State<StudentControlPage> {
   List<Map<String, dynamic>> _allStudents = [];
   List<Map<String, dynamic>> _filteredStudents = [];
   Map<String, String> _mentorNames = {};
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -29,6 +30,12 @@ class _StudentControlPageState extends State<StudentControlPage> {
   }
 
   Future<void> _fetchStudents() async {
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
       final studentSnapshot = await FirebaseFirestore.instance
           .collection("colleges")
@@ -60,10 +67,16 @@ class _StudentControlPageState extends State<StudentControlPage> {
         setState(() {
           _allStudents = students;
           _filteredStudents = students;
+          _isLoading = false;
         });
       }
     } catch (e) {
       debugPrint("Error fetching students: $e");
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -397,10 +410,12 @@ class _StudentControlPageState extends State<StudentControlPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: const Size.fromHeight(58),
         child: AppBar(
           backgroundColor: const Color(0xFFFF7F50),
           elevation: 0,
@@ -415,8 +430,17 @@ class _StudentControlPageState extends State<StudentControlPage> {
           centerTitle: true,
           actions: [
             IconButton(
-              icon: const Icon(Icons.notifications, color: Colors.white),
-              onPressed: () {},
+              icon: _isLoading
+                  ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              )
+                  : const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _isLoading ? null : _fetchStudents,
             ),
           ],
         ),
@@ -452,28 +476,34 @@ class _StudentControlPageState extends State<StudentControlPage> {
               ],
             ),
           ),
+          //Container(
+            //alignment: Alignment.centerLeft,
+            //padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            //color: const Color(0xFF2D2F38),
+            //child: const Text(
+              //"STUDENT INFORMATION",
+              //style: TextStyle(color: Colors.white),
+            //),
+          //),
           Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: const Color(0xFF2D2F38),
-            child: const Text(
-              "STUDENT INFORMATION",
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-          Container(
-            color: Colors.black12,
+            color: const Color(0xFF36454F),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: const Row(
               children: [
-                Expanded(flex: 2, child: Text("STUDENT ID")),
-                Expanded(flex: 3, child: Text("NAME")),
-                Expanded(flex: 1, child: Text("DETAILS")),
+                Expanded(flex: 2, child: Text("STUDENT ID", style: TextStyle(color: Colors.white))),
+                Expanded(flex: 3, child: Text("NAME", style: TextStyle(color: Colors.white))),
+                Expanded(flex: 1, child: Text("DETAILS", style: TextStyle(color: Colors.white))),
               ],
             ),
           ),
           Expanded(
-            child: ListView.builder(
+            child: _isLoading
+                ? const Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFFFF7F50),
+              ),
+            )
+                : ListView.builder(
               itemCount: _filteredStudents.length,
               itemBuilder: (context, index) {
                 final student = _filteredStudents[index];
@@ -518,34 +548,37 @@ class _StudentControlPageState extends State<StudentControlPage> {
         ],
       ),
       bottomNavigationBar: Container(
-        height: 70,
+        height: 70 + bottomPadding,
         decoration: const BoxDecoration(
           color: Color(0xFFE5E5E5),
           borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset("assets/search.png", height: 26),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminDashboard(),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              icon: Image.asset("assets/account.png", height: 26),
-              onPressed: () {},
-            ),
-          ],
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomPadding),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Image.asset("assets/search.png", height: 26),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: Image.asset("assets/homeLogo.png", height: 32),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminDashboard(),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Image.asset("assets/account.png", height: 26),
+                onPressed: () {},
+              ),
+            ],
+          ),
         ),
       ),
     );

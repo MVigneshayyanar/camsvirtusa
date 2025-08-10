@@ -81,6 +81,10 @@ class _ClassesListPageState extends State<ClassesListPage> {
             ),
             ElevatedButton(
               onPressed: _addClassToFirestore,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7F50),
+                foregroundColor: Colors.white,
+              ),
               child: const Text("Add"),
             ),
           ],
@@ -136,12 +140,26 @@ class _ClassesListPageState extends State<ClassesListPage> {
     );
   }
 
+  void _refreshData() {
+    setState(() {
+      isLoading = true;
+      _searchController.clear();
+      allClasses.clear();
+      filteredClasses.clear();
+    });
+
+    // Add a small delay to show the refresh is happening
+    Future.delayed(const Duration(milliseconds: 100), () {
+      fetchClasses();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: const Size.fromHeight(58),
         child: AppBar(
           backgroundColor: const Color(0xFFFF7F50),
           elevation: 0,
@@ -154,104 +172,118 @@ class _ClassesListPageState extends State<ClassesListPage> {
             style: TextStyle(color: Colors.white),
           ),
           centerTitle: true,
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh, color: Colors.white),
+              onPressed: _refreshData,
+            ),
+          ],
         ),
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: InputDecoration(
-                      hintText: 'Search class name',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(40)),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 5),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, color: Color(0xFFFF7F50), size: 32),
-                  onPressed: _showAddClassDialog,
-                ),
-              ],
-            ),
-          ),
-          Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: const Color(0xFF2D2F38),
-            child: const Text(
-              "CLASS LIST",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : filteredClasses.isEmpty
-                ? const Center(child: Text("No classes found."))
-                : ListView.builder(
-              itemCount: filteredClasses.length,
-              itemBuilder: (context, index) {
-                final className = filteredClasses[index];
-                return GestureDetector(
-                  onTap: () => _openStudents(className),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-                    decoration: const BoxDecoration(
-                      border: Border(
-                        bottom: BorderSide(color: Colors.orange, width: 1),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search class name',
+                        prefixIcon: const Icon(Icons.search),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(40)),
+                        contentPadding: const EdgeInsets.symmetric(vertical: 5),
                       ),
                     ),
-                    child: Text(
-                      className,
-                      style: const TextStyle(fontSize: 16),
-                    ),
                   ),
-                );
-              },
-
+                  const SizedBox(width: 10),
+                  IconButton(
+                    icon: const Icon(Icons.add_circle, color: Color(0xFFFF7F50), size: 32),
+                    onPressed: _showAddClassDialog,
+                  ),
+                ],
+              ),
             ),
-
-          ),
-
-        ],
-
+            Container(
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              color: const Color(0xFF2D2F38),
+              child: const Text(
+                "CLASS LIST",
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+            Expanded(
+              child: isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : filteredClasses.isEmpty
+                  ? const Center(child: Text("No classes found."))
+                  : ListView.builder(
+                padding: EdgeInsets.only(
+                  bottom: 90 + MediaQuery.of(context).padding.bottom, // Add padding for bottom nav
+                ),
+                itemCount: filteredClasses.length,
+                itemBuilder: (context, index) {
+                  final className = filteredClasses[index];
+                  return GestureDetector(
+                    onTap: () => _openStudents(className),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: Colors.orange, width: 1),
+                        ),
+                      ),
+                      child: Text(
+                        className,
+                        style: const TextStyle(fontSize: 16),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
       bottomNavigationBar: Container(
-        height: 70,
+        height: 70 + MediaQuery.of(context).padding.bottom,
         decoration: const BoxDecoration(
           color: Color(0xFFE5E5E5),
           borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset("assets/search.png", height: 26),
-              onPressed: () {},
+        child: SafeArea(
+          minimum: EdgeInsets.zero,
+          child: Container(
+            height: 70,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                IconButton(
+                  icon: Image.asset("assets/search.png", height: 26),
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: Image.asset("assets/homeLogo.png", height: 32),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AdminDashboard(),
+                      ),
+                    );
+                  },
+                ),
+                IconButton(
+                  icon: Image.asset("assets/account.png", height: 26),
+                  onPressed: () {},
+                ),
+              ],
             ),
-            IconButton(
-              icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminDashboard(),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              icon: Image.asset("assets/account.png", height: 26),
-              onPressed: () {},
-            ),
-          ],
+          ),
         ),
       ),
     );

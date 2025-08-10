@@ -906,6 +906,7 @@ class _ClassControlPageState extends State<ClassControlPage> {
                     label: const Text("Add Faculty"),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFFFF7F50),
+                      foregroundColor: Colors.white,
                       shape: const StadiumBorder(),
                       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
                     ),
@@ -919,7 +920,9 @@ class _ClassControlPageState extends State<ClassControlPage> {
               child: RefreshIndicator(
                 onRefresh: _refreshData,
                 child: ListView(
-                  padding: EdgeInsets.zero,
+                  padding: EdgeInsets.only(
+                    bottom: 90 + MediaQuery.of(context).padding.bottom, // Add padding for bottom nav
+                  ),
                   children: [
                     if (selectedClassId != null) ...[
                       const SizedBox(height: 20),
@@ -961,7 +964,7 @@ class _ClassControlPageState extends State<ClassControlPage> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: const BoxDecoration(
-                              color: Color(0xFF2D2F38),
+                              color: Color(0xFF36454F),
                               borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                             ),
                             child: const Row(
@@ -1138,7 +1141,7 @@ class _ClassControlPageState extends State<ClassControlPage> {
                     Container(
                         alignment: Alignment.centerLeft,
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        color: const Color(0xFF2D2F38),
+                        color: const Color(0xFF36454F),
                         child: const Text("FACULTY INFORMATION",
                             style: TextStyle(
                                 color: Colors.white, fontWeight: FontWeight.bold))),
@@ -1191,7 +1194,6 @@ class _ClassControlPageState extends State<ClassControlPage> {
                         );
                       }).toList(),
                     ),
-                    const SizedBox(height: 80),
                   ],
                 ),
               ),
@@ -1200,20 +1202,36 @@ class _ClassControlPageState extends State<ClassControlPage> {
         ),
       ),
       bottomNavigationBar: Container(
-        height: 70,
+        height: 70 + MediaQuery.of(context).padding.bottom,
         decoration: const BoxDecoration(
             color: Color(0xFFE5E5E5),
             borderRadius: BorderRadius.vertical(top: Radius.circular(40))),
-        child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [
-          IconButton(
-              icon: Image.asset("assets/search.png", height: 26), onPressed: () {}),
-          IconButton(
-              icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () => Navigator.pop(context)),
-          IconButton(
-              icon: Image.asset("assets/account.png", height: 26), onPressed: () {}),
-        ]),
+        child: SafeArea(
+          minimum: EdgeInsets.zero,
+          child: Container(
+            height: 70,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                      icon: Image.asset("assets/search.png", height: 26),
+                      onPressed: () {}
+                  ),
+                  IconButton(
+                      icon: Image.asset("assets/homeLogo.png", height: 32),
+                      onPressed: () => Navigator.pop(context)
+                  ),
+                  IconButton(
+                      icon: Image.asset("assets/account.png", height: 26),
+                      onPressed: () {}
+                  ),
+                ]
+            ),
+          ),
+        ),
       ),
     );
   }
-}
+  }
+

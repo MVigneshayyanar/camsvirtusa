@@ -89,6 +89,10 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
             onPressed: () => Navigator.pop(context),
           ),
           ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF7F50),
+              foregroundColor: Colors.white,
+            ),
             child: const Text("Add"),
             onPressed: () async {
               final id = idController.text.trim();
@@ -160,7 +164,7 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(70),
+        preferredSize: const Size.fromHeight(58),
         child: AppBar(
           backgroundColor: const Color(0xFFFF7F50),
           elevation: 0,
@@ -211,22 +215,22 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
               ],
             ),
           ),
+          //Container(
+          //alignment: Alignment.centerLeft,
+          //padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          //color: const Color(0xFF2D2F38),
+          //child: const Text(
+          //"STUDENT LIST",
+          //style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          //),
+          //),
           Container(
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            color: const Color(0xFF2D2F38),
-            child: const Text(
-              "STUDENT LIST",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-          ),
-          Container(
-            color: Colors.black12,
+            color: const Color(0xFF36454F),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: const Row(
               children: [
-                Expanded(flex: 2, child: Text("NAME", style: TextStyle(fontWeight: FontWeight.bold))),
-                Expanded(flex: 1, child: Text("ID", style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(flex: 2, child: Text("NAME", style: TextStyle(color: Colors.white))),
+                Expanded(flex: 1, child: Text("ID", style: TextStyle(color: Colors.white))),
               ],
             ),
           ),
@@ -257,34 +261,37 @@ class _ClassStudentsPageState extends State<ClassStudentsPage> {
         ],
       ),
       bottomNavigationBar: Container(
-        height: 70,
+        height: 70 + MediaQuery.of(context).padding.bottom,
         decoration: const BoxDecoration(
           color: Color(0xFFE5E5E5),
           borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset("assets/search.png", height: 26),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset("assets/homeLogo.png", height: 32),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminDashboard(),
-                  ),
-                );
-              },
-            ),
-            IconButton(
-              icon: Image.asset("assets/account.png", height: 26),
-              onPressed: () {},
-            ),
-          ],
+        child: Padding(
+          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              IconButton(
+                icon: Image.asset("assets/search.png", height: 26),
+                onPressed: () {},
+              ),
+              IconButton(
+                icon: Image.asset("assets/homeLogo.png", height: 32),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => AdminDashboard(),
+                    ),
+                  );
+                },
+              ),
+              IconButton(
+                icon: Image.asset("assets/account.png", height: 26),
+                onPressed: () {},
+              ),
+            ],
+          ),
         ),
       ),
     );
