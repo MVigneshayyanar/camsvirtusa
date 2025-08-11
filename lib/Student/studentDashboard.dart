@@ -67,7 +67,7 @@ class _StudentDashboardState extends State<StudentDashboard> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => StudentAttendancePage(),
+        builder: (context) => AttendancePage(studentId:widget.studentId),
       ),
     );
   }
