@@ -1,188 +1,268 @@
 import 'package:flutter/material.dart';
 
-class StudentAttendancePage extends StatefulWidget {
-  const StudentAttendancePage({super.key});
+// class AttendancePage extends StatefulWidget {
+//   final String studentName;
+//   final List<String> semesters;
+//
+//   AttendancePage({required this.studentName});
+//
+//   @override
+//   _AttendancePageState createState() => _AttendancePageState();
+// }
+
+class AttendancePage extends StatefulWidget {
+  final String studentId;
+
+  const AttendancePage({Key? key, required this.studentId}) : super(key: key);
 
   @override
-  State<StudentAttendancePage> createState() => _StudentAttendancePageState();
+  _AttendancePageState createState() => _AttendancePageState();
 }
 
-class _StudentAttendancePageState extends State<StudentAttendancePage> {
-  String selectedSemester = 'I SEM';
-
-  final List<String> semesters = [
-    'I SEM',
-    'II SEM',
-    'III SEM',
-    'IV SEM',
-    'V SEM',
-    'VI SEM',
-    'VII SEM',
-    'VIII SEM',
-  ];
+class _AttendancePageState extends State<AttendancePage> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  String selectedSemester = '1st SEM'; // Initialize the selectedSemester
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF2D3A73),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // Top AppBar Section
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                color: const Color(0xFF2D3A73),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Icon(Icons.menu, color: Colors.white),
-                    Text('ATTENDANCE',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        )),
-                    Icon(Icons.home, color: Colors.white),
-                  ],
-                ),
-              ),
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 700),
+      vsync: this,
+    )..forward();
+  }
 
-              // Profile and Attendance Info
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: const Color(0xFF2D3A73),
-                child: Row(
-                  children: [
-                    const CircleAvatar(
-                      radius: 40,
-                      backgroundImage: AssetImage('assets/profile.jpg'), // Replace with your image
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('BALAJI R',
-                              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 10),
-                          Row(
-                            children: [
-                              Expanded(
-                                flex: 96,
-                                child: Container(
-                                  height: 20,
-                                  color: Colors.green,
-                                ),
-                              ),
-                              Expanded(
-                                flex: 4,
-                                child: Container(
-                                  height: 20,
-                                  color: Colors.red,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: const [
-                              Text('96%', style: TextStyle(color: Colors.white)),
-                              Text('4%', style: TextStyle(color: Colors.white)),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: const [
-                              Icon(Icons.arrow_drop_up, color: Colors.green),
-                              Text('PRESENT', style: TextStyle(color: Colors.white)),
-                              SizedBox(width: 10),
-                              Icon(Icons.arrow_drop_down, color: Colors.red),
-                              Text('ABSENT', style: TextStyle(color: Colors.white)),
-                            ],
-                          )
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-              // Semester Dropdown
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '*Semester',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.grey[200],
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: selectedSemester,
-                          items: semesters
-                              .map((sem) => DropdownMenuItem(value: sem, child: Text(sem)))
-                              .toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              selectedSemester = value!;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                    Center(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2D3A73),
-                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                        ),
-                        onPressed: () {
-                          // TODO: Load attendance for selected semester
-                        },
-                        child: const Text('GET ATTENDANCE'),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Column(
-                        children: [
-                          const Icon(Icons.download, color: Colors.green, size: 40),
-                          const Text('DOWNLOAD', style: TextStyle(color: Colors.green)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+  Widget buildProgressBar(double percentage, Color color) {
+    return ClipPath(
+      clipper: CustomClipPath(),
+      child: Container(
+        width: percentage * 2.4, // Adjust width according to percentage
+        height: 20,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.horizontal(left: Radius.circular(30), right: Radius.circular(30)),
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: Color(0xFFFF7A52),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(22),
+                  bottomRight: Radius.circular(22),
+                ),
+              ),
+              padding: EdgeInsets.all(20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(Icons.menu, color: Colors.white),
+                  Text(
+                    'ATTENDANCE',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                  Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Icon(Icons.notifications, color: Colors.white),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 45,
+                    backgroundColor: Colors.transparent,
+                    child: ClipOval(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFFFD085), Color(0xFFFFB86C)],
+                          ),
+                        ),
+                        // child: Center(
+                        //   child: Text(
+                        //     widget.studentName[0], // Display initials
+                        //     style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+                        //   ),
+                        // ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                buildProgressBar(0.86, Color(0xFF2ECC71)),
+                                SizedBox(width: 10),
+                                Text('86%'),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                buildProgressBar(0.10, Color(0xFF1E90FF)),
+                                SizedBox(width: 10),
+                                Text('10%'),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                buildProgressBar(0.04, Color(0xFFE74C3C)),
+                                SizedBox(width: 10),
+                                Text('4%'),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(children: [Icon(Icons.arrow_circle_up, color: Color(0xFF2ECC71)), Text("PRESENT")]),
+                              Row(children: [Icon(Icons.arrow_circle_up, color: Color(0xFF1E90FF)), Text("ON-DUTY")]),
+                              Row(children: [Icon(Icons.arrow_circle_up, color: Color(0xFFE74C3C)), Text("ABSENT")]),
+                            ],
+                          ),
+                        ),
+                        // Text(
+                        //   widget.studentName.toUpperCase(),
+                        //   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        // ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Row(
+                children: [
+                  Text("★ Semester", style: TextStyle(color: Colors.red)),
+                  SizedBox(width: 10),
+                  // DropdownButton<String>(
+                  //   value: selectedSemester,
+                  //   items: widget.semesters.map((String value) {
+                  //     return DropdownMenuItem<String>(
+                  //       value: value,
+                  //       child: Container(
+                  //         decoration: BoxDecoration(
+                  //             color: Colors.grey[300],
+                  //             borderRadius: BorderRadius.circular(8)
+                  //         ),
+                  //         padding: EdgeInsets.all(10),
+                  //         child: Text(value),
+                  //       ),
+                  //     );
+                  //   }).toList(),
+                  //   onChanged: (String? newValue) {
+                  //     setState(() {
+                  //       selectedSemester = newValue!;
+                  //     });
+                  //   },
+                  // ),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {},
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFFFF7A52),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 60, vertical: 15),
+              ),
+              child: Text('Get Attendance'),
+            ),
+            Text(
+              'DOWNLOAD',
+              style: TextStyle(color: Color(0xFF2ECC71)),
+            ),
+            SizedBox(height: 30),
+          ],
+        ),
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: BottomNavigationBar(
+          items: [
+            BottomNavigationBarItem(icon: Icon(Icons.search), label: ""),
+            BottomNavigationBarItem(
+                icon: Container(
+                  height: 40,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: Color(0xFFFF7A52),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.home, color: Colors.white),
+                ),
+                label: ""
+            ),
+            BottomNavigationBarItem(icon: Icon(Icons.person), label: ""),
+          ],
+          currentIndex: 1,
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.grey,
+        ),
+      ),
+    );
+  }
+}
+
+class CustomClipPath extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    Path path = Path();
+    path.lineTo(size.width - 30, 0);
+    path.lineTo(size.width, size.height / 2);
+    path.lineTo(size.width - 30, size.height);
+    path.lineTo(0, size.height);
+    path.lineTo(0, 0);
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
