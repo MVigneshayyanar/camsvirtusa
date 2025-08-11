@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 // Custom Color Palette
 const Color kPrimary = Color(0xFFFF7043);
 const Color kBackground = Color(0xFFF9F9F9);
-const Color kShadow = Color(0x22000000);
+const Color kShadow = Color(0xFFFFFFFF);
 
 class MarkAttendance extends StatefulWidget {
   final String facultyId;
@@ -81,24 +81,17 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       appBar: AppBar(
         backgroundColor: kPrimary,
         title: Text(
-          facultyName.isNotEmpty
-              ? 'Attendance Register ($facultyName)'
-              : 'Attendance Register',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          'ATTENDANCE REGISTER',
+            style: TextStyle(color: Colors.white, fontSize: 20)
+        ),
+        centerTitle: true,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
         ),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save_alt_rounded, color: Colors.white),
-            onPressed: () {},
-          ),
-        ],
-        leading: IconButton(
-          icon: const Icon(Icons.menu, color: Colors.white),
-          onPressed: () {},
-        ),
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -119,7 +112,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                 borderRadius: BorderRadius.circular(14)),
             elevation: 2,
             child: ListTile(
-              leading: const Icon(Icons.class_, color: kPrimary),
+              leading: const Icon(Icons.class_, color: Color(0xFF36454F)),
               title: Text(
                 className,
                 style: const TextStyle(
@@ -127,7 +120,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     color: Colors.black87),
               ),
               trailing: const Icon(Icons.arrow_forward_ios,
-                  color: kPrimary),
+                  color: Color(0xFF36454F)),
               onTap: () => _openClassAttendance(className),
             ),
           );
@@ -591,7 +584,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           elevation: 0,
           title: const Text(
             'ATTENDANCE REGISTER',
-            style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+            style: TextStyle(color: Colors.white, fontSize: 20),
           ),
           leading: const BackButton(color: Colors.white),
         ),
@@ -648,8 +641,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         backgroundColor: kPrimary,
         elevation: 0,
         title: const Text(
-          'ATTENDENCE REGISTER',
-          style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+          'MARK ATTENDANCE',
+          style: TextStyle(color: Colors.white, fontSize: 24),
         ),
         actions: [
           IconButton(

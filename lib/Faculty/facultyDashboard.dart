@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../Student/studentTimetable.dart';
 import 'facultyProfile.dart';
 import 'MarkAttendance.dart';
 import '';
@@ -72,17 +73,11 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
     );
   }
 
-  void _navigateToTimeTable() {
+  void navigateToTimeTable() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Time Table'),
-            backgroundColor: const Color(0xFFFF7F50),
-          ),
-          body: const Center(child: Text('Time Table Page', style: TextStyle(fontSize: 24))),
-        ),
+        builder: (context) => TimeTablePage(studentId:widget.facultyId),
       ),
     );
   }
@@ -224,7 +219,7 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
                 children: [
                   CircleAvatar(
                     radius: screenWidth > 600 ? 35 : 30, // Responsive avatar size
-                    backgroundImage: const AssetImage('assets/profile.png'),
+                    backgroundImage: const AssetImage('assets/account.png'),
                   ),
                   SizedBox(width: screenWidth > 600 ? 20 : 16),
                   Expanded(
@@ -266,25 +261,25 @@ class _FacultyDashboardState extends State<FacultyDashboard> {
           _buildDashboardCard(
             context,
             label: "TIME TABLE",
-            imagePath: "assets/time_table_icon.png",
-            onTap: _navigateToTimeTable,
+            imagePath: "assets/timetable_ad.png",
+            onTap: navigateToTimeTable,
           ),
           _buildDashboardCard(
             context,
             label: "MARK ATTENDANCE",
-            imagePath: "assets/mark_attendance_icon.png",
+            imagePath: "assets/Attendance.png",
             onTap: _navigateToMarkAttendance,
           ),
           _buildDashboardCard(
             context,
             label: "MY MENTEES",
-            imagePath: "assets/my_mentees_icon.png",
+            imagePath: "assets/MyMentees.png",
             onTap: _navigateToMentees,
           ),
           _buildDashboardCard(
             context,
             label: "REQUESTS",
-            imagePath: "assets/requests_icon.png",
+            imagePath: "assets/requests.png",
             onTap: _navigateToRequests,
           ),
         ],

@@ -60,10 +60,9 @@ flutter:
     - assets/on_duty.png
     - assets/leave_form.png
     - assets/MTechVtt.png
-    - assets/mark_attendance.png
     - assets/account.png
+    - assets/requests.png
     - assets/student_details.png
-    - assets/my_mentees.png
     - assets/student_ad.png
     - assets/staff_ad.png
     - assets/batch_ad.png
@@ -73,6 +72,7 @@ flutter:
     - assets/login_illustration.png
     - assets/cap.png
     - assets/stick.png
+    - assets/MyMentees.png
     - assets/faculty.png
     - assets/otp.png
     - assets/student.png
