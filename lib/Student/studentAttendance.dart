@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_file/open_file.dart';
 
 class AttendancePage extends StatefulWidget {
   final String studentId;
@@ -298,6 +299,165 @@ class _AttendancePageState extends State<AttendancePage>
     return false;
   }
 
+  /// Show dialog asking if user wants to open the PDF
+  Future<void> _showOpenPdfDialog(String filePath) async {
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.picture_as_pdf,
+                color: const Color(0xFFFF7A52),
+                size: 28,
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'PDF Generated',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your attendance report has been successfully generated.',
+                style: TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.folder,
+                      color: Colors.grey.shade600,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        filePath,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                          fontFamily: 'monospace',
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Would you like to open the PDF now?',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Later',
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _openPDF(filePath);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7A52),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+              child: const Text(
+                'Open PDF',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// Open the PDF file using the default PDF viewer
+  Future<void> _openPDF(String filePath) async {
+    try {
+      final result = await OpenFile.open(filePath);
+
+      if (result.type != ResultType.done) {
+        // Handle different error types
+        String errorMessage;
+        switch (result.type) {
+          case ResultType.noAppToOpen:
+            errorMessage = 'No app available to open PDF files. Please install a PDF viewer.';
+            break;
+          case ResultType.fileNotFound:
+            errorMessage = 'PDF file not found. It may have been moved or deleted.';
+            break;
+          case ResultType.permissionDenied:
+            errorMessage = 'Permission denied. Unable to open the PDF file.';
+            break;
+          default:
+            errorMessage = 'Unable to open PDF file: ${result.message}';
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      print("Error opening PDF: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error opening PDF: $e'),
+          backgroundColor: Colors.red.shade600,
+        ),
+      );
+    }
+  }
+
   Future<void> _generateAttendancePDF() async {
     try {
       setState(() => loading = true);
@@ -372,10 +532,11 @@ class _AttendancePageState extends State<AttendancePage>
         final file = File(filePath);
         await file.writeAsBytes(await pdf.save());
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('PDF saved at: $filePath')),
-        );
         print("PDF generated at: $filePath");
+
+        // Show dialog asking if user wants to open the PDF
+        await _showOpenPdfDialog(filePath);
+
       } catch (writeError, stack) {
         print('Error saving PDF: $writeError\n$stack');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -390,10 +551,11 @@ class _AttendancePageState extends State<AttendancePage>
           final fallbackFile = File(fallbackPath);
           await fallbackFile.writeAsBytes(await pdf.save());
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('PDF saved at: $fallbackPath')),
-          );
           print('PDF saved to fallback path: $fallbackPath');
+
+          // Show dialog for fallback path too
+          await _showOpenPdfDialog(fallbackPath);
+
         } catch (fallbackError, stack2) {
           print('Fallback save failed: $fallbackError\n$stack2');
           ScaffoldMessenger.of(context).showSnackBar(
