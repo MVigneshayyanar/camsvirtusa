@@ -1,50 +1,59 @@
 name: camsvirtusa
 description: "A new Flutter project."
+
 publish_to: 'none'
+
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.6.1 <4.0.0"
+  sdk: ^3.6.1
 
 dependencies:
   flutter:
     sdk: flutter
   firebase_core: ^2.11.0
   firebase_auth: ^4.5.0
-  cloud_firestore: ^4.5.3
+  cloud_firestore: ^4.8.4
   firebase_messaging: ^14.5.0
   google_fonts: ^6.1.0
   shared_preferences: ^2.2.2
   intl: ^0.20.2
   cached_network_image: ^3.3.1
-  path_provider: ^2.1.3
   pdf: ^3.10.4
+  path_provider: ^2.0.15
   permission_handler: ^11.3.1
+  open_file: ^3.2.1
+
+  # State management
   provider: ^6.1.2
+
+  # Icons
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
-  open_file: ^3.3.2
 
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.3.0
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^5.0.0
 
 flutter_native_splash:
-  color: "#FFFFFF"
-  image: assets/logo.png
+  color: "#FFFFFF"        # white background
+  image: logo.png # your app logo (we’ll add this next)
   android: true
   ios: true
 
 flutter_icons:
   android: true
   ios: true
-  image_path: "assets/logo.png"
+  image_path: "assets/homelogo1.png"
+
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
 
 flutter:
   uses-material-design: true
+
   assets:
     - assets/logo.png
     - assets/role_top.png
@@ -72,6 +81,26 @@ flutter:
     - assets/faculty.png
     - assets/otp.png
     - assets/student.png
+    - assets/account.png
     - assets/homeLogo.png
     - assets/search.png
     - assets/news.png
+dependency_overrides:
+executables:
+topics:
+  -
+documentation:
+ignored_advisories: []
+issue_tracker:
+repository:
+false_secrets:
+  -
+screenshots:
+  -
+homepage:
+platforms:
+
+
+
+
+

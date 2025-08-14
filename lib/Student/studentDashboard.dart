@@ -15,14 +15,64 @@ class StudentDashboard extends StatefulWidget {
   _StudentDashboardState createState() => _StudentDashboardState();
 }
 
-class _StudentDashboardState extends State<StudentDashboard> {
+class _StudentDashboardState extends State<StudentDashboard>
+    with SingleTickerProviderStateMixin {
   Map<String, dynamic>? studentData;
   bool _isLoading = true;
+
+  // News Bar Animation Controller
+  late AnimationController _newsController;
+  late Animation<Offset> _offsetAnimation;
+
+  List<String> newsItems = [
+    "Welcome to the new academic year! Registration is now open.",
+    "Library timings updated: Now open from 8 AM to 8 PM",
+    "Sports day scheduled for next Friday - All students are invited!",
+    "New course offerings available - Check your student portal",
+    "Campus maintenance scheduled for weekend - Some areas may be restricted"
+  ];
+
+  int currentNewsIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchData();
+
+    // Initialize news animation
+    _newsController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _offsetAnimation = Tween<Offset>(
+      begin: const Offset(1.0, 0.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _newsController,
+      curve: Curves.easeInOut,
+    ));
+
+    _startNewsRotation();
+  }
+
+  @override
+  void dispose() {
+    _newsController.dispose();
+    super.dispose();
+  }
+
+  void _startNewsRotation() {
+    _newsController.forward();
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted) {
+        setState(() {
+          currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+        });
+        _newsController.reset();
+        _startNewsRotation();
+      }
+    });
   }
 
   Future<void> _loadAllData() async {
@@ -110,6 +160,77 @@ class _StudentDashboardState extends State<StudentDashboard> {
           ),
           body: const Center(child: Text("Search Page")),
         ),
+      ),
+    );
+  }
+
+  Widget _buildNewsBar() {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: screenWidth > 600 ? 24 : 16,
+        vertical: 8,
+      ),
+      padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFF6B47), // Slightly darker than your app bar color
+        borderRadius: BorderRadius.circular(screenWidth > 600 ? 12 : 10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              Icons.campaign,
+              color: Colors.white,
+              size: screenWidth > 600 ? 24 : 20,
+            ),
+          ),
+          SizedBox(width: screenWidth > 600 ? 16 : 12),
+          Expanded(
+            child: SlideTransition(
+              position: _offsetAnimation,
+              child: Text(
+                newsItems[currentNewsIndex],
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: screenWidth > 600 ? 16 : 14,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+          SizedBox(width: screenWidth > 600 ? 12 : 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              "NEW",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: screenWidth > 600 ? 12 : 10,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -279,7 +400,12 @@ class _StudentDashboardState extends State<StudentDashboard> {
                   ),
                 ],
               ),
-              SizedBox(height: screenHeight > 600 ? 32 : 24),
+              SizedBox(height: screenHeight > 600 ? 24 : 16),
+
+              // News Bar - Added here
+              _buildNewsBar(),
+
+              SizedBox(height: screenHeight > 600 ? 24 : 16),
 
               // Dashboard Grid
               _buildDashboardGrid(context),
