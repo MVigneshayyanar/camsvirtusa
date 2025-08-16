@@ -2,6 +2,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -19,17 +20,17 @@ class _AttendancePageState extends State<AttendancePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
-  // attendanceData structure:
-  // {
-  //   "07-08-2025": {
-  //      0: {"JEE": "A"},
-  //      1: {"JEE": "P"},
-  //      ...
-  //   },
-  //   ...
-  // }
   Map<String, Map<int, Map<String, String>>> attendanceData = {};
   bool loading = false;
+
+  // Add these variables to store dynamic attendance statistics
+  int presentCount = 0;
+  int absentCount = 0;
+  int odCount = 0;
+  int totalCount = 0;
+  double presentPercent = 0.0;
+  double absentPercent = 0.0;
+  double odPercent = 0.0;
 
   @override
   void initState() {
@@ -47,6 +48,51 @@ class _AttendancePageState extends State<AttendancePage>
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Calculate attendance statistics from the loaded data
+  void _calculateAttendanceStats() {
+    presentCount = 0;
+    absentCount = 0;
+    odCount = 0;
+    totalCount = 0;
+
+    for (var dateData in attendanceData.values) {
+      for (var hourData in dateData.values) {
+        final status = hourData['status'] ?? '';
+        if (status.isNotEmpty) {
+          totalCount++;
+          switch (status.toUpperCase()) {
+            case 'P':
+              presentCount++;
+              break;
+            case 'A':
+              absentCount++;
+              break;
+            case 'OD':
+              odCount++;
+              break;
+          }
+        }
+      }
+    }
+
+    // Calculate percentages
+    if (totalCount > 0) {
+      presentPercent = (presentCount / totalCount) * 100;
+      absentPercent = (absentCount / totalCount) * 100;
+      odPercent = (odCount / totalCount) * 100;
+    } else {
+      presentPercent = 0.0;
+      absentPercent = 0.0;
+      odPercent = 0.0;
+    }
+
+    print("Attendance Stats:");
+    print("Present: $presentCount (${presentPercent.toStringAsFixed(1)}%)");
+    print("Absent: $absentCount (${absentPercent.toStringAsFixed(1)}%)");
+    print("On Duty: $odCount (${odPercent.toStringAsFixed(1)}%)");
+    print("Total: $totalCount");
   }
 
   /// Get responsive dimensions based on screen size and orientation
@@ -137,6 +183,7 @@ class _AttendancePageState extends State<AttendancePage>
         print("Document does not exist for student: ${widget.studentId}");
         setState(() {
           attendanceData = {};
+          _calculateAttendanceStats(); // Reset stats
           loading = false;
         });
         return;
@@ -205,6 +252,7 @@ class _AttendancePageState extends State<AttendancePage>
 
       setState(() {
         attendanceData = sorted;
+        _calculateAttendanceStats(); // Calculate dynamic stats
         loading = false;
       });
 
@@ -223,7 +271,10 @@ class _AttendancePageState extends State<AttendancePage>
       }
     } catch (e) {
       print("Error fetching attendance: $e");
-      setState(() => loading = false);
+      setState(() {
+        _calculateAttendanceStats(); // Reset stats on error
+        loading = false;
+      });
     }
   }
 
@@ -474,34 +525,394 @@ class _AttendancePageState extends State<AttendancePage>
       final hours = collectHours();
       final dates = attendanceData.keys.toList();
 
-      // Table header
-      final headers = ['Hours'] + dates;
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(widget.studentId)
+          .get();
 
-      // Table rows
-      final data = hours.map((hour) {
-        List<String> row = [];
-        row.add((hour + 1).toString()); // Hour number
+      final name = studentDoc?['name']?.toString() ?? '';
 
-        for (var date in dates) {
+      // --- Use existing calculated counters for attendance stats ---
+      // (We already have presentCount, absentCount, odCount, totalCount, and percentages)
+
+      // Define colors similar to app theme
+      final primaryColor = PdfColor.fromHex('#FF7A52');
+      final headerColor = PdfColor.fromHex('#37474F');
+      final presentColor = PdfColor.fromHex('#2ECC71');
+      final absentColor = PdfColor.fromHex('#E74C3C');
+      final odColor = PdfColor.fromHex('#1E90FF');
+      final lightGray = PdfColor.fromHex('#F5F5F5');
+      final darkGray = PdfColor.fromHex('#666666');
+
+      // Create data structure with dates as rows and hours as columns
+      // Create table headers with hours
+      final List<String> tableHeaders = ['Date'] + hours.map((h) => 'Hour ${h + 1}').toList();
+
+      // Create table data with dates as rows
+      final List<List<String>> tableData = dates.map((date) {
+        List<String> row = [date]; // Start with date
+
+        // Add data for each hour
+        for (var hour in hours) {
           final cell = attendanceData[date]?[hour];
           final subject = cell?['subject'] ?? '';
           final status = cell?['status'] ?? '';
-          row.add(subject.isNotEmpty ? '$subject ($status)' : '-');
+
+          if (subject.isNotEmpty && status.isNotEmpty) {
+            row.add('$subject ($status)');
+          } else {
+            row.add('-');
+          }
         }
+
         return row;
       }).toList();
 
       pdf.addPage(
         pw.MultiPage(
+          margin: const pw.EdgeInsets.all(40),
+          pageFormat: PdfPageFormat.a4,
           build: (context) => [
-            pw.Text('Attendance Report', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-            pw.SizedBox(height: 20),
-            pw.Table.fromTextArray(
-              headers: headers,
-              data: data,
-              border: pw.TableBorder.all(),
-              headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
-              cellAlignment: pw.Alignment.center,
+            // Header Section with gradient-like effect
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(20),
+              decoration: pw.BoxDecoration(
+                color: primaryColor,
+                borderRadius: pw.BorderRadius.circular(15),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    'ATTENDANCE REPORT',
+                    style: pw.TextStyle(
+                      fontSize: 24,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                  ),
+                  pw.SizedBox(height: 12),
+                  pw.Text(
+                    name,
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      color: PdfColors.white,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    'Student ID: ${widget.studentId}',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      color: PdfColors.white,
+                      fontWeight: pw.FontWeight.normal,
+                    ),
+                  ),
+                  pw.SizedBox(height: 5),
+                  pw.Text(
+                    'Generated on: ${DateTime.now().toString().split(' ')[0]}',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      color: PdfColors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            pw.SizedBox(height: 30),
+
+            // Summary Statistics Section
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(20),
+              decoration: pw.BoxDecoration(
+                color: lightGray,
+                borderRadius: pw.BorderRadius.circular(10),
+                border: pw.Border.all(color: PdfColors.black, width: 1),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'ATTENDANCE SUMMARY',
+                    style: pw.TextStyle(
+                      fontSize: 18,
+                      fontWeight: pw.FontWeight.bold,
+                      color: headerColor,
+                    ),
+                  ),
+                  pw.SizedBox(height: 15),
+                  pw.Row(
+                    mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                    children: [
+                      // Present Stats
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        decoration: pw.BoxDecoration(
+                          color: presentColor,
+                          borderRadius: pw.BorderRadius.circular(8),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text(
+                              'PRESENT',
+                              style: pw.TextStyle(
+                                fontSize: 10,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                            pw.SizedBox(height: 5),
+                            pw.Text(
+                              '$presentCount',
+                              style: pw.TextStyle(
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                            pw.Text(
+                              '${presentPercent.toStringAsFixed(1)}%',
+                              style: pw.TextStyle(
+                                fontSize: 12,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // On Duty Stats
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        decoration: pw.BoxDecoration(
+                          color: odColor,
+                          borderRadius: pw.BorderRadius.circular(8),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text(
+                              'ON DUTY',
+                              style: pw.TextStyle(
+                                fontSize: 10,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                            pw.SizedBox(height: 5),
+                            pw.Text(
+                              '$odCount',
+                              style: pw.TextStyle(
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                            pw.Text(
+                              '${odPercent.toStringAsFixed(1)}%',
+                              style: pw.TextStyle(
+                                fontSize: 12,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Absent Stats
+                      pw.Container(
+                        padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        decoration: pw.BoxDecoration(
+                          color: absentColor,
+                          borderRadius: pw.BorderRadius.circular(8),
+                        ),
+                        child: pw.Column(
+                          children: [
+                            pw.Text(
+                              'ABSENT',
+                              style: pw.TextStyle(
+                                fontSize: 10,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                            pw.SizedBox(height: 5),
+                            pw.Text(
+                              '$absentCount',
+                              style: pw.TextStyle(
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                            pw.Text(
+                              '${absentPercent.toStringAsFixed(1)}%',
+                              style: pw.TextStyle(
+                                fontSize: 12,
+                                color: PdfColors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 15),
+                  pw.Container(
+                    width: double.infinity,
+                    height: 2,
+                    color: primaryColor,
+                  ),
+                  pw.SizedBox(height: 10),
+                  pw.Text(
+                    'Total Classes: $totalCount',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                      color: darkGray,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            pw.SizedBox(height: 30),
+
+            // Attendance Table Section Header
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+              decoration: pw.BoxDecoration(
+                color: headerColor,
+                borderRadius: const pw.BorderRadius.only(
+                  topLeft: pw.Radius.circular(8),
+                  topRight: pw.Radius.circular(8),
+                ),
+              ),
+              child: pw.Text(
+                'DETAILED ATTENDANCE RECORD',
+                style: pw.TextStyle(
+                  fontSize: 16,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                ),
+                textAlign: pw.TextAlign.center,
+              ),
+            ),
+
+            // Enhanced Attendance Table (Dates as rows, Hours as columns)
+            pw.Table(
+              border: pw.TableBorder.all(
+                color: PdfColors.grey200,
+                width: 1,
+              ),
+              columnWidths: {
+                0: const pw.FixedColumnWidth(80), // Date column
+                // Hour columns will auto-size
+              },
+              children: [
+                // Header row (Hours at top)
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: PdfColors.grey200,
+                  ),
+                  children: tableHeaders.map((header) {
+                    return pw.Container(
+                      padding: const pw.EdgeInsets.all(8),
+                      child: pw.Text(
+                        header,
+                        style: pw.TextStyle(
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: header == 'Date' ? 12 : 9,
+                          color: headerColor,
+                        ),
+                        textAlign: pw.TextAlign.center,
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                // Data rows (Dates on left)
+                ...tableData.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final row = entry.value;
+                  final isEvenRow = index % 2 == 0;
+
+                  return pw.TableRow(
+                    decoration: pw.BoxDecoration(
+                      color: isEvenRow ? PdfColors.white : lightGray,
+                    ),
+                    children: row.asMap().entries.map((cellEntry) {
+                      final cellIndex = cellEntry.key;
+                      final cellValue = cellEntry.value;
+
+                      // Determine cell background color based on status
+                      PdfColor? cellColor;
+                      if (cellIndex > 0 && cellValue != '-') { // Not the date column and has data
+                        if (cellValue.contains('(P)')) {
+                          cellColor = presentColor;
+                        } else if (cellValue.contains('(A)')) {
+                          cellColor = absentColor;
+                        } else if (cellValue.contains('(OD)')) {
+                          cellColor = odColor;
+                        }
+                      }
+
+                      return pw.Container(
+                        padding: const pw.EdgeInsets.all(6),
+                        decoration: cellColor != null ? pw.BoxDecoration(color: cellColor) : null,
+                        child: pw.Text(
+                          cellValue,
+                          style: pw.TextStyle(
+                            fontSize: cellIndex == 0 ? 10 : 8,
+                            fontWeight: cellIndex == 0 ? pw.FontWeight.bold : pw.FontWeight.normal,
+                            color: cellColor != null ? PdfColors.white :
+                            (cellIndex == 0 ? headerColor : PdfColors.black),
+                          ),
+                          textAlign: pw.TextAlign.center,
+                        ),
+                      );
+                    }).toList(),
+                  );
+                }).toList(),
+              ],
+            ),
+
+            pw.SizedBox(height: 30),
+
+            // Footer
+            pw.Container(
+              width: double.infinity,
+              padding: const pw.EdgeInsets.all(15),
+              decoration: pw.BoxDecoration(
+                color: lightGray,
+                borderRadius: pw.BorderRadius.circular(8),
+                border: pw.Border.all(color: primaryColor, width: 2),
+              ),
+              child: pw.Column(
+                children: [
+                  pw.Text(
+                    'Legend: P = Present, A = Absent, OD = On Duty',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: darkGray,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    'This report was automatically generated by the Attendance Management System',
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      color: darkGray,
+                      fontStyle: pw.FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -580,7 +991,9 @@ class _AttendancePageState extends State<AttendancePage>
     }
 
     final dimensions = _getResponsiveDimensions(context);
-    final dates = attendanceData.keys.toList(); // already sorted at fetch
+    final dates = attendanceData.keys.toList()
+      ..sort((a, b) => b.compareTo(a)); // descending order
+    // already sorted at fetch
     final hours = collectHours();
     if (hours.isEmpty) return const Center(child: Text('No hours found'));
 
@@ -709,7 +1122,7 @@ class _AttendancePageState extends State<AttendancePage>
                             final status = cell['status'] as String;
 
                             colChildren.add(Container(
-                              width: dimensions['dateColumnWidth']! - 10,
+                              width: dimensions['dateColumnWidth']!,
                               height: dimensions['hourCellHeight']!,
                               decoration: BoxDecoration(
                                 color: status.isNotEmpty
@@ -890,7 +1303,7 @@ class _AttendancePageState extends State<AttendancePage>
                   SizedBox(width: dimensions['padding']!),
                   Expanded(
                     child: Text(
-                      'Student ID: ${widget.studentId}',
+                      'Student Name: ${}',
                       style: TextStyle(
                         fontSize: dimensions['fontSize']!,
                         fontWeight: FontWeight.w500,
@@ -968,13 +1381,28 @@ class _AttendancePageState extends State<AttendancePage>
 
     return Column(
       children: [
-        // Progress bars
+        // Progress bars - using dynamic percentages
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildProgressItem(0.86, const Color(0xFF2ECC71), '86%', dimensions),
-            _buildProgressItem(0.10, const Color(0xFF1E90FF), '10%', dimensions),
-            _buildProgressItem(0.04, const Color(0xFFE74C3C), '4%', dimensions),
+            _buildProgressItem(
+                presentPercent / 100,
+                const Color(0xFF2ECC71),
+                '${presentPercent.toStringAsFixed(1)}%',
+                dimensions
+            ),
+            _buildProgressItem(
+                odPercent / 100,
+                const Color(0xFF1E90FF),
+                '${odPercent.toStringAsFixed(1)}%',
+                dimensions
+            ),
+            _buildProgressItem(
+                absentPercent / 100,
+                const Color(0xFFE74C3C),
+                '${absentPercent.toStringAsFixed(1)}%',
+                dimensions
+            ),
           ],
         ),
         SizedBox(height: dimensions['padding']! / 2),
