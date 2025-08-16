@@ -14,11 +14,15 @@ class AttendancePage extends StatefulWidget {
 
   @override
   _AttendancePageState createState() => _AttendancePageState();
+
 }
+
 
 class _AttendancePageState extends State<AttendancePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+
+
 
   Map<String, Map<int, Map<String, String>>> attendanceData = {};
   bool loading = false;
@@ -1216,6 +1220,9 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
+
+
+  // Top progress UI with responsive design
   // Top progress UI with responsive design
   Widget buildHeaderArea(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -1223,156 +1230,171 @@ class _AttendancePageState extends State<AttendancePage>
     final isLargeScreen = mediaQuery.size.width > 600;
     final isPortrait = mediaQuery.orientation == Orientation.portrait;
 
-    return Column(
-      children: [
-        Container(
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [Color(0xFFFF7A52), Color(0xFFFF6B3D)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.only(
-              bottomLeft: Radius.circular(isLargeScreen ? 30 : 22),
-              bottomRight: Radius.circular(isLargeScreen ? 30 : 22),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFFFF7A52).withOpacity(0.3),
-                blurRadius: 15,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          padding: EdgeInsets.all(dimensions['padding']!),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(
-                Icons.menu,
-                color: Colors.white,
-                size: dimensions['iconSize']!,
-              ),
-              Text(
-                'ATTENDANCE',
-                style: TextStyle(
-                  fontSize: dimensions['fontSize']! + 2,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(widget.studentId)
+          .get(),
+      builder: (context, snapshot) {
+        final name = snapshot.hasData && snapshot.data!.exists
+            ? snapshot.data!['name']?.toString() ?? ''
+            : '';
+
+        return Column(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFF7A52), Color(0xFFFF6B3D)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-              ),
-              Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Icon(
-                    Icons.notifications,
-                    color: Colors.white,
-                    size: dimensions['iconSize']!,
-                  ),
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(isLargeScreen ? 30 : 22),
+                  bottomRight: Radius.circular(isLargeScreen ? 30 : 22),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFF7A52).withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 8),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-        SizedBox(height: dimensions['padding']!),
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: dimensions['padding']!),
-          child: isPortrait || !isLargeScreen
-              ? Column(
-            children: [
-              // Avatar row
-              Row(
+              padding: EdgeInsets.all(dimensions['padding']!),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(
+                    Icons.menu,
+                    color: Colors.white,
+                    size: dimensions['iconSize']!,
+                  ),
+                  Text(
+                    'ATTENDANCE',
+                    style: TextStyle(
+                      fontSize: dimensions['fontSize']! + 2,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  Stack(
+                    alignment: Alignment.topRight,
+                    children: [
+                      Icon(
+                        Icons.notifications,
+                        color: Colors.white,
+                        size: dimensions['iconSize']!,
+                      ),
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: dimensions['padding']!),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: dimensions['padding']!),
+              child: isPortrait || !isLargeScreen
+                  ? Column(
+                children: [
+                  // Avatar row
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: isLargeScreen ? 45 : 36,
+                        backgroundColor: Colors.white70,
+                        child: Icon(
+                          Icons.person,
+                          size: isLargeScreen ? 40 : 30,
+                          color: Colors.grey,
+                        ),
+                      ),
+
+                      SizedBox(width: dimensions['padding']!),
+                      Expanded(
+                        child: Text(
+                          name.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: dimensions['fontSize']!,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: dimensions['padding']!),
+                  // Progress bars row
+                  buildProgressSection(context),
+                ],
+              )
+                  : Row(
                 children: [
                   CircleAvatar(
-                    radius: isLargeScreen ? 45 : 36,
+                    radius: 45,
                     backgroundColor: Colors.white70,
                     child: Icon(
                       Icons.person,
-                      size: isLargeScreen ? 40 : 30,
+                      size: 40,
                       color: Colors.grey,
                     ),
                   ),
                   SizedBox(width: dimensions['padding']!),
-                  Expanded(
-                    child: Text(
-                      'Student Name: ${}',
-                      style: TextStyle(
-                        fontSize: dimensions['fontSize']!,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
+                  Expanded(child: buildProgressSection(context)),
                 ],
               ),
-              SizedBox(height: dimensions['padding']!),
-              // Progress bars row
-              buildProgressSection(context),
-            ],
-          )
-              : Row(
-            children: [
-              CircleAvatar(
-                radius: 45,
-                backgroundColor: Colors.white70,
-                child: Icon(
-                  Icons.person,
-                  size: 40,
-                  color: Colors.grey,
+            ),
+            SizedBox(height: dimensions['padding']!),
+            ElevatedButton(
+              onPressed: () async {
+                await fetchAttendance();
+                if (attendanceData.isNotEmpty) {
+                  await _generateAttendancePDF();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7A52),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                padding: EdgeInsets.symmetric(
+                  horizontal: _getResponsiveDimensions(context)['padding']! * 2,
+                  vertical: _getResponsiveDimensions(context)['padding']!,
+                ),
+                elevation: 8,
+                shadowColor: const Color(0xFFFF7A52).withOpacity(0.4),
+              ),
+              child: loading
+                  ? SizedBox(
+                height: 18,
+                width: 18,
+                child: const CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+                  : Text(
+                'Get Attendance',
+                style: TextStyle(
+                  fontSize: _getResponsiveDimensions(context)['fontSize']!,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(width: dimensions['padding']!),
-              Expanded(child: buildProgressSection(context)),
-            ],
-          ),
-        ),
-        SizedBox(height: dimensions['padding']!),
-        ElevatedButton(
-          onPressed: () async {
-            await fetchAttendance();
-            if (attendanceData.isNotEmpty) {
-              await _generateAttendancePDF();
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF7A52),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
             ),
-            padding: EdgeInsets.symmetric(
-              horizontal: _getResponsiveDimensions(context)['padding']! * 2,
-              vertical: _getResponsiveDimensions(context)['padding']!,
-            ),
-            elevation: 8,
-            shadowColor: const Color(0xFFFF7A52).withOpacity(0.4),
-          ),
-          child: loading
-              ? SizedBox(
-            height: 18,
-            width: 18,
-            child: const CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
-            ),
-          )
-              : Text(
-            'Get Attendance',
-            style: TextStyle(
-              fontSize: _getResponsiveDimensions(context)['fontSize']!,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(height: dimensions['padding']!),
-      ],
+            SizedBox(height: dimensions['padding']!),
+          ],
+        );
+      },
     );
   }
 
@@ -1507,6 +1529,7 @@ class _AttendancePageState extends State<AttendancePage>
       ),
     );
   }
+
 
   @override
   Widget build(BuildContext context) {
