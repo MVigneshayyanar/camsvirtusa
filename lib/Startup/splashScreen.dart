@@ -1,8 +1,7 @@
-// lib/Startup/splashScreen.dart
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'routes.dart'; // adjust path if needed; if file is in same folder use 'routes.dart'
+import 'routes.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -15,38 +14,72 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAndNavigate();
+    _initializeSplash();
+  }
+
+  void _initializeSplash() {
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        _checkAndNavigate();
+      }
+    });
   }
 
   Future<void> _checkAndNavigate() async {
-    final prefs = await SharedPreferences.getInstance();
-    final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
-    final String? role = prefs.getString('role');
-    final String? studentId = prefs.getString('studentId');
-    final String? facultyId = prefs.getString('facultyId');
-    final String? facultyRole = prefs.getString('facultyRole'); // admin or faculty
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final bool isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
+      final String? role = prefs.getString('role');
+      final String? studentId = prefs.getString('studentId');
+      final String? facultyId = prefs.getString('facultyId');
+      final String? facultyRole = prefs.getString('facultyRole');
 
-    // small splash delay so logo shows
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (isLoggedIn && role != null) {
-      if (role == 'student' && studentId != null && studentId.isNotEmpty) {
-        Navigator.pushReplacementNamed(context, AppRoutes.studentDashboard, arguments: studentId);
-        return;
-      } else if (role == 'faculty' && facultyId != null && facultyId.isNotEmpty) {
-        // send admin to adminDashboard, otherwise facultyDashboard (AppRoutes handles arguments)
-        if (facultyRole == 'admin') {
-          Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
-        } else {
-          Navigator.pushReplacementNamed(context, AppRoutes.facultyDashboard, arguments: facultyId);
+      if (isLoggedIn && role != null) {
+        if (role == 'student' && studentId != null && studentId.isNotEmpty) {
+          Navigator.pushNamedAndRemoveUntil(
+              context,
+              AppRoutes.studentDashboard,
+                  (route) => false,
+              arguments: studentId
+          );
+          return;
+        } else if (role == 'faculty' && facultyId != null && facultyId.isNotEmpty) {
+          if (facultyRole == 'admin') {
+            Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.adminDashboard,
+                    (route) => false
+            );
+          } else {
+            Navigator.pushNamedAndRemoveUntil(
+                context,
+                AppRoutes.facultyDashboard,
+                    (route) => false,
+                arguments: facultyId
+            );
+          }
+          return;
         }
-        return;
+      }
+
+      // Default navigation
+      Navigator.pushNamedAndRemoveUntil(
+          context,
+          AppRoutes.roleSelection,
+              (route) => false
+      );
+    } catch (e) {
+      // Handle any errors by navigating to role selection
+      if (mounted) {
+        Navigator.pushNamedAndRemoveUntil(
+            context,
+            AppRoutes.roleSelection,
+                (route) => false
+        );
       }
     }
-
-    // default: not logged in or missing id/role → go to role selection
-    Navigator.pushReplacementNamed(context, AppRoutes.roleSelection);
   }
 
   @override
@@ -59,6 +92,17 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Image.asset(
             "assets/logo.png",
             width: 150,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 150,
+                height: 150,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: const Icon(Icons.error, size: 50),
+              );
+            },
           ),
         ),
       ),
