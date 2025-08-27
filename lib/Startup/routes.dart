@@ -29,6 +29,7 @@ class AppRoutes {
   static const String departmentControl = '/departmentControl';
   static const String classStudents = '/classStudents';
 
+
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:

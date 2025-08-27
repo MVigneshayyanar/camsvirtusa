@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../Student/studentTimetable.dart';
 import 'facultyProfile.dart';
 import 'MarkAttendance.dart';
+import '';
 
 class FacultyDashboard extends StatefulWidget {
   final String facultyId;
@@ -13,64 +14,14 @@ class FacultyDashboard extends StatefulWidget {
   _FacultyDashboardState createState() => _FacultyDashboardState();
 }
 
-class _FacultyDashboardState extends State<FacultyDashboard>
-    with SingleTickerProviderStateMixin {
+class _FacultyDashboardState extends State<FacultyDashboard> {
   Map<String, dynamic>? facultyData;
   bool _isLoading = true;
-
-  // News Bar Animation Controller
-  late AnimationController _newsController;
-  late Animation<Offset> _offsetAnimation;
-
-  List<String> newsItems = [
-    "Faculty meeting scheduled for tomorrow at 3 PM in the conference room.",
-    "New curriculum guidelines have been updated - Please check your email",
-    "Student evaluation forms are now available on the faculty portal",
-    "Workshop on digital teaching methods this Friday - Registration open",
-    "Reminder: Submit semester grades by end of this week"
-  ];
-
-  int currentNewsIndex = 0;
 
   @override
   void initState() {
     super.initState();
     _fetchFacultyData();
-
-    // Initialize news animation
-    _newsController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _offsetAnimation = Tween<Offset>(
-      begin: const Offset(1.0, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _newsController,
-      curve: Curves.easeInOut,
-    ));
-
-    _startNewsRotation();
-  }
-
-  @override
-  void dispose() {
-    _newsController.dispose();
-    super.dispose();
-  }
-
-  void _startNewsRotation() {
-    _newsController.forward();
-    Future.delayed(const Duration(seconds: 4), () {
-      if (mounted) {
-        setState(() {
-          currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-        });
-        _newsController.reset();
-        _startNewsRotation();
-      }
-    });
   }
 
   Future<void> _fetchFacultyData() async {
@@ -172,77 +123,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
           ),
           body: const Center(child: Text("Search Page")),
         ),
-      ),
-    );
-  }
-
-  Widget _buildNewsBar() {
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: screenWidth > 600 ? 24 : 16,
-        vertical: 8,
-      ),
-      padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF6B47), // Slightly darker than your app bar color
-        borderRadius: BorderRadius.circular(screenWidth > 600 ? 12 : 10),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(
-              Icons.campaign,
-              color: Colors.white,
-              size: screenWidth > 600 ? 24 : 20,
-            ),
-          ),
-          SizedBox(width: screenWidth > 600 ? 16 : 12),
-          Expanded(
-            child: SlideTransition(
-              position: _offsetAnimation,
-              child: Text(
-                newsItems[currentNewsIndex],
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: screenWidth > 600 ? 16 : 14,
-                  fontWeight: FontWeight.w500,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-          SizedBox(width: screenWidth > 600 ? 12 : 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              "NEW",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: screenWidth > 600 ? 12 : 10,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -354,12 +234,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
                   ),
                 ],
               ),
-              SizedBox(height: screenHeight > 600 ? 32 : 24),
-
-              // News Bar - Added here
-              _buildNewsBar(),
-
-              SizedBox(height: screenHeight > 600 ? 24 : 16),
+              SizedBox(height: screenHeight > 600 ? 48 : 32),
 
               // Dashboard Grid
               _buildDashboardGrid(context),
