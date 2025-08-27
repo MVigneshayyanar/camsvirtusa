@@ -981,30 +981,27 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           ),
           // Table Headers
           Padding(
-            padding: const EdgeInsets.only(top: 10, left: 4, right: 4),
+            padding: const EdgeInsets.only(top: 10, left: 0, right: 0),
             child: Container(
               decoration: BoxDecoration(
-                color: kBackground,
-                border: const Border(
-                  bottom: BorderSide(color: kPrimary, width: 2),
-                  top: BorderSide(color: kPrimary, width: 2),
-                ),
+                color: const Color(0xFF222F3E),
+                //color: kBackground,
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                padding: const EdgeInsets.symmetric(vertical: 0),
                 child: Row(
                   children: [
                     const Expanded(
                       flex: 2,
                       child: Text("STUDENT ID",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13)),
+                        style:
+                        const TextStyle(color: Colors.white)),
                     ),
                     const Expanded(
                       flex: 3,
                       child: Text("NAME",
-                          style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 13)),
+                        style:
+                        const TextStyle(color: Colors.white)),
                     ),
                     Expanded(
                       flex: 2,
@@ -1016,12 +1013,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                 ? "HOURS $selectedHour-$selectedEndHour"
                                 : "HOUR ${selectedHour ?? '-'}",
                             textAlign: TextAlign.end,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 13),
+                            style:
+                            const TextStyle(color: Colors.white),
                           ),
                           const SizedBox(width: 8),
                           PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 18),
+                            icon: const Icon(Icons.more_vert, size: 18,color:Colors.white),
                             onSelected: (value) {
                               if (value == 'all_present') {
                                 _markAll(true);
