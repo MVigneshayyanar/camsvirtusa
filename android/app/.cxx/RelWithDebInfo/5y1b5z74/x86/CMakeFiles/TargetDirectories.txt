@@ -1,0 +1,2 @@
+D:/camsvirtusa/android/app/.cxx/RelWithDebInfo/5y1b5z74/x86/CMakeFiles/edit_cache.dir
+D:/camsvirtusa/android/app/.cxx/RelWithDebInfo/5y1b5z74/x86/CMakeFiles/rebuild_cache.dir
