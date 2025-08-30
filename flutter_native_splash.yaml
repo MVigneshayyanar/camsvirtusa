@@ -1,0 +1,27 @@
+flutter_native_splash:
+  # Background color (required)
+  color: "#ffffff"
+
+  # Splash image (optional)
+  image: assets/images/splash_logo_dark.png
+
+  android_gravity: center
+  ios_content_mode: center
+
+  # Platform support
+  android: true
+  ios: true
+  web: true
+
+  # Dark mode support (optional)
+  color_dark: "#ffffff"
+  image_dark: assets/images/splash_logo_dark.png
+
+  # Branding image (optional)
+  branding: assets/images/branding_dark.png
+
+  # Android 12+ specific settings
+  android_12:
+    image: assets/images/splash_logo_dark.png
+    icon_background_color: "#ffffff"
+
