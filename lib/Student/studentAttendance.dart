@@ -1,5 +1,6 @@
-// studentAttendance.dart
 import 'dart:io';
+import 'package:camsvirtusa/Student/studentDashboard.dart';
+import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/pdf.dart';
@@ -14,16 +15,11 @@ class AttendancePage extends StatefulWidget {
 
   @override
   _AttendancePageState createState() => _AttendancePageState();
-
 }
-
 
 class _AttendancePageState extends State<AttendancePage>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-
-
-
   Map<String, Map<int, Map<String, String>>> attendanceData = {};
   bool loading = false;
 
@@ -36,6 +32,10 @@ class _AttendancePageState extends State<AttendancePage>
   double absentPercent = 0.0;
   double odPercent = 0.0;
 
+  // Semester management
+  List<String> semesters = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'];
+  String? selectedSemester;
+
   @override
   void initState() {
     super.initState();
@@ -44,14 +44,172 @@ class _AttendancePageState extends State<AttendancePage>
       vsync: this,
     )..forward();
 
-    // Optionally fetch on init. You can also call fetchAttendance() from a button.
-    fetchAttendance();
+    // Updated to fetch student and semester info
+    _fetchStudentAndAttendance();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Fetch student's current semester and attendance data
+  Future<void> _fetchStudentAndAttendance() async {
+    setState(() => loading = true);
+    try {
+      final studentDoc = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(widget.studentId)
+          .get();
+
+      if (!studentDoc.exists) throw Exception('Student not found');
+
+      final data = studentDoc.data();
+      String currentSemester = data?['current_semester'] ?? semesters.first;
+
+      setState(() {
+        selectedSemester = currentSemester;
+      });
+
+      await _fetchAttendanceForSemester(currentSemester);
+    } catch (e) {
+      print('Error fetching student info: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading student info: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => loading = false);
+      }
+    }
+  }
+
+  /// Fetch attendance data for a specific semester
+  Future<void> _fetchAttendanceForSemester(String semester) async {
+    setState(() {
+      loading = true;
+      attendanceData.clear();
+      _resetStats();
+    });
+
+    try {
+      final attendanceDoc = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(widget.studentId)
+          .collection('attendance')
+          .doc(semester)
+          .get();
+
+      if (!attendanceDoc.exists) {
+        print('No attendance data for semester $semester');
+        setState(() {
+          loading = false;
+        });
+        return;
+      }
+
+      final data = attendanceDoc.data();
+      if (data == null) {
+        setState(() {
+          loading = false;
+        });
+        return;
+      }
+
+      // Get overall percentages from document fields
+      setState(() {
+        presentPercent = (data['P'] ?? 0.0).toDouble();
+        absentPercent = (data['A'] ?? 0.0).toDouble();
+        odPercent = (data['OD'] ?? 0.0).toDouble();
+      });
+
+      // Parse daily attendance data
+      Map<String, Map<int, Map<String, String>>> parsed = {};
+      data.forEach((key, value) {
+        // Check if key is a date (dd-MM-yyyy format)
+        if (RegExp(r'^\d{2}-\d{2}-\d{4}$').hasMatch(key)) {
+          Map<int, Map<String, String>> hourMap = {};
+
+          if (value is Map) {
+            value.forEach((hourStr, subjectMap) {
+              try {
+                int hourIndex = int.parse(hourStr.toString());
+                if (subjectMap is Map) {
+                  subjectMap.forEach((subject, status) {
+                    hourMap[hourIndex] = {
+                      'subject': subject.toString(),
+                      'status': status.toString(),
+                    };
+                  });
+                }
+              } catch (e) {
+                print('Error parsing hour data: $e');
+              }
+            });
+          }
+
+          if (hourMap.isNotEmpty) {
+            parsed[key] = hourMap;
+          }
+        }
+      });
+
+      // Sort dates chronologically
+      final sorted = Map<String, Map<int, Map<String, String>>>.fromEntries(
+        parsed.entries.toList()..sort((a, b) {
+          try {
+            final dateParts1 = a.key.split('-');
+            final dateParts2 = b.key.split('-');
+            final date1 = DateTime(
+              int.parse(dateParts1[2]),
+              int.parse(dateParts1[1]),
+              int.parse(dateParts1[0]),
+            );
+            final date2 = DateTime(
+              int.parse(dateParts2[2]),
+              int.parse(dateParts2[1]),
+              int.parse(dateParts2[0]),
+            );
+            return date1.compareTo(date2);
+          } catch (e) {
+            return a.key.compareTo(b.key);
+          }
+        }),
+      );
+
+      setState(() {
+        attendanceData = sorted;
+      });
+
+      _calculateAttendanceStats();
+    } catch (e) {
+      print('Error fetching attendance: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading attendance: $e')),
+        );
+      }
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  /// Reset attendance statistics
+  void _resetStats() {
+    presentCount = 0;
+    absentCount = 0;
+    odCount = 0;
+    totalCount = 0;
+    presentPercent = 0.0;
+    absentPercent = 0.0;
+    odPercent = 0.0;
   }
 
   /// Calculate attendance statistics from the loaded data
@@ -81,15 +239,13 @@ class _AttendancePageState extends State<AttendancePage>
       }
     }
 
-    // Calculate percentages
+    // Update calculated percentages if we have data
     if (totalCount > 0) {
-      presentPercent = (presentCount / totalCount) * 100;
-      absentPercent = (absentCount / totalCount) * 100;
-      odPercent = (odCount / totalCount) * 100;
-    } else {
-      presentPercent = 0.0;
-      absentPercent = 0.0;
-      odPercent = 0.0;
+      setState(() {
+        presentPercent = (presentCount / totalCount) * 100;
+        absentPercent = (absentCount / totalCount) * 100;
+        odPercent = (odCount / totalCount) * 100;
+      });
     }
 
     print("Attendance Stats:");
@@ -97,6 +253,17 @@ class _AttendancePageState extends State<AttendancePage>
     print("Absent: $absentCount (${absentPercent.toStringAsFixed(1)}%)");
     print("On Duty: $odCount (${odPercent.toStringAsFixed(1)}%)");
     print("Total: $totalCount");
+  }
+
+  /// Handle semester selection change
+  void _onSemesterChanged(String? semester) {
+    if (semester != null && semester != selectedSemester) {
+      setState(() {
+        selectedSemester = semester;
+        attendanceData = {};
+      });
+      _fetchAttendanceForSemester(semester);
+    }
   }
 
   /// Get responsive dimensions based on screen size and orientation
@@ -169,117 +336,6 @@ class _AttendancePageState extends State<AttendancePage>
       'iconSize': iconSize,
       'padding': padding,
     };
-  }
-
-  /// Fetch attendance document for the student.
-  Future<void> fetchAttendance() async {
-    setState(() => loading = true);
-    try {
-      final docRef = FirebaseFirestore.instance
-          .collection('colleges')
-          .doc('students')
-          .collection('all_students')
-          .doc(widget.studentId);
-
-      final snapshot = await docRef.get();
-
-      if (!snapshot.exists) {
-        print("Document does not exist for student: ${widget.studentId}");
-        setState(() {
-          attendanceData = {};
-          _calculateAttendanceStats(); // Reset stats
-          loading = false;
-        });
-        return;
-      }
-
-      final raw = snapshot.data() as Map<String, dynamic>? ?? {};
-      print("Raw data from Firestore: $raw");
-
-      final Map<String, Map<int, Map<String, String>>> parsed = {};
-
-      // Process each field in the document - each field should be a date
-      raw.forEach((fieldKey, fieldValue) {
-        // Check if this field looks like a date (dd-MM-yyyy format)
-        if (fieldKey.contains('-') && fieldKey.split('-').length == 3) {
-          final Map<int, Map<String, String>> hourMap = {};
-
-          if (fieldValue is Map<String, dynamic>) {
-            fieldValue.forEach((hourStr, subjEntry) {
-              try {
-                final int hourIndex = int.tryParse(hourStr) ?? 0;
-                if (subjEntry is Map<String, dynamic> && subjEntry.isNotEmpty) {
-                  final subject = subjEntry.keys.first.toString();
-                  final status = subjEntry.values.first.toString();
-
-                  hourMap[hourIndex] = {"subject": subject, "status": status};
-                }
-              } catch (e) {
-                print("Error parsing hour data for $hourStr: $e");
-              }
-            });
-          }
-
-          // Add this date if it has any hour data
-          if (hourMap.isNotEmpty) {
-            parsed[fieldKey] = hourMap;
-          }
-        } else {
-          // skip non-date fields
-        }
-      });
-
-      // Sort dates chronologically assuming format dd-MM-yyyy; fallback to lexical
-      final sorted = Map.fromEntries(parsed.entries.toList()
-        ..sort((a, b) {
-          try {
-            final dateParts1 = a.key.split('-');
-            final dateParts2 = b.key.split('-');
-            if (dateParts1.length == 3 && dateParts2.length == 3) {
-              final date1 = DateTime(
-                int.parse(dateParts1[2]),
-                int.parse(dateParts1[1]),
-                int.parse(dateParts1[0]),
-              );
-              final date2 = DateTime(
-                int.parse(dateParts2[2]),
-                int.parse(dateParts2[1]),
-                int.parse(dateParts2[0]),
-              );
-              return date1.compareTo(date2);
-            }
-          } catch (e) {
-            print("Error sorting dates: $e");
-          }
-          return a.key.compareTo(b.key);
-        }));
-
-      setState(() {
-        attendanceData = sorted;
-        _calculateAttendanceStats(); // Calculate dynamic stats
-        loading = false;
-      });
-
-      // Debug: Print final processed data
-      print("\n=== FINAL ATTENDANCE DATA ===");
-      print("Number of dates found: ${sorted.length}");
-      if (sorted.isEmpty) {
-        print("No attendance dates found!");
-      } else {
-        sorted.forEach((date, hours) {
-          print("Date: $date");
-          hours.forEach((hour, data) {
-            print("  Hour ${hour + 1}: ${data['subject']} - ${data['status']}");
-          });
-        });
-      }
-    } catch (e) {
-      print("Error fetching attendance: $e");
-      setState(() {
-        _calculateAttendanceStats(); // Reset stats on error
-        loading = false;
-      });
-    }
   }
 
   Color getStatusColor(String status) {
@@ -538,9 +594,6 @@ class _AttendancePageState extends State<AttendancePage>
 
       final name = studentDoc?['name']?.toString() ?? '';
 
-      // --- Use existing calculated counters for attendance stats ---
-      // (We already have presentCount, absentCount, odCount, totalCount, and percentages)
-
       // Define colors similar to app theme
       final primaryColor = PdfColor.fromHex('#FF7A52');
       final headerColor = PdfColor.fromHex('#37474F');
@@ -610,6 +663,15 @@ class _AttendancePageState extends State<AttendancePage>
                   pw.SizedBox(height: 8),
                   pw.Text(
                     'Student ID: ${widget.studentId}',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      color: PdfColors.white,
+                      fontWeight: pw.FontWeight.normal,
+                    ),
+                  ),
+                  pw.SizedBox(height: 8),
+                  pw.Text(
+                    'Semester: ${selectedSemester ?? "N/A"}',
                     style: pw.TextStyle(
                       fontSize: 14,
                       color: PdfColors.white,
@@ -855,7 +917,8 @@ class _AttendancePageState extends State<AttendancePage>
 
                       // Determine cell background color based on status
                       PdfColor? cellColor;
-                      if (cellIndex > 0 && cellValue != '-') { // Not the date column and has data
+                      if (cellIndex > 0 && cellValue != '-') {
+                        // Not the date column and has data
                         if (cellValue.contains('(P)')) {
                           cellColor = presentColor;
                         } else if (cellValue.contains('(A)')) {
@@ -873,8 +936,9 @@ class _AttendancePageState extends State<AttendancePage>
                           style: pw.TextStyle(
                             fontSize: cellIndex == 0 ? 10 : 8,
                             fontWeight: cellIndex == 0 ? pw.FontWeight.bold : pw.FontWeight.normal,
-                            color: cellColor != null ? PdfColors.white :
-                            (cellIndex == 0 ? headerColor : PdfColors.black),
+                            color: cellColor != null
+                                ? PdfColors.white
+                                : (cellIndex == 0 ? headerColor : PdfColors.black),
                           ),
                           textAlign: pw.TextAlign.center,
                         ),
@@ -942,7 +1006,7 @@ class _AttendancePageState extends State<AttendancePage>
         }
 
         final timestamp = DateTime.now().millisecondsSinceEpoch;
-        filePath = '${saveDir!.path}/attendance_report_$timestamp.pdf';
+        filePath = '${saveDir!.path}/attendance_report_${selectedSemester}_$timestamp.pdf';
 
         final file = File(filePath);
         await file.writeAsBytes(await pdf.save());
@@ -951,7 +1015,6 @@ class _AttendancePageState extends State<AttendancePage>
 
         // Show dialog asking if user wants to open the PDF
         await _showOpenPdfDialog(filePath);
-
       } catch (writeError, stack) {
         print('Error saving PDF: $writeError\n$stack');
         ScaffoldMessenger.of(context).showSnackBar(
@@ -962,7 +1025,7 @@ class _AttendancePageState extends State<AttendancePage>
         try {
           final fallbackDir = await getApplicationDocumentsDirectory();
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final fallbackPath = '${fallbackDir.path}/attendance_report_$timestamp.pdf';
+          final fallbackPath = '${fallbackDir.path}/attendance_report_${selectedSemester}_$timestamp.pdf';
           final fallbackFile = File(fallbackPath);
           await fallbackFile.writeAsBytes(await pdf.save());
 
@@ -970,7 +1033,6 @@ class _AttendancePageState extends State<AttendancePage>
 
           // Show dialog for fallback path too
           await _showOpenPdfDialog(fallbackPath);
-
         } catch (fallbackError, stack2) {
           print('Fallback save failed: $fallbackError\n$stack2');
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1001,8 +1063,7 @@ class _AttendancePageState extends State<AttendancePage>
     final hours = collectHours();
     if (hours.isEmpty) return const Center(child: Text('No hours found'));
 
-    final totalHeight = dimensions['headerHeight']! +
-        (hours.length * dimensions['hourCellHeight']!);
+    final totalHeight = dimensions['headerHeight']! + (hours.length * dimensions['hourCellHeight']!);
 
     // Outer vertical scroll to allow many hours
     return SingleChildScrollView(
@@ -1106,8 +1167,7 @@ class _AttendancePageState extends State<AttendancePage>
                               ),
                             ),
                             alignment: Alignment.center,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: dimensions['padding']! / 4),
+                            padding: EdgeInsets.symmetric(horizontal: dimensions['padding']! / 4),
                             child: Text(
                               date,
                               style: TextStyle(
@@ -1129,9 +1189,7 @@ class _AttendancePageState extends State<AttendancePage>
                               width: dimensions['dateColumnWidth']!,
                               height: dimensions['hourCellHeight']!,
                               decoration: BoxDecoration(
-                                color: status.isNotEmpty
-                                    ? getStatusColor(status)
-                                    : Colors.grey.shade100,
+                                color: status.isNotEmpty ? getStatusColor(status) : Colors.grey.shade100,
                                 border: const Border(
                                   right: BorderSide(color: Colors.white, width: 2.5),
                                   top: BorderSide(color: Colors.white, width: 2.5),
@@ -1149,9 +1207,7 @@ class _AttendancePageState extends State<AttendancePage>
                                         child: Text(
                                           subj,
                                           style: TextStyle(
-                                            color: status.isNotEmpty
-                                                ? Colors.white
-                                                : Colors.black87,
+                                            color: status.isNotEmpty ? Colors.white : Colors.black87,
                                             fontWeight: FontWeight.bold,
                                             fontSize: dimensions['fontSize']! - 3,
                                           ),
@@ -1161,8 +1217,7 @@ class _AttendancePageState extends State<AttendancePage>
                                         ),
                                       ),
                                     ),
-                                  if (status.isNotEmpty && subj.isNotEmpty)
-                                    const SizedBox(height: 2),
+                                  if (status.isNotEmpty && subj.isNotEmpty) const SizedBox(height: 2),
                                   if (status.isNotEmpty)
                                     Expanded(
                                       flex: 1,
@@ -1220,9 +1275,6 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-
-
-  // Top progress UI with responsive design
   // Top progress UI with responsive design
   Widget buildHeaderArea(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
@@ -1244,63 +1296,7 @@ class _AttendancePageState extends State<AttendancePage>
 
         return Column(
           children: [
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF7A52), Color(0xFFFF6B3D)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(isLargeScreen ? 30 : 22),
-                  bottomRight: Radius.circular(isLargeScreen ? 30 : 22),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF7A52).withOpacity(0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              padding: EdgeInsets.all(dimensions['padding']!),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Icon(
-                    Icons.menu,
-                    color: Colors.white,
-                    size: dimensions['iconSize']!,
-                  ),
-                  Text(
-                    'ATTENDANCE',
-                    style: TextStyle(
-                      fontSize: dimensions['fontSize']! + 2,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      Icon(
-                        Icons.notifications,
-                        color: Colors.white,
-                        size: dimensions['iconSize']!,
-                      ),
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+
             SizedBox(height: dimensions['padding']!),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: dimensions['padding']!),
@@ -1313,11 +1309,12 @@ class _AttendancePageState extends State<AttendancePage>
                       CircleAvatar(
                         radius: isLargeScreen ? 45 : 36,
                         backgroundColor: Colors.white70,
-                        child: Icon(
-                          Icons.person,
-                          size: isLargeScreen ? 40 : 30,
-                          color: Colors.grey,
-                        ),
+                        backgroundImage: AssetImage('assets/account.png'),
+                        onBackgroundImageError: (exception, stackTrace) {
+                          // Fallback to icon if image fails to load
+                          print('Error loading profile image: $exception');
+                        },
+                        child: null, // Remove the child when using backgroundImage
                       ),
 
                       SizedBox(width: dimensions['padding']!),
@@ -1328,6 +1325,60 @@ class _AttendancePageState extends State<AttendancePage>
                             fontSize: dimensions['fontSize']!,
                             fontWeight: FontWeight.w500,
                           ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: dimensions['padding']!),
+                  // Semester selector and PDF button row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Left side - Semester selector
+                      Row(
+                        children: [
+                          Text(
+                            'Semester: ',
+                            style: TextStyle(
+                              fontSize: dimensions['fontSize']! - 2,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: Color(0xFFFF7A52)),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedSemester,
+                                items: semesters
+                                    .map((sem) => DropdownMenuItem(
+                                  value: sem,
+                                  child: Text(sem),
+                                ))
+                                    .toList(),
+                                onChanged: _onSemesterChanged,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Right side - PDF button
+                      ElevatedButton.icon(
+                        onPressed: attendanceData.isEmpty ? null : _generateAttendancePDF,
+                        icon: Icon(Icons.picture_as_pdf, size: 18),
+                        label: Text('Get PDF'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFFFF7A52),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         ),
                       ),
                     ],
@@ -1354,44 +1405,6 @@ class _AttendancePageState extends State<AttendancePage>
               ),
             ),
             SizedBox(height: dimensions['padding']!),
-            ElevatedButton(
-              onPressed: () async {
-                await fetchAttendance();
-                if (attendanceData.isNotEmpty) {
-                  await _generateAttendancePDF();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF7A52),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: _getResponsiveDimensions(context)['padding']! * 2,
-                  vertical: _getResponsiveDimensions(context)['padding']!,
-                ),
-                elevation: 8,
-                shadowColor: const Color(0xFFFF7A52).withOpacity(0.4),
-              ),
-              child: loading
-                  ? SizedBox(
-                height: 18,
-                width: 18,
-                child: const CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-                  : Text(
-                'Get Attendance',
-                style: TextStyle(
-                  fontSize: _getResponsiveDimensions(context)['fontSize']!,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            SizedBox(height: dimensions['padding']!),
           ],
         );
       },
@@ -1408,23 +1421,11 @@ class _AttendancePageState extends State<AttendancePage>
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             _buildProgressItem(
-                presentPercent / 100,
-                const Color(0xFF2ECC71),
-                '${presentPercent.toStringAsFixed(1)}%',
-                dimensions
-            ),
+                presentPercent / 100, const Color(0xFF2ECC71), '${presentPercent.toStringAsFixed(1)}%', dimensions),
             _buildProgressItem(
-                odPercent / 100,
-                const Color(0xFF1E90FF),
-                '${odPercent.toStringAsFixed(1)}%',
-                dimensions
-            ),
+                odPercent / 100, const Color(0xFF1E90FF), '${odPercent.toStringAsFixed(1)}%', dimensions),
             _buildProgressItem(
-                absentPercent / 100,
-                const Color(0xFFE74C3C),
-                '${absentPercent.toStringAsFixed(1)}%',
-                dimensions
-            ),
+                absentPercent / 100, const Color(0xFFE74C3C), '${absentPercent.toStringAsFixed(1)}%', dimensions),
           ],
         ),
         SizedBox(height: dimensions['padding']! / 2),
@@ -1456,8 +1457,7 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget _buildProgressItem(double percentage, Color color, String text,
-      Map<String, double> dimensions) {
+  Widget _buildProgressItem(double percentage, Color color, String text, Map<String, double> dimensions) {
     return Flexible(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1476,8 +1476,7 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget _buildLegendItem(IconData icon, String text, Color color,
-      Map<String, double> dimensions) {
+  Widget _buildLegendItem(IconData icon, String text, Color color, Map<String, double> dimensions) {
     return Flexible(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1500,8 +1499,7 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget buildProgressBar(double percentage, Color color,
-      Map<String, double> dimensions) {
+  Widget buildProgressBar(double percentage, Color color, Map<String, double> dimensions) {
     final progressWidth = dimensions['padding']! * 2;
     return ClipPath(
       clipper: CustomClipPath(),
@@ -1530,13 +1528,26 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     final mediaQuery = MediaQuery.of(context);
     final isLargeScreen = mediaQuery.size.width > 600;
 
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Color(0xFFFF7F50),
+        title: Text(
+          "ATTENDANCE",
+          style: TextStyle(color: Colors.white),
+        ),
+        centerTitle: true, // This centers the title
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white), // White back arrow
+          onPressed: () {
+            Navigator.of(context).pop(); // Return to the previous page
+          },
+        ),
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -1547,7 +1558,20 @@ class _AttendancePageState extends State<AttendancePage>
                   horizontal: isLargeScreen ? 16 : 8,
                   vertical: isLargeScreen ? 12 : 6,
                 ),
-                child: attendanceData.isEmpty
+                child: loading
+                    ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7A52)),
+                      ),
+                      SizedBox(height: 16),
+                      Text('Loading attendance data...'),
+                    ],
+                  ),
+                )
+                    : attendanceData.isEmpty
                     ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -1559,7 +1583,7 @@ class _AttendancePageState extends State<AttendancePage>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'No attendance data. Tap Get Attendance.',
+                        'No attendance data found for semester ${selectedSemester ?? ""}',
                         style: TextStyle(
                           fontSize: isLargeScreen ? 18 : 16,
                           color: Colors.grey.shade600,
@@ -1575,61 +1599,71 @@ class _AttendancePageState extends State<AttendancePage>
           ],
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.grey[100],
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -4),
+      bottomNavigationBar: _buildBottomNavigationBar(context),
+    );
+  }
+  void _goToDashboard(BuildContext context) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentDashboard(studentId: widget.studentId),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavigationBar(BuildContext context) {
+    final mediaQuery = MediaQuery.of(context);
+    final double bottomSafeArea = mediaQuery.padding.bottom;
+    final double screenWidth = mediaQuery.size.width;
+
+    return Container(
+      height: 70 + bottomSafeArea,
+      decoration: BoxDecoration(
+        color: const Color(0xFFE5E5E5),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
+      ),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottomSafeArea),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Image.asset(
+                "assets/search.png",
+                height: screenWidth > 600 ? 30 : 26,
+              ),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/homeLogo.png",
+                height: screenWidth > 600 ? 36 : 32,
+              ),
+              onPressed: () => _goToDashboard(context),
+            ),
+            IconButton(
+              icon: Image.asset(
+                "assets/account.png",
+                height: screenWidth > 600 ? 30 : 26,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => StudentProfile(studentId: widget.studentId),
+                  ),
+                );
+              },
             ),
           ],
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(
-                Icons.search,
-                size: isLargeScreen ? 28 : 24,
-              ),
-              label: "",
-            ),
-            BottomNavigationBarItem(
-              icon: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF7A52),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.home,
-                  color: Colors.white,
-                  size: isLargeScreen ? 28 : 24,
-                ),
-              ),
-              label: "",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(
-                Icons.person,
-                size: isLargeScreen ? 28 : 24,
-              ),
-              label: "",
-            ),
-          ],
-          currentIndex: 1,
-          selectedItemColor: const Color(0xFFFF7A52),
-          unselectedItemColor: Colors.grey,
         ),
       ),
     );
   }
 }
+
+
+
 
 /// small decorative clipper used in progress bar
 class CustomClipPath extends CustomClipper<Path> {

@@ -35,10 +35,12 @@ class _StudentProfileState extends State<StudentProfile> {
           .collection('all_students')
           .doc(widget.studentId)
           .get();
+      print(studentDoc);
 
       if (!studentDoc.exists) throw Exception("Student not found");
 
       studentData = studentDoc.data();
+      print(studentData);
 
       final mentorQuery = await FirebaseFirestore.instance
           .collection('colleges')

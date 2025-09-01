@@ -36,7 +36,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           .collection('all_faculties')
           .doc(widget.facultyId)
           .get();
-
       if (!doc.exists || doc.data() == null) {
         setState(() {
           error = 'Faculty not found';
@@ -44,7 +43,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         });
         return;
       }
-
       final data = doc.data()!;
       setState(() {
         facultyName = data['name'] ?? 'Unknown Faculty';
@@ -82,7 +80,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         backgroundColor: kPrimary,
         title: Text(
           'ATTENDANCE REGISTER',
-            style: TextStyle(color: Colors.white, fontSize: 20)
+          style: TextStyle(color: Colors.white, fontSize: 20),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -102,8 +100,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           : ListView.separated(
         padding: const EdgeInsets.all(16),
         itemCount: classes.length,
-        separatorBuilder: (_, __) =>
-        const SizedBox(height: 12),
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
         itemBuilder: (context, idx) {
           final className = classes[idx];
           return Card(
@@ -119,7 +116,8 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                     fontWeight: FontWeight.bold,
                     color: Colors.black87),
               ),
-              trailing: const Icon(Icons.arrow_forward_ios,
+              trailing: const Icon(
+                  Icons.arrow_forward_ios,
                   color: Color(0xFF36454F)),
               onTap: () => _openClassAttendance(className),
             ),
@@ -142,32 +140,30 @@ class ClassAttendanceScreen extends StatefulWidget {
     required this.className,
   }) : super(key: key);
 
+  // Updated: reference attendance by semester
   Future<String?> getAttendanceStatus({
     required String studentId,
     required DateTime date,
-    required String hour, // "1" for 1st hour, "2" for 2nd, etc.
+    required String hour,
     required String subject,
+    required String semester, // new parameter
   }) async {
     final dateKey = DateFormat('dd-MM-yyyy').format(date);
-    final hourIdx = (int.tryParse(hour) ?? 1) - 1; // 0-based indexing
-
-    final docRef = FirebaseFirestore.instance
+    final hourIdx = (int.tryParse(hour) ?? 1) - 1;
+    final attendanceRef = FirebaseFirestore.instance
         .collection('colleges')
         .doc('students')
         .collection('all_students')
-        .doc(studentId);
+        .doc(studentId)
+        .collection('attendance')
+        .doc(semester);
 
-    final docSnap = await docRef.get();
-    if (!docSnap.exists) return null;
-
+    final docSnap = await attendanceRef.get();
     final data = docSnap.data();
     if (data == null || data[dateKey] == null) return null;
-
     final dailyAttendance = Map<String, dynamic>.from(data[dateKey]);
     final hourEntry = dailyAttendance["$hourIdx"];
     if (hourEntry == null) return null;
-
-    // hourEntry is like: { "JAVA PROGRAMMING": "A" }
     if (hourEntry is Map) {
       if (hourEntry.containsKey(subject)) {
         return hourEntry[subject]; // "P" or "A"
@@ -175,6 +171,7 @@ class ClassAttendanceScreen extends StatefulWidget {
     }
     return null;
   }
+
   @override
   State<ClassAttendanceScreen> createState() => _ClassAttendanceScreenState();
 }
@@ -185,20 +182,15 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   bool isSaving = false;
   bool isLoadingAttendance = false;
   String error = '';
-
   List<Map<String, dynamic>> students = [];
   Map<String, bool> attendance = {};
-
   List<String> subjects = [];
   String? selectedSubject;
-
   final List<String> semesters = [
     'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'
   ];
   String? selectedSemester;
-
   List<Map<String, dynamic>> facultySubjectMappings = [];
-
   DateTime selectedDate = DateTime.now();
   String searchQuery = '';
   String? selectedHour;
@@ -214,17 +206,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   Future<void> _initData() async {
     try {
-      // Set default values immediately to reduce initial delay
       selectedSemester = semesters.first;
       selectedHour = hours.first;
-
-      // Load students and semester data in parallel
       await Future.wait([
         _fetchStudentsForClass(),
         _loadSemesterData(selectedSemester!),
       ]);
-
-      // Load existing attendance after data is ready
       await _loadExistingAttendance();
     } catch (e) {
       setState(() {
@@ -245,6 +232,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     });
   }
 
+
   Future<void> _fetchSubjectsForSemester(String semester) async {
     setState(() => subjectsLoading = true);
     try {
@@ -256,7 +244,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .collection('classes')
           .doc(widget.className)
           .get();
-
       if (doc.exists) {
         final data = doc.data() ?? {};
         subjects = List<String>.from(data[semester] ?? []);
@@ -282,7 +269,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .collection('clasees')
           .doc(widget.className)
           .get();
-
       final data = doc.data() ?? {};
       facultySubjectMappings = List<Map<String, dynamic>>.from(
         (data['faculty']?[semester] ?? []),
@@ -303,7 +289,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .collection('all_students')
           .where('class', isEqualTo: widget.className)
           .get();
-
       students = query.docs.map((d) {
         final data = d.data();
         return {
@@ -312,7 +297,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           ...data,
         };
       }).toList();
-
       attendance = {for (var s in students) s['id']: false};
     } catch (e) {
       setState(() {
@@ -321,16 +305,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     }
   }
 
-  // Optimized method to fetch existing attendance data using batch queries
+
+  // Load attendance from new Firestore subcollection location
   Future<void> _loadExistingAttendance() async {
-    if (selectedSubject == null || selectedHour == null || students.isEmpty) return;
-
+    if (selectedSubject == null || selectedHour == null || students.isEmpty || selectedSemester == null) return;
     setState(() => isLoadingAttendance = true);
-
     try {
       final dateKey = DateFormat('dd-MM-yyyy').format(selectedDate);
-
-      // Get hour range for continuous mode
       List<int> hourIndices = [];
       if (isContinuousMode && selectedEndHour != null) {
         final startHour = int.tryParse(selectedHour!) ?? 1;
@@ -338,25 +319,18 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         final start = startHour <= endHour ? startHour : endHour;
         final end = startHour <= endHour ? endHour : startHour;
         for (int i = start; i <= end; i++) {
-          hourIndices.add(i - 1); // Convert to 0-based indexing
+          hourIndices.add(i - 1);
         }
       } else {
         hourIndices = [(int.tryParse(selectedHour!) ?? 1) - 1];
       }
-
-      // Reset attendance to false first
       attendance = {for (var s in students) s['id']: false};
-
-      // Split students into batches of 10 for parallel processing
       const batchSize = 10;
       final batches = <List<Map<String, dynamic>>>[];
-
       for (int i = 0; i < students.length; i += batchSize) {
         final end = (i + batchSize < students.length) ? i + batchSize : students.length;
         batches.add(students.sublist(i, end));
       }
-
-      // Process batches in parallel with timeout
       final futures = batches.map((batch) => _loadAttendanceForBatch(batch, dateKey, hourIndices));
       await Future.wait(futures).timeout(
         const Duration(seconds: 10),
@@ -365,7 +339,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           return <void>[];
         },
       );
-
     } catch (e) {
       print('Error loading existing attendance: $e');
     } finally {
@@ -373,36 +346,29 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     }
   }
 
-  // Helper method to load attendance for a batch of students
+  // Helper to load attendance for each batch
   Future<void> _loadAttendanceForBatch(
       List<Map<String, dynamic>> batch,
       String dateKey,
-      List<int> hourIndices
+      List<int> hourIndices,
       ) async {
-    // Create futures for parallel execution within the batch
     final futures = batch.map((student) async {
       final studentId = student['id'];
-
       try {
-        final docRef = FirebaseFirestore.instance
+        final attendanceRef = FirebaseFirestore.instance
             .collection('colleges')
             .doc('students')
             .collection('all_students')
-            .doc(studentId);
-
-        final docSnap = await docRef.get();
-        if (!docSnap.exists) return;
-
+            .doc(studentId)
+            .collection('attendance')
+            .doc(selectedSemester!);
+        final docSnap = await attendanceRef.get();
         final data = docSnap.data();
         if (data == null || data[dateKey] == null) return;
-
         final dailyAttendance = Map<String, dynamic>.from(data[dateKey]);
-
-        // Check if student is present in ALL selected hours
         bool isPresentInAllHours = true;
         for (final hourIdx in hourIndices) {
           final hourEntry = dailyAttendance["$hourIdx"];
-
           if (hourEntry != null && hourEntry is Map && hourEntry.containsKey(selectedSubject!)) {
             final status = hourEntry[selectedSubject!];
             if (status != "P") {
@@ -414,25 +380,20 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             break;
           }
         }
-
         attendance[studentId] = isPresentInAllHours;
       } catch (e) {
         print('Error loading attendance for student $studentId: $e');
       }
     });
-
     await Future.wait(futures);
   }
 
-  // Optimized method to reload attendance when date, hour, or subject changes
   void _onSelectionChanged() {
-    if (selectedSubject != null && selectedHour != null && students.isNotEmpty) {
-      // Validate continuous mode selection
+    if (selectedSubject != null && selectedHour != null && students.isNotEmpty && selectedSemester != null) {
       if (isContinuousMode && selectedEndHour != null) {
         final startHour = int.tryParse(selectedHour!) ?? 1;
         final endHour = int.tryParse(selectedEndHour!) ?? 1;
         if (endHour < startHour) {
-          // Auto-correct if end hour is before start hour
           setState(() {
             selectedEndHour = selectedHour;
           });
@@ -455,25 +416,83 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         .toList();
   }
 
+  Future<void> _updateAttendancePercentagesFromHistory() async {
+    int presentCount = 0;
+    int absentCount = 0;
+    int onDutyCount = 0; // If OD is tracked
+    int totalMarks = 0;
+
+    // For each student in the class
+    for (var student in students) {
+      final attendanceRef = FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(student['id'])
+          .collection('attendance')
+          .doc(selectedSemester!);
+
+      final docSnap = await attendanceRef.get();
+      final data = docSnap.data() ?? {};
+
+      // Loop through all dates
+      data.forEach((key, value) {
+        // Skip P, A, OD fields at the root
+        if (key == 'P' || key == 'A' || key == 'OD') return;
+        // value is daily attendance map (e.g., {'0': {'WTF': 'A'}, ...})
+        if (value is Map<String, dynamic>) {
+          value.forEach((hour, hourEntry) {
+            if (hourEntry is Map<String, dynamic>) {
+              hourEntry.forEach((subject, status) {
+                totalMarks++;
+                if (status == 'P') presentCount++;
+                else if (status == 'A') absentCount++;
+                else if (status == 'OD') onDutyCount++;
+              });
+            }
+          });
+        }
+      });
+    }
+
+    double presentPercentage = totalMarks > 0 ? (presentCount / totalMarks) * 100 : 0;
+    double absentPercentage = totalMarks > 0 ? (absentCount / totalMarks) * 100 : 0;
+    double onDutyPercentage = totalMarks > 0 ? (onDutyCount / totalMarks) * 100 : 0;
+
+    // Update percentages in Firestore outside the date fields for each student
+    for (var student in students) {
+      final attendanceRef = FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(student['id'])
+          .collection('attendance')
+          .doc(selectedSemester!);
+
+      await attendanceRef.set({
+        'P': presentPercentage,
+        'A': absentPercentage,
+        'OD': onDutyPercentage,
+      }, SetOptions(merge: true));
+    }
+  }
+
+
+
   Future<void> _saveAttendance() async {
     if (students.isEmpty ||
         selectedSubject == null ||
         selectedSemester == null ||
         selectedHour == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please select semester, subject, hour and have students')),
+        const SnackBar(content: Text('Please select semester, subject, hour and have students')),
       );
       return;
     }
-
     setState(() => isSaving = true);
-
     try {
       final dateKey = DateFormat('dd-MM-yyyy').format(selectedDate);
       final subject = selectedSubject!;
-
-      // Get hour range for continuous mode
       List<int> hourIndices = [];
       if (isContinuousMode && selectedEndHour != null) {
         final startHour = int.tryParse(selectedHour!) ?? 1;
@@ -481,29 +500,23 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         final start = startHour <= endHour ? startHour : endHour;
         final end = startHour <= endHour ? endHour : startHour;
         for (int i = start; i <= end; i++) {
-          hourIndices.add(i - 1); // Convert to 0-based indexing
+          hourIndices.add(i - 1);
         }
       } else {
         hourIndices = [(int.tryParse(selectedHour!) ?? 1) - 1];
       }
-
-      // Process in batches to improve performance
       const batchSize = 10;
       final batches = <List<Map<String, dynamic>>>[];
-
       for (int i = 0; i < students.length; i += batchSize) {
         final end = (i + batchSize < students.length) ? i + batchSize : students.length;
         batches.add(students.sublist(i, end));
       }
-
-      // Process all batches in parallel
       final futures = batches.map((batch) => _saveAttendanceForBatch(batch, dateKey, hourIndices, subject));
       await Future.wait(futures);
-
+      await _updateAttendancePercentagesFromHistory();
       final hourText = isContinuousMode && selectedEndHour != null
           ? 'Hours $selectedHour-$selectedEndHour'
           : 'Hour $selectedHour';
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Attendance saved successfully for $hourText')),
       );
@@ -516,7 +529,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     }
   }
 
-  // Helper method to save attendance for a batch of students
+  // Save attendance to new Firestore subcollection location
   Future<void> _saveAttendanceForBatch(
       List<Map<String, dynamic>> batch,
       String dateKey,
@@ -527,37 +540,30 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       final studentId = s['id'];
       final isPresent = attendance[studentId] ?? false;
       final status = isPresent ? "P" : "A";
-
       try {
-        final docRef = FirebaseFirestore.instance
+        final attendanceRef = FirebaseFirestore.instance
             .collection('colleges')
             .doc('students')
             .collection('all_students')
-            .doc(studentId);
+            .doc(studentId)
+            .collection('attendance')
+            .doc(selectedSemester!);
 
-        // Get the existing doc to avoid overwriting previous hours
-        final docSnap = await docRef.get();
+        final docSnap = await attendanceRef.get();
         final data = docSnap.data() ?? {};
-
         Map<String, dynamic> attendanceDay = {};
         if (data[dateKey] != null) {
-          // Already has attendance for this date, keep existing structure
           attendanceDay = Map<String, dynamic>.from(data[dateKey]);
         }
-
-        // Update attendance for all selected hours
         for (final hourIdx in hourIndices) {
           attendanceDay["$hourIdx"] = {subject: status};
         }
-
-        // Update the dateKey field with the new attendanceDay map
-        await docRef.set({dateKey: attendanceDay}, SetOptions(merge: true));
+        await attendanceRef.set({dateKey: attendanceDay}, SetOptions(merge: true));
       } catch (e) {
         print('Error saving attendance for student $studentId: $e');
         rethrow;
       }
     });
-
     await Future.wait(futures);
   }
 
@@ -592,33 +598,16 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(kPrimary),
-                strokeWidth: 3,
-              ),
+              CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kPrimary), strokeWidth: 3,),
               SizedBox(height: 24),
-              Text(
-                'Loading class data...',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
-                ),
-              ),
+              Text('Loading class data...', style: TextStyle(fontSize: 16,fontWeight: FontWeight.w500,color: Colors.black54),),
               SizedBox(height: 8),
-              Text(
-                'Please wait',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black38,
-                ),
-              ),
+              Text('Please wait', style: TextStyle(fontSize: 14, color: Colors.black38),),
             ],
           ),
         ),
       );
     }
-
     if (error.isNotEmpty) {
       return Scaffold(
         appBar: AppBar(
@@ -628,27 +617,17 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         body: Center(child: Text(error)),
       );
     }
-
     final filteredStudents = students
-        .where((s) =>
-    s['name'].toLowerCase().contains(searchQuery.toLowerCase()) ||
-        s['id'].toLowerCase().contains(searchQuery.toLowerCase()))
-        .toList();
+        .where((s) => s['name'].toLowerCase().contains(searchQuery.toLowerCase()) || s['id'].toLowerCase().contains(searchQuery.toLowerCase())).toList();
 
     return Scaffold(
       backgroundColor: kBackground,
       appBar: AppBar(
         backgroundColor: kPrimary,
         elevation: 0,
-        title: const Text(
-          'MARK ATTENDANCE',
-          style: TextStyle(color: Colors.white, fontSize: 24),
-        ),
+        title: const Text('MARK ATTENDANCE', style: TextStyle(color: Colors.white, fontSize: 24),),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.save, color: Colors.white),
-            onPressed: isSaving ? null : _saveAttendance,
-          ),
+          IconButton(icon: const Icon(Icons.save, color: Colors.white),onPressed: isSaving ? null : _saveAttendance,),
         ],
         leading: const BackButton(color: Colors.white),
       ),
@@ -662,34 +641,29 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: Colors.grey,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: selectedSemester,
                         isExpanded: true,
-                        hint: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text('Select Sem'),
-                        ),
+                        hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Select Sem'),),
                         onChanged: (v) async {
                           if (v != null) {
                             setState(() => selectedSemester = v);
                             await _loadSemesterData(v);
-                            _onSelectionChanged(); // Load attendance for new semester
+                            _onSelectionChanged();
                           }
                         },
-                        items: semesters
-                            .map((e) =>
+                        items: semesters.map((e) =>
                             DropdownMenuItem(
                               value: e,
                               child: Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 8),
                                 child: Text(e),
                               ),
-                            ))
-                            .toList(),
+                            )).toList(),
                       ),
                     ),
                   ),
@@ -698,31 +672,26 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Colors.grey[200],
+                      color: Colors.grey,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: selectedSubject,
                         isExpanded: true,
-                        hint: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text('Select Subject'),
-                        ),
+                        hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Select Subject'),),
                         onChanged: (v) {
                           setState(() => selectedSubject = v);
-                          _onSelectionChanged(); // Load attendance for new subject
+                          _onSelectionChanged();
                         },
-                        items: getSubjectsForThisFaculty()
-                            .map((e) =>
+                        items: getSubjectsForThisFaculty().map((e) =>
                             DropdownMenuItem(
                               value: e,
                               child: Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 8),
                                 child: Text(e),
                               ),
-                            ))
-                            .toList(),
+                            )).toList(),
                       ),
                     ),
                   ),
@@ -730,7 +699,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ],
             ),
           ),
-          // Calendar Row (date picker)
+
+          // Date Picker Row
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: SizedBox(
@@ -738,49 +708,26 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: getDateList().map((date) {
-                  final isSelected = DateFormat('yyyy-MM-dd').format(date) ==
-                      DateFormat('yyyy-MM-dd').format(selectedDate);
+                  final isSelected = DateFormat('yyyy-MM-dd').format(date) == DateFormat('yyyy-MM-dd').format(selectedDate);
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 3),
                     child: GestureDetector(
                       onTap: () {
                         setState(() => selectedDate = date);
-                        _onSelectionChanged(); // Load attendance for new date
+                        _onSelectionChanged();
                       },
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isSelected ? kPrimary : Colors.grey[200],
+                          color: isSelected ? kPrimary : Colors.grey,
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                                color: kShadow,
-                                blurRadius: 6,
-                                offset: Offset(1, 4))
-                          ],
+                          boxShadow: [BoxShadow(color: kShadow, blurRadius: 6, offset: Offset(1, 4))],
                         ),
                         width: 62,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(
-                              DateFormat('dd').format(date),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.black87,
-                              ),
-                            ),
-                            Text(
-                              DateFormat('EEE').format(date),
-                              style: TextStyle(
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.black54,
-                                fontSize: 14,
-                              ),
-                            ),
+                            Text(DateFormat('dd').format(date), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isSelected ? Colors.white : Colors.black87),),
+                            Text(DateFormat('EEE').format(date), style: TextStyle(color: isSelected ? Colors.white : Colors.black54, fontSize: 14),),
                           ],
                         ),
                       ),
@@ -790,6 +737,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ),
             ),
           ),
+
           // Search & Hour Selection
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -803,26 +751,18 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                       child: Container(
                         height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.grey[200],
+                          color: Colors.grey,
                           borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                              color: kShadow,
-                              blurRadius: 3,
-                              offset: Offset(1, 2),
-                            ),
-                          ],
+                          boxShadow: [BoxShadow(color: kShadow, blurRadius: 3, offset: Offset(1, 2)),],
                         ),
                         child: TextField(
                           decoration: const InputDecoration(
                             hintText: "Search students",
                             border: InputBorder.none,
                             prefixIcon: Icon(Icons.search),
-                            contentPadding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                           ),
-                          onChanged: (val) =>
-                              setState(() => searchQuery = val),
+                          onChanged: (val) => setState(() => searchQuery = val),
                         ),
                       ),
                     ),
@@ -832,7 +772,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                       child: Container(
                         height: 44,
                         decoration: BoxDecoration(
-                          color: isContinuousMode ? kPrimary : Colors.grey[300],
+                          color: isContinuousMode ? kPrimary : Colors.grey,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: InkWell(
@@ -851,11 +791,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           child: Center(
                             child: Text(
                               isContinuousMode ? 'Multiple Hours' : 'Single Hour',
-                              style: TextStyle(
-                                color: isContinuousMode ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 12,
-                              ),
+                              style: TextStyle(color: isContinuousMode ? Colors.white : Colors.black87, fontWeight: FontWeight.w600, fontSize: 12),
                             ),
                           ),
                         ),
@@ -879,17 +815,10 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             value: selectedHour,
                             isExpanded: true,
                             dropdownColor: Color(0xFF222F3E),
-                            hint: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(
-                                'Start Hour',
-                                style: TextStyle(color: Colors.white),
-                              ),
-                            ),
+                            hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Start Hour', style: TextStyle(color: Colors.white),),),
                             onChanged: (v) {
                               setState(() {
                                 selectedHour = v;
-                                // Reset end hour if it's before start hour
                                 if (isContinuousMode && selectedEndHour != null) {
                                   final startHour = int.tryParse(v!) ?? 1;
                                   final endHour = int.tryParse(selectedEndHour!) ?? 1;
@@ -902,33 +831,21 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             },
                             style: const TextStyle(color: Colors.white),
                             iconEnabledColor: Colors.white,
-                            items: hours
-                                .map((e) =>
+                            items: hours.map((e) =>
                                 DropdownMenuItem(
                                   value: e,
                                   child: Padding(
                                     padding: EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(
-                                      isContinuousMode ? 'Hour $e' : 'Hour $e',
-                                      style:
-                                      const TextStyle(color: Colors.white),
-                                    ),
+                                    child: Text(isContinuousMode ? 'Hour $e' : 'Hour $e', style: const TextStyle(color: Colors.white),),
                                   ),
-                                ))
-                                .toList(),
+                                )).toList(),
                           ),
                         ),
                       ),
                     ),
                     if (isContinuousMode) ...[
                       const SizedBox(width: 8),
-                      const Text(
-                        'to',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black54,
-                        ),
-                      ),
+                      const Text('to', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54,),),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Container(
@@ -942,33 +859,21 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                               value: selectedEndHour,
                               isExpanded: true,
                               dropdownColor: Color(0xFF222F3E),
-                              hint: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text(
-                                  'End Hour',
-                                  style: TextStyle(color: Colors.white),
-                                ),
-                              ),
+                              hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('End Hour', style: TextStyle(color: Colors.white)),),
                               onChanged: (v) {
                                 setState(() => selectedEndHour = v);
                                 _onSelectionChanged();
                               },
                               style: const TextStyle(color: Colors.white),
                               iconEnabledColor: Colors.white,
-                              items: getAvailableEndHours()
-                                  .map((e) =>
+                              items: getAvailableEndHours().map((e) =>
                                   DropdownMenuItem(
                                     value: e,
                                     child: Padding(
                                       padding: EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text(
-                                        'Hour $e',
-                                        style:
-                                        const TextStyle(color: Colors.white),
-                                      ),
+                                      child: Text('Hour $e', style: const TextStyle(color: Colors.white),),
                                     ),
-                                  ))
-                                  .toList(),
+                                  )).toList(),
                             ),
                           ),
                         ),
@@ -979,29 +884,29 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ],
             ),
           ),
+
           // Table Headers
           Padding(
-            padding: const EdgeInsets.only(top: 10, left: 0, right: 0),
+            padding: const EdgeInsets.only(top: 10, left: 4, right: 4),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF222F3E),
-                //color: kBackground,
+                color: kBackground,
+                border: const Border(
+                  bottom: BorderSide(color: kPrimary, width: 2),
+                  top: BorderSide(color: kPrimary, width: 2),
+                ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 0),
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
                 child: Row(
                   children: [
                     const Expanded(
                       flex: 2,
-                      child: Text("STUDENT ID",
-                        style:
-                        const TextStyle(color: Colors.white)),
+                      child: Text("STUDENT ID", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     const Expanded(
                       flex: 3,
-                      child: Text("NAME",
-                        style:
-                        const TextStyle(color: Colors.white)),
+                      child: Text("NAME", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                     ),
                     Expanded(
                       flex: 2,
@@ -1013,18 +918,14 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                 ? "HOURS $selectedHour-$selectedEndHour"
                                 : "HOUR ${selectedHour ?? '-'}",
                             textAlign: TextAlign.end,
-                            style:
-                            const TextStyle(color: Colors.white),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                           const SizedBox(width: 8),
                           PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 18,color:Colors.white),
+                            icon: const Icon(Icons.more_vert, size: 18),
                             onSelected: (value) {
-                              if (value == 'all_present') {
-                                _markAll(true);
-                              } else if (value == 'all_absent') {
-                                _markAll(false);
-                              }
+                              if (value == 'all_present') _markAll(true);
+                              else if (value == 'all_absent') _markAll(false);
                             },
                             itemBuilder: (context) => [
                               const PopupMenuItem(
@@ -1057,6 +958,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ),
             ),
           ),
+
           // Student List
           Expanded(
             child: Stack(
@@ -1065,18 +967,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     ? const Center(child: Text("No students found."))
                     : ListView.separated(
                   itemCount: filteredStudents.length,
-                  separatorBuilder: (_, __) =>
-                      Divider(
-                        color: kPrimary,
-                        height: 1,
-                        thickness: 0.7,
-                      ),
+                  separatorBuilder: (_, __) => Divider(color: kPrimary, height: 1, thickness: 0.7),
                   itemBuilder: (context, i) {
                     final s = filteredStudents[i];
                     final sid = s['id'];
                     final sname = s['name'];
                     final present = attendance[sid] ?? false;
-
                     return Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: Row(
@@ -1087,9 +983,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               child: Text(
                                 sid,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w500,
-                                ),
+                                style: const TextStyle(fontWeight: FontWeight.w500),
                               ),
                             ),
                           ),
@@ -1097,10 +991,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             flex: 3,
                             child: Text(
                               sname,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w400,
-                                fontSize: 15,
-                              ),
+                              style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 15),
                             ),
                           ),
                           Expanded(
@@ -1111,10 +1002,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                 value: present,
                                 activeColor: Colors.green,
                                 inactiveThumbColor: Colors.red,
-                                onChanged: (v) =>
-                                    setState(() {
-                                      attendance[sid] = v;
-                                    }),
+                                onChanged: (v) => setState(() { attendance[sid] = v; }),
                               ),
                             ),
                           ),
@@ -1123,7 +1011,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     );
                   },
                 ),
-                // Loading overlay for attendance fetching
                 if (isLoadingAttendance)
                   Container(
                     color: Colors.white.withOpacity(0.8),
@@ -1141,8 +1028,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ],
             ),
           ),
-          // Bottom Navigation
-
         ],
       ),
     );

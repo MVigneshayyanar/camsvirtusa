@@ -90,7 +90,7 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   Future<void> _fetchData() async {
     try {
-      final studentDoc = await FirebaseFirestore.instance
+      var studentDoc = await FirebaseFirestore.instance
           .collection('colleges')
           .doc('students')
           .collection('all_students')
@@ -99,17 +99,72 @@ class _StudentDashboardState extends State<StudentDashboard>
 
       if (!studentDoc.exists) throw Exception("Student not found");
 
-      studentData = studentDoc.data();
+      var data = studentDoc.data();
+      if (data == null) throw Exception("Student record empty");
 
-    } catch (e) {
-      print("Error fetching data: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error fetching profile: $e")),
-      );
-    } finally {
+      double attendancePercent = await fetchAttendancePercentage();
+
       setState(() {
+        studentData = data;
+        studentData?['attendancePercent'] = attendancePercent.round();
         _isLoading = false;
       });
+    } catch (e) {
+      print("Error loading student data: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error loading student data: $e')));
+        setState(() {
+          _isLoading = false;
+          studentData = null;
+        });
+      }
+    }
+  }
+
+
+  // Add this method to fetch attendance percentage
+  Future<double> fetchAttendancePercentage() async {
+    try {
+      // Get the student doc
+      var studentDoc = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(widget.studentId)
+          .get();
+
+      if (!studentDoc.exists) return 0;
+      Map<String, dynamic>? studentData = studentDoc.data();
+      if (studentData == null) return 0;
+
+      String? currentSemester = studentData['current_semester'];
+      if (currentSemester == null) return 0;
+
+      // Get attendance document for current semester
+      var attendanceDoc = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('students')
+          .collection('all_students')
+          .doc(widget.studentId)
+          .collection('attendance')
+          .doc(currentSemester)
+          .get();
+
+      if (!attendanceDoc.exists) return 0;
+
+      Map<String, dynamic>? attendanceData = attendanceDoc.data();
+      if (attendanceData == null) return 0;
+
+      // Read 'P' as the attendance percentage
+      var percent = attendanceData['P'];
+      if (percent is num) {
+        return percent.toDouble();
+      }
+      return 0;
+    } catch (e) {
+      print("Error fetching attendance percentage: $e");
+      return 0;
     }
   }
 
@@ -174,7 +229,7 @@ class _StudentDashboardState extends State<StudentDashboard>
       ),
       padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6B47), // Slightly darker than your app bar color
+        color: Color(0xFFFF7F50), // Slightly darker than your app bar color
         borderRadius: BorderRadius.circular(screenWidth > 600 ? 12 : 10),
         boxShadow: [
           BoxShadow(
@@ -295,7 +350,7 @@ class _StudentDashboardState extends State<StudentDashboard>
 
     final name = studentData?['name']?.toString() ?? '';
     var p = 60;
-    final attendancePercent = (studentData?['attendancePercent'] ?? p).toInt();
+    final attendancePercent = studentData?['attendancePercent'] ?? 0;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -365,7 +420,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                     height: screenWidth > 600 ? 25 : 20, // Responsive height
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(10),
-                      color: Colors.red,
+                      color: const Color(0xFFe51f1f),
                     ),
                     child: Stack(
                       children: [
@@ -373,7 +428,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                           width: (screenWidth > 600 ? 246 : 196) * (p / 100),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFF32C425),
+                            color: const Color(0xFF44ce1b),
                           ),
                         ),
                         Positioned(
@@ -381,7 +436,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                           child: Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(10),
-                              color: Colors.red,
+                              color: const Color(0xFFe51f1f),
                             ),
                             width: 4,
                           ),
