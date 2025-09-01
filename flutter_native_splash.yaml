@@ -13,9 +13,7 @@ flutter_native_splash:
   ios: true
   web: true
 
-  # Dark mode support (optional)
-  color_dark: "#ffffff"
-  image_dark: assets/images/splash_logo_dark.png
+
 
   # Branding image (optional)
   branding: assets/images/branding_dark.png
