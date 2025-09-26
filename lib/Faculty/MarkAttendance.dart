@@ -1,6 +1,12 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 
 // Custom Color Palette
 const Color kPrimary = Color(0xFFFF7043);
@@ -140,43 +146,28 @@ class ClassAttendanceScreen extends StatefulWidget {
     required this.className,
   }) : super(key: key);
 
-  // Updated: reference attendance by semester
-  Future<String?> getAttendanceStatus({
-    required String studentId,
-    required DateTime date,
-    required String hour,
-    required String subject,
-    required String semester, // new parameter
-  }) async {
-    final dateKey = DateFormat('dd-MM-yyyy').format(date);
-    final hourIdx = (int.tryParse(hour) ?? 1) - 1;
-    final attendanceRef = FirebaseFirestore.instance
-        .collection('colleges')
-        .doc('students')
-        .collection('all_students')
-        .doc(studentId)
-        .collection('attendance')
-        .doc(semester);
-
-    final docSnap = await attendanceRef.get();
-    final data = docSnap.data();
-    if (data == null || data[dateKey] == null) return null;
-    final dailyAttendance = Map<String, dynamic>.from(data[dateKey]);
-    final hourEntry = dailyAttendance["$hourIdx"];
-    if (hourEntry == null) return null;
-    if (hourEntry is Map) {
-      if (hourEntry.containsKey(subject)) {
-        return hourEntry[subject]; // "P" or "A"
-      }
-    }
-    return null;
-  }
-
   @override
   State<ClassAttendanceScreen> createState() => _ClassAttendanceScreenState();
 }
 
 class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
+  // BLE Peripheral Advertising
+  final FlutterBlePeripheral _blePeripheral = FlutterBlePeripheral();
+
+  bool isAdvertising = false;
+  String? currentSessionId;
+  String? advertisingSubject;
+  Set<String> detectedStudentIds = {};
+  Timer? _liveUpdateTimer;
+  List<Map<String, dynamic>> liveDetectedStudents = [];
+
+  final AdvertiseSettings advertiseSettings = AdvertiseSettings(
+    advertiseMode: AdvertiseMode.advertiseModeBalanced,
+    txPowerLevel: AdvertiseTxPower.advertiseTxPowerMedium,
+    connectable: false,
+    timeout: 0,
+  );
+
   bool isLoading = true;
   bool subjectsLoading = false;
   bool isSaving = false;
@@ -203,7 +194,780 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     super.initState();
     _initData();
   }
+  StreamSubscription<QuerySnapshot>? _responseSubscription;
 
+  @override
+  void dispose() {
+    _responseSubscription?.cancel();
+    _liveUpdateTimer?.cancel();
+    stopAdvertising();
+    super.dispose();
+  }
+
+  // BLE Advertising Methods with Live Updates
+  Future<void> startAdvertising() async {
+    if (isAdvertising || selectedSubject == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a subject first!')),
+      );
+      return;
+    }
+
+    // Generate session ID with proper format
+    final sessionId = '${widget.facultyId}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
+
+    print("🚀 Starting broadcast with Session ID: $sessionId");
+
+    final payloadData = {
+      'sessionId': sessionId,
+      'facultyId': widget.facultyId,
+      'className': widget.className,
+      'subject': selectedSubject,
+      'hour': selectedHour,
+      'date': DateFormat('dd-MM-yyyy').format(selectedDate),
+    };
+
+    final payloadJson = jsonEncode(payloadData);
+    final manufacturerData = Uint8List.fromList(payloadJson.codeUnits);
+
+    final advertiseData = AdvertiseData(
+      serviceUuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe7",
+      localName: "AttendanceSession",
+      manufacturerId: 1234,
+      manufacturerData: manufacturerData,
+    );
+
+    try {
+      await _blePeripheral.start(
+        advertiseData: advertiseData,
+        advertiseSettings: advertiseSettings,
+      );
+
+      setState(() {
+        isAdvertising = true;
+        currentSessionId = sessionId;
+        advertisingSubject = selectedSubject;
+        detectedStudentIds.clear();
+        liveDetectedStudents.clear();
+      });
+
+      // CRITICAL: Start the real-time listener IMMEDIATELY after setting state
+      print("🎯 Starting real-time Firestore listener...");
+      startLiveResponseMonitoring();
+
+      // Show broadcasting popup
+      _showLiveDetectionDialog();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Broadcasting started for $selectedSubject!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      print("✅ Broadcasting active - Session: $sessionId");
+
+    } catch (e) {
+      print("❌ Error starting BLE advertising: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to start broadcasting: $e')),
+      );
+    }
+  }
+
+  void _processResponseSnapshot(QuerySnapshot snapshot) {
+    if (!mounted || currentSessionId == null) {
+      print("⚠️ Skipping processing - not mounted or no session");
+      return;
+    }
+
+    List<Map<String, dynamic>> newDetectedStudents = [];
+    Set<String> newDetectedIds = {};
+    bool hasNewStudents = false;
+
+    print("🔄 Processing ${snapshot.docs.length} responses for session: $currentSessionId");
+
+    for (var doc in snapshot.docs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
+        final studentId = data['studentId'] as String?;
+        final studentName = data['studentName'] as String?;
+        final timestamp = data['timestamp'] as Timestamp?;
+        final sessionId = data['sessionId'] as String?;
+
+        // Verify this response is for current session
+        if (sessionId != currentSessionId) {
+          print("⚠️ Skipping response for different session: $sessionId");
+          continue;
+        }
+
+        if (studentId == null) {
+          print("⚠️ Skipping response with null studentId");
+          continue;
+        }
+
+        print("📋 Processing response:");
+        print("   Student ID: $studentId");
+        print("   Student Name: $studentName");
+        print("   Session Match: ${sessionId == currentSessionId}");
+
+        newDetectedIds.add(studentId);
+
+        // Check if this is a new detection
+        if (!detectedStudentIds.contains(studentId)) {
+          hasNewStudents = true;
+          print("🆕 NEW STUDENT DETECTED: $studentId - $studentName");
+
+          // Get student name with better fallback logic
+          String displayName = studentName ?? 'Unknown';
+          if (displayName.isEmpty || displayName == 'Unknown Student') {
+            final studentData = students.firstWhere(
+                  (s) => s['id'] == studentId,
+              orElse: () => <String, dynamic>{},
+            );
+            if (studentData.isNotEmpty) {
+              displayName = studentData['name'] ?? studentData['student_name'] ?? studentId;
+            } else {
+              displayName = studentId;
+            }
+          }
+
+          print("👤 Final display name: $displayName");
+
+          newDetectedStudents.add({
+            'id': studentId,
+            'name': displayName,
+            'timestamp': timestamp?.toDate() ?? DateTime.now(),
+            'isNew': true,
+          });
+
+          // Mark student as present in main attendance
+          _markStudentPresent(studentId);
+        }
+      } catch (e) {
+        print("❌ Error processing response document: $e");
+      }
+    }
+
+    // Update state with all changes at once
+    if (hasNewStudents || detectedStudentIds.length != newDetectedIds.length) {
+      setState(() {
+        // Update detected student IDs
+        detectedStudentIds.clear();
+        detectedStudentIds.addAll(newDetectedIds);
+
+        // Add new students to live list
+        for (var student in newDetectedStudents) {
+          bool exists = liveDetectedStudents.any((s) => s['id'] == student['id']);
+          if (!exists) {
+            liveDetectedStudents.insert(0, student);
+          }
+        }
+
+        // Mark older entries as not new
+        for (var student in liveDetectedStudents) {
+          if (student['isNew'] == true) {
+            final studentTimestamp = student['timestamp'] as DateTime;
+            if (DateTime.now().difference(studentTimestamp).inSeconds > 5) {
+              student['isNew'] = false;
+            }
+          }
+        }
+
+        // Force refresh of attendance map
+        attendance = Map<String, bool>.from(attendance);
+      });
+
+      print("✅ State updated: ${detectedStudentIds.length} total detected, ${newDetectedStudents.length} new");
+      print("   Live detected students: ${liveDetectedStudents.length}");
+    }
+  }
+
+  Future<void> stopAdvertising() async {
+    if (!isAdvertising) return;
+
+    try {
+      await _blePeripheral.stop();
+      _liveUpdateTimer?.cancel();
+      _responseSubscription?.cancel(); // Clean up Firestore listener
+
+      setState(() {
+        isAdvertising = false;
+        currentSessionId = null;
+        advertisingSubject = null;
+        liveDetectedStudents.clear();
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Broadcasting stopped"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      print("❌ Error stopping BLE advertising: $e");
+    }
+  }
+
+  void startLiveResponseMonitoring() {
+    // Cancel existing subscriptions
+    _responseSubscription?.cancel();
+    _liveUpdateTimer?.cancel();
+
+    if (currentSessionId == null) {
+      print("❌ Cannot start monitoring - currentSessionId is null");
+      return;
+    }
+
+    print("🎯 Starting REAL-TIME listener for session: $currentSessionId");
+
+    // Set up real-time Firestore listener
+    _responseSubscription = FirebaseFirestore.instance
+        .collection('attendance_responses')
+        .where('sessionId', isEqualTo: currentSessionId)
+        .snapshots()  // Remove orderBy to avoid index issues
+        .listen(
+          (snapshot) {
+        print("📡 Firestore listener triggered:");
+        print("   Found ${snapshot.docs.length} total responses");
+        print("   Changes: ${snapshot.docChanges.length}");
+
+        // Process each document change
+        for (var change in snapshot.docChanges) {
+          if (change.type == DocumentChangeType.added) {
+            final data = change.doc.data() as Map<String, dynamic>?;
+            if (data != null) {
+              print("📋 NEW response detected:");
+              print("   Student ID: ${data['studentId']}");
+              print("   Student Name: ${data['studentName']}");
+              print("   Session: ${data['sessionId']}");
+            }
+          }
+        }
+
+        _processResponseSnapshot(snapshot);
+      },
+      onError: (error) {
+        print("❌ Firestore listener error: $error");
+
+        // Retry mechanism
+        Future.delayed(Duration(seconds: 2), () {
+          if (mounted && isAdvertising && currentSessionId != null) {
+            print("🔄 Retrying Firestore listener...");
+            startLiveResponseMonitoring();
+          }
+        });
+      },
+    );
+
+    print("✅ Real-time listener established for session: $currentSessionId");
+
+    // Add a backup polling mechanism for extra safety
+    _liveUpdateTimer = Timer.periodic(Duration(seconds: 5), (timer) {
+      if (!isAdvertising || currentSessionId == null) {
+        timer.cancel();
+        return;
+      }
+      print("🔄 Backup check - Current detected: ${detectedStudentIds.length}");
+    });
+  }
+
+  // FIXED: Now properly retrieves and displays student names AND updates UI
+  Future<void> _fetchLiveStudentResponses() async {
+    if (currentSessionId == null) return;
+
+    try {
+      print("🔍 Fetching live responses for session: $currentSessionId");
+
+      final responsesSnapshot = await FirebaseFirestore.instance
+          .collection('attendance_responses')
+          .where('sessionId', isEqualTo: currentSessionId)
+          .orderBy('timestamp', descending: true)
+          .get();
+
+      print("📊 Found ${responsesSnapshot.docs.length} responses in Firestore");
+
+      List<Map<String, dynamic>> newDetectedStudents = [];
+      Set<String> newDetectedIds = {};
+      bool hasNewStudents = false;
+
+      for (var doc in responsesSnapshot.docs) {
+        final data = doc.data();
+        final studentId = data['studentId'] as String?;
+        final studentName = data['studentName'] as String?;
+        final timestamp = data['timestamp'] as Timestamp?;
+
+        if (studentId == null) continue;
+
+        print("📝 Processing response: $studentId -> $studentName");
+
+        newDetectedIds.add(studentId);
+
+        // Check if this is a new detection
+        if (!detectedStudentIds.contains(studentId)) {
+          hasNewStudents = true;
+
+          // Get student name with better fallback logic
+          String displayName = studentName ?? 'Unknown';
+
+          if (displayName.isEmpty || displayName == 'Unknown' || displayName == 'Unknown Student') {
+            // Try to find student in the main students list
+            final studentData = students.firstWhere(
+                  (s) => s['id'] == studentId,
+              orElse: () => <String, dynamic>{},
+            );
+
+            if (studentData.isNotEmpty) {
+              displayName = studentData['name'] ?? studentData['student_name'] ?? studentId;
+            } else {
+              displayName = studentId; // Use ID as fallback
+            }
+          }
+
+          print("✅ NEW STUDENT DETECTED: $studentId -> $displayName");
+
+          newDetectedStudents.add({
+            'id': studentId,
+            'name': displayName,
+            'timestamp': timestamp?.toDate() ?? DateTime.now(),
+            'isNew': true,
+          });
+
+          // CRITICAL: Mark student as present in main attendance
+          await _markStudentPresent(studentId);
+        }
+      }
+
+      // Update state with all changes at once
+      if (hasNewStudents || newDetectedIds.isNotEmpty) {
+        setState(() {
+          // Update detected student IDs
+          detectedStudentIds.addAll(newDetectedIds);
+
+          // Add new students to live list
+          for (var student in newDetectedStudents) {
+            // Prevent duplicates
+            bool exists = liveDetectedStudents.any((s) => s['id'] == student['id']);
+            if (!exists) {
+              liveDetectedStudents.insert(0, student);
+            }
+          }
+
+          // Mark older entries as not new
+          for (var student in liveDetectedStudents) {
+            if (student['isNew'] == true) {
+              final studentTimestamp = student['timestamp'] as DateTime;
+              if (DateTime.now().difference(studentTimestamp).inSeconds > 5) {
+                student['isNew'] = false;
+              }
+            }
+          }
+
+          // Force refresh of attendance map
+          attendance = Map<String, bool>.from(attendance);
+        });
+
+        print("🔄 State updated: ${detectedStudentIds.length} total detected, ${newDetectedStudents.length} new");
+      }
+
+    } catch (e) {
+      print('❌ Error fetching live student responses: $e');
+    }
+  }
+
+  String _getStudentName(String studentId) {
+    final student = students.firstWhere(
+            (s) => s['id'] == studentId,
+        orElse: () => {'name': 'Unknown Student'}
+    );
+    return student['name'] ?? 'Unknown Student';
+  }
+
+  Future<void> _markStudentPresent(String studentId) async {
+    try {
+      print("✅ Marking student present: $studentId");
+
+      // First, update local state immediately
+      if (mounted) {
+        setState(() {
+          attendance[studentId] = true;
+          print("📱 Local state updated: $studentId marked present");
+        });
+      }
+
+      // Then update Firestore (optional - for persistence)
+      String classId = students.firstWhere(
+            (student) => student['id'] == studentId,
+        orElse: () => {'class': widget.className}, // Use widget.className as fallback
+      )['class'] ?? widget.className;
+
+      print("📊 Updating Firestore for student $studentId in class $classId");
+
+    } catch (e) {
+      print("❌ Error marking student present: $e");
+    }
+  }
+
+
+  // IMPROVED METHOD: Merge BLE detected students with attendance UI
+  Future<void> _mergeBLEDetectedStudents() async {
+    if (currentSessionId == null) return;
+
+    try {
+      print("🔍 Checking for BLE detected students for session: $currentSessionId");
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('attendance_responses')
+          .where('sessionId', isEqualTo: currentSessionId)
+          .get();
+
+      int detectedCount = 0;
+      bool uiNeedsUpdate = false;
+      List<String> detectedStudentNames = [];
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        String? studentId = data['studentId'];
+        String? studentName = data['studentName'];
+
+        if (studentId != null && attendance.containsKey(studentId)) {
+          // Update both attendance map and detected set
+          attendance[studentId] = true; // Mark as present
+          detectedStudentIds.add(studentId);
+
+          // Get proper student name
+          final properName = studentName ?? _getStudentName(studentId);
+          detectedStudentNames.add(properName);
+
+          detectedCount++;
+          uiNeedsUpdate = true;
+
+          print("✅ Marked student $studentId ($properName) as present via BLE");
+        }
+      }
+
+      // CRITICAL: Update UI with single setState call
+      if (uiNeedsUpdate) {
+        setState(() {
+          // Force rebuild of the entire attendance list
+          attendance = Map.from(attendance); // Create new map reference to trigger rebuild
+        });
+
+        print("🎯 Total BLE detected students: $detectedCount");
+        print("👥 Detected students: ${detectedStudentNames.join(', ')}");
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ $detectedCount students marked via BLE detection'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+
+    } catch (e) {
+      print("❌ Error merging BLE detected students: $e");
+    }
+  }
+
+  // Live Detection Dialog
+  void _showLiveDetectionDialog() {
+    Timer? dialogTimer;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) {
+          // Cancel previous timer
+          dialogTimer?.cancel();
+
+          // Start new timer with more frequent updates
+          dialogTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
+            if (!isAdvertising || !mounted) {
+              timer.cancel();
+              return;
+            }
+            if (mounted) {
+              setModalState(() {
+                // Force refresh of modal content
+              });
+            }
+          });
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.8,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Your existing dialog content...
+                Container(
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.green.shade400, Colors.green.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    children: [
+                      TweenAnimationBuilder(
+                        tween: Tween<double>(begin: 0.8, end: 1.2),
+                        duration: Duration(milliseconds: 1000),
+                        builder: (context, double scale, child) {
+                          return Transform.scale(
+                            scale: scale,
+                            child: Icon(Icons.wifi_tethering, color: Colors.white, size: 28),
+                          );
+                        },
+                      ),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Broadcasting Active',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Subject: ${advertisingSubject ?? 'Unknown'}',
+                              style: TextStyle(color: Colors.white70, fontSize: 14),
+                            ),
+                            Text(
+                              '${detectedStudentIds.length} students detected',
+                              style: TextStyle(color: Colors.white70, fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.stop_circle, color: Colors.white, size: 32),
+                        onPressed: () {
+                          dialogTimer?.cancel();
+                          stopAdvertising();
+                          Navigator.pop(context);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Stats section
+                Container(
+                  padding: EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      _buildStatCard('Total', students.length.toString(), Icons.people, Colors.blue),
+                      SizedBox(width: 10),
+                      _buildStatCard('Present', detectedStudentIds.length.toString(), Icons.check_circle, Colors.green),
+                      SizedBox(width: 10),
+                      _buildStatCard('Absent', (students.length - detectedStudentIds.length).toString(), Icons.cancel, Colors.red),
+                    ],
+                  ),
+                ),
+
+                // Live students list
+                Expanded(
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.bluetooth, color: Colors.blue),
+                            SizedBox(width: 8),
+                            Text(
+                              'Live Student Signals (${liveDetectedStudents.length})',
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(),
+                      Expanded(
+                        child: liveDetectedStudents.isEmpty
+                            ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.search, size: 64, color: Colors.grey),
+                              SizedBox(height: 16),
+                              Text(
+                                'Waiting for student signals...',
+                                style: TextStyle(color: Colors.grey, fontSize: 16),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Students should open their app for auto-detection',
+                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        )
+                            : ListView.builder(
+                          itemCount: liveDetectedStudents.length,
+                          itemBuilder: (context, index) {
+                            final student = liveDetectedStudents[index];
+                            final isNew = student['isNew'] == true;
+                            final timestamp = student['timestamp'] as DateTime;
+
+                            return AnimatedContainer(
+                              duration: Duration(milliseconds: 500),
+                              margin: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isNew ? Colors.green.shade50 : Colors.blue.shade50,
+                                border: Border.all(
+                                  color: isNew ? Colors.green : Colors.blue.shade200,
+                                  width: isNew ? 2 : 1,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: isNew ? Colors.green : Colors.blue,
+                                  child: Text(
+                                    student['name'].toString().isNotEmpty
+                                        ? student['name'].toString().substring(0, 1).toUpperCase()
+                                        : '?',
+                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                                title: Text(
+                                  student['name'] ?? 'Unknown Student',
+                                  style: TextStyle(
+                                    fontWeight: isNew ? FontWeight.bold : FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('ID: ${student['id']}'),
+                                    Text(
+                                      'Detected: ${DateFormat('HH:mm:ss').format(timestamp)}',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isNew) ...[
+                                      Container(
+                                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.green,
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: Text(
+                                          'NEW',
+                                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                    ],
+                                    Icon(
+                                      Icons.check_circle,
+                                      color: Colors.green,
+                                      size: 24,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Bottom section
+                Container(
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Session ID:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                          Text(currentSessionId?.substring(currentSessionId!.length - 8) ?? 'Unknown',
+                              style: TextStyle(fontSize: 10, fontFamily: 'monospace')),
+                        ],
+                      ),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          dialogTimer?.cancel();
+                          stopAdvertising();
+                          Navigator.pop(context);
+                        },
+                        icon: Icon(Icons.stop),
+                        label: Text('Stop Broadcasting'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    ).whenComplete(() {
+      dialogTimer?.cancel(); // Clean up timer when dialog closes
+    });
+  }
+
+
+  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          border: Border.all(color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 24),
+            SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+            ),
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // All your existing methods remain the same...
   Future<void> _initData() async {
     try {
       selectedSemester = semesters.first;
@@ -232,25 +996,38 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     });
   }
 
-
   Future<void> _fetchSubjectsForSemester(String semester) async {
-    setState(() => subjectsLoading = true);
+    setState(() {
+      subjects = [];
+      subjectsLoading = true;
+    });
+
     try {
       final doc = await FirebaseFirestore.instance
           .collection('colleges')
           .doc('departments')
           .collection('all_departments')
           .doc(widget.departmentId)
-          .collection('classes')
+          .collection('clasees')
           .doc(widget.className)
           .get();
+
       if (doc.exists) {
         final data = doc.data() ?? {};
-        subjects = List<String>.from(data[semester] ?? []);
+
+        if (data.containsKey(semester)) {
+          subjects = List<String>.from(data[semester] ?? []);
+          print('✅ Fetched ${subjects.length} subjects for semester $semester: $subjects');
+        } else {
+          subjects = [];
+          print('❌ No subjects found for semester: $semester');
+        }
       } else {
         subjects = [];
+        print('❌ No class document found');
       }
     } catch (e) {
+      print('❌ Error fetching subjects: $e');
       setState(() {
         error = 'Error loading subjects: $e';
       });
@@ -269,14 +1046,31 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .collection('clasees')
           .doc(widget.className)
           .get();
-      final data = doc.data() ?? {};
-      facultySubjectMappings = List<Map<String, dynamic>>.from(
-        (data['faculty']?[semester] ?? []),
-      );
+
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+
+        if (data.containsKey('faculty') && data['faculty'] != null) {
+          final facultyData = data['faculty'] as Map<String, dynamic>;
+
+          if (facultyData.containsKey(semester)) {
+            facultySubjectMappings = List<Map<String, dynamic>>.from(
+              facultyData[semester] ?? [],
+            );
+            print('✅ Fetched ${facultySubjectMappings.length} faculty mappings');
+          } else {
+            facultySubjectMappings = [];
+            print('❌ No faculty mappings for semester: $semester');
+          }
+        } else {
+          facultySubjectMappings = [];
+          print('❌ No faculty field found');
+        }
+      } else {
+        facultySubjectMappings = [];
+      }
     } catch (e) {
-      setState(() {
-        error = 'Error fetching faculty-subject mapping: $e';
-      });
+      print('❌ Error fetching faculty-subject mapping: $e');
       facultySubjectMappings = [];
     }
   }
@@ -298,6 +1092,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         };
       }).toList();
       attendance = {for (var s in students) s['id']: false};
+      print('✅ Fetched ${students.length} students');
     } catch (e) {
       setState(() {
         error = 'Error fetching students: $e';
@@ -305,14 +1100,15 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     }
   }
 
-
-  // Load attendance from new Firestore subcollection location
+  // UPDATED: Now includes BLE merge after loading attendance
   Future<void> _loadExistingAttendance() async {
     if (selectedSubject == null || selectedHour == null || students.isEmpty || selectedSemester == null) return;
     setState(() => isLoadingAttendance = true);
+
     try {
       final dateKey = DateFormat('dd-MM-yyyy').format(selectedDate);
       List<int> hourIndices = [];
+
       if (isContinuousMode && selectedEndHour != null) {
         final startHour = int.tryParse(selectedHour!) ?? 1;
         final endHour = int.tryParse(selectedEndHour!) ?? 1;
@@ -324,13 +1120,16 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       } else {
         hourIndices = [(int.tryParse(selectedHour!) ?? 1) - 1];
       }
+
       attendance = {for (var s in students) s['id']: false};
+
       const batchSize = 10;
       final batches = <List<Map<String, dynamic>>>[];
       for (int i = 0; i < students.length; i += batchSize) {
         final end = (i + batchSize < students.length) ? i + batchSize : students.length;
         batches.add(students.sublist(i, end));
       }
+
       final futures = batches.map((batch) => _loadAttendanceForBatch(batch, dateKey, hourIndices));
       await Future.wait(futures).timeout(
         const Duration(seconds: 10),
@@ -339,6 +1138,10 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           return <void>[];
         },
       );
+
+      // CRITICAL: Merge BLE detected students after loading standard attendance
+      await _mergeBLEDetectedStudents();
+
     } catch (e) {
       print('Error loading existing attendance: $e');
     } finally {
@@ -346,7 +1149,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     }
   }
 
-  // Helper to load attendance for each batch
   Future<void> _loadAttendanceForBatch(
       List<Map<String, dynamic>> batch,
       String dateKey,
@@ -419,10 +1221,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   Future<void> _updateAttendancePercentagesFromHistory() async {
     int presentCount = 0;
     int absentCount = 0;
-    int onDutyCount = 0; // If OD is tracked
+    int onDutyCount = 0;
     int totalMarks = 0;
 
-    // For each student in the class
     for (var student in students) {
       final attendanceRef = FirebaseFirestore.instance
           .collection('colleges')
@@ -435,11 +1236,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       final docSnap = await attendanceRef.get();
       final data = docSnap.data() ?? {};
 
-      // Loop through all dates
       data.forEach((key, value) {
-        // Skip P, A, OD fields at the root
         if (key == 'P' || key == 'A' || key == 'OD') return;
-        // value is daily attendance map (e.g., {'0': {'WTF': 'A'}, ...})
         if (value is Map<String, dynamic>) {
           value.forEach((hour, hourEntry) {
             if (hourEntry is Map<String, dynamic>) {
@@ -459,7 +1257,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     double absentPercentage = totalMarks > 0 ? (absentCount / totalMarks) * 100 : 0;
     double onDutyPercentage = totalMarks > 0 ? (onDutyCount / totalMarks) * 100 : 0;
 
-    // Update percentages in Firestore outside the date fields for each student
     for (var student in students) {
       final attendanceRef = FirebaseFirestore.instance
           .collection('colleges')
@@ -476,8 +1273,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       }, SetOptions(merge: true));
     }
   }
-
-
 
   Future<void> _saveAttendance() async {
     if (students.isEmpty ||
@@ -529,7 +1324,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     }
   }
 
-  // Save attendance to new Firestore subcollection location
   Future<void> _saveAttendanceForBatch(
       List<Map<String, dynamic>> batch,
       String dateKey,
@@ -594,18 +1388,35 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           ),
           leading: const BackButton(color: Colors.white),
         ),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(kPrimary), strokeWidth: 3,),
-              SizedBox(height: 24),
-              Text('Loading class data...', style: TextStyle(fontSize: 16,fontWeight: FontWeight.w500,color: Colors.black54),),
-              SizedBox(height: 8),
-              Text('Please wait', style: TextStyle(fontSize: 14, color: Colors.black38),),
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(kPrimary),
+                strokeWidth: 3,
+              ),
+              const SizedBox(height: 20), // Fixed: Added missing height value
+              const Text(
+                'Loading class data...',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Please wait',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black38,
+                ),
+              ),
             ],
           ),
         ),
+
       );
     }
     if (error.isNotEmpty) {
@@ -627,12 +1438,68 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         elevation: 0,
         title: const Text('MARK ATTENDANCE', style: TextStyle(color: Colors.white, fontSize: 24),),
         actions: [
-          IconButton(icon: const Icon(Icons.save, color: Colors.white),onPressed: isSaving ? null : _saveAttendance,),
+          // BLE Broadcasting Button
+          IconButton(
+            icon: Icon(
+              isAdvertising ? Icons.stop_circle : Icons.wifi_tethering,
+              color: isAdvertising ? Colors.red : Colors.white,
+              size: 28,
+            ),
+            onPressed: () {
+              if (isAdvertising) {
+                stopAdvertising();
+              } else {
+                startAdvertising();
+              }
+            },
+            tooltip: isAdvertising ? 'Stop Broadcasting' : 'Start Broadcasting',
+          ),
+          IconButton(
+            icon: const Icon(Icons.save, color: Colors.white),
+            onPressed: isSaving ? null : _saveAttendance,
+          ),
         ],
         leading: const BackButton(color: Colors.white),
       ),
       body: Column(
         children: [
+          // Broadcasting Status Banner
+          if (isAdvertising)
+            Container(
+              width: double.infinity,
+              color: Colors.green.shade100,
+              padding: EdgeInsets.all(8),
+              child: GestureDetector(
+                onTap: _showLiveDetectionDialog,
+                child: Row(
+                  children: [
+                    Icon(Icons.wifi_tethering, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Broadcasting ${advertisingSubject ?? 'Unknown'} • ${detectedStudentIds.length} students detected • Tap to view live',
+                        style: TextStyle(color: Colors.green.shade800, fontSize: 12),
+                      ),
+                    ),
+                    TweenAnimationBuilder(
+                      tween: Tween<double>(begin: 0.5, end: 1.0),
+                      duration: Duration(milliseconds: 1000),
+                      builder: (context, double value, child) {
+                        return Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(value),
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // Top Dropdowns: Semester and Subject
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
@@ -743,7 +1610,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             child: Column(
               children: [
-                // Search and Continuous Mode Toggle
                 Row(
                   children: [
                     Expanded(
@@ -800,7 +1666,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Hour Selection Row
                 Row(
                   children: [
                     Expanded(
@@ -959,7 +1824,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             ),
           ),
 
-          // Student List
+          // Student List with BLE indicators - IMPROVED VERSION
           Expanded(
             child: Stack(
               children: [
@@ -973,40 +1838,95 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     final sid = s['id'];
                     final sname = s['name'];
                     final present = attendance[sid] ?? false;
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Text(
-                                sid,
-                                style: const TextStyle(fontWeight: FontWeight.w500),
+                    final detectedViaBLE = detectedStudentIds.contains(sid);
+
+                    return Container(
+                      color: detectedViaBLE ? Colors.blue.shade50 : null, // Highlight BLE detected students
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                child: Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        sid,
+                                        style: TextStyle(
+                                          fontWeight: detectedViaBLE ? FontWeight.bold : FontWeight.w500,
+                                          color: detectedViaBLE ? Colors.blue.shade800 : Colors.black,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (detectedViaBLE) ...[
+                                      SizedBox(width: 4),
+                                      Icon(Icons.bluetooth_connected, color: Colors.blue, size: 12),
+                                    ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              sname,
-                              style: const TextStyle(fontWeight: FontWeight.w400, fontSize: 15),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Align(
-                              alignment: Alignment.centerRight,
-                              child: Switch(
-                                value: present,
-                                activeColor: Colors.green,
-                                inactiveThumbColor: Colors.red,
-                                onChanged: (v) => setState(() { attendance[sid] = v; }),
+                            Expanded(
+                              flex: 3,
+                              child: Row(
+                                children: [
+                                  Flexible(
+                                    child: Text(
+                                      sname,
+                                      style: TextStyle(
+                                        fontWeight: detectedViaBLE ? FontWeight.w600 : FontWeight.w400,
+                                        fontSize: 15,
+                                        color: detectedViaBLE ? Colors.blue.shade700 : Colors.black,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (detectedViaBLE) ...[
+                                    SizedBox(width: 4),
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        'AUTO',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              flex: 2,
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: Switch(
+                                  key: ValueKey('${sid}_${present}_${detectedViaBLE}'), // Force rebuild with unique key
+                                  value: present,
+                                  activeColor: detectedViaBLE ? Colors.blue : Colors.green,
+                                  inactiveThumbColor: Colors.red,
+                                  onChanged: (v) => setState(() {
+                                    attendance[sid] = v;
+                                    if (!v) {
+                                      // If manually marking as absent, remove from BLE detected set
+                                      detectedStudentIds.remove(sid);
+                                    }
+                                  }),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
