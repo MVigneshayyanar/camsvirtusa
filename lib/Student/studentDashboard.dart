@@ -994,8 +994,11 @@ class _StudentDashboardState extends State<StudentDashboard>
             children: [
               Image.asset(
                 imagePath,
-                height: screenWidth > 600 ? 80 : 60,
+                height: screenWidth > 800 ? 80
+                    : screenWidth > 600 ? 54
+                    : 40,
               ),
+
               SizedBox(height: screenWidth > 600 ? 12 : 8),
               Text(
                 label,

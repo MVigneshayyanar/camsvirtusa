@@ -412,33 +412,40 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     );
   }
 
-  Widget _buildDashboardCard(BuildContext context, {required String label, required String imagePath, required VoidCallback onTap}) {
+  Widget _buildDashboardCard(BuildContext context, {
+    required String label,
+    required String imagePath,
+    required VoidCallback onTap
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10), // Responsive border radius
+        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10),
       ),
       color: const Color(0xFF36454F),
-      elevation: screenWidth > 600 ? 6 : 4, // Responsive elevation
+      elevation: screenWidth > 600 ? 6 : 4,
       child: InkWell(
         borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10),
         onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12), // Responsive padding
+          padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
                 imagePath,
-                height: screenWidth > 600 ? 80 : 60, // Responsive image size
+                // Dynamically shrink image height to prevent overflow
+                height: screenWidth > 800 ? 80
+                    : screenWidth > 600 ? 54
+                    : 40,
               ),
               SizedBox(height: screenWidth > 600 ? 12 : 8),
               Text(
                 label,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: screenWidth > 600 ? 18 : 16, // Responsive font size
+                  fontSize: screenWidth > 600 ? 18 : 16,
                   fontWeight: FontWeight.w500,
                 ),
                 textAlign: TextAlign.center,
