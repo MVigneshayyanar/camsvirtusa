@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'studentProfile.dart';
 import 'studentAttendance.dart';
+import 'StudentCurriculum.dart';
 
 class StudentDashboard extends StatefulWidget {
   final String studentId;
@@ -578,13 +579,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFFFF7F50),
-            title: const Text("Search", style: TextStyle(color: Colors.white)),
-          ),
-          body: const Center(child: Text("Search Page")),
-        ),
+        builder: (context) => StudentCurriculum(studentId: widget.studentId),
       ),
     );
   }

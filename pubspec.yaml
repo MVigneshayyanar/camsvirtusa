@@ -27,6 +27,13 @@ dependencies:
   flutter_reactive_ble: ^5.3.1
   flutter_blue_plus: ^1.5.3
   flutter_ble_peripheral: ^1.0.0
+  camera: ^0.10.5+5
+  file_picker: ^8.0.3
+  read_pdf_text: ^0.3.1
+    # Use this instead of qr_code_scanner
+  mobile_scanner: ^5.0.0  # Compatible with newer Android Gradle Plugin
+    # OR
+  qr_code_scanner_plus: ^2.0.12
 
 
 
@@ -40,6 +47,7 @@ dependencies:
 dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.3.3
+  flutter_lints: ^3.0.0
 
 flutter_native_splash:
   color: "#FFFFFF"        # white background
