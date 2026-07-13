@@ -96,12 +96,8 @@ class _StudentDashboardState extends State<StudentDashboard>
     print("📋 Requesting all permissions...");
 
     final permissions = await [
-      Permission.bluetooth,
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.bluetoothAdvertise,
-      Permission.location,
-      Permission.locationAlways,
       Permission.locationWhenInUse,
     ].request();
 
@@ -241,7 +237,6 @@ class _StudentDashboardState extends State<StudentDashboard>
 
     try {
       FlutterBluePlus.startScan(
-        withServices: [Guid(SERVICE_UUID)],
         timeout: const Duration(minutes: 30), // Longer timeout
         androidUsesFineLocation: true,
       );
@@ -287,14 +282,13 @@ class _StudentDashboardState extends State<StudentDashboard>
   void _handleScanResults(List<ScanResult> results) {
     for (final result in results) {
       try {
-        final sessionJson = _extractSessionData(result);
-        if (sessionJson == null) continue;
+        final payload = _extractSessionData(result);
+        if (payload == null) continue;
 
-        final session = jsonDecode(sessionJson);
-        final String sessionId = session['sessionId'];
-        final String className = session['className'];
-        final String subject = session['subject'] ?? 'Unknown';
-        final String facultyId = session['facultyId'] ?? 'Unknown';
+        final parts = payload.split('|');
+        if (parts.length < 2) continue;
+        final String sessionId = parts[0];
+        final String className = parts[1];
 
         if (_respondedSessions.contains(sessionId)) continue;
 
@@ -303,14 +297,12 @@ class _StudentDashboardState extends State<StudentDashboard>
           print("📡 Found matching attendance session:");
           print("   Session ID: $sessionId");
           print("   Class: $className");
-          print("   Subject: $subject");
-          print("   Faculty: $facultyId");
 
           _respondedSessions.add(sessionId);
           _currentDetectedSession = sessionId;
 
-          // Send response to Firestore
-          _sendAttendanceResponse(sessionId, subject, facultyId);
+          // Fetch active session from Firestore for subject/faculty details and respond
+          _fetchActiveSessionDetailsAndRespond(sessionId, className);
         }
       } catch (e) {
         print("❌ Error processing scan result: $e");
@@ -318,11 +310,47 @@ class _StudentDashboardState extends State<StudentDashboard>
     }
   }
 
+  Future<void> _fetchActiveSessionDetailsAndRespond(String sessionId, String className) async {
+    String subject = 'Class Session';
+    String facultyId = sessionId.split('_')[0];
+
+    try {
+      final deptId = studentData?['department']?.toString() ?? '';
+      if (deptId.isNotEmpty) {
+        final classDoc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('departments')
+            .collection('all_departments')
+            .doc(deptId)
+            .collection('clasees')
+            .doc(className)
+            .get();
+
+        if (classDoc.exists) {
+          final classData = classDoc.data();
+          final activeSession = classData?['activeSession'] as Map<String, dynamic>?;
+          if (activeSession != null && activeSession['sessionId'] == sessionId) {
+            subject = activeSession['subject'] ?? subject;
+            facultyId = activeSession['facultyId'] ?? facultyId;
+          }
+        }
+      }
+    } catch (e) {
+      print("⚠️ Error fetching active session details: $e. Using fallbacks.");
+    }
+
+    _sendAttendanceResponse(sessionId, subject, facultyId);
+  }
+
   String? _extractSessionData(ScanResult result) {
     // Try manufacturer data first
     if (result.advertisementData.manufacturerData.isNotEmpty) {
       try {
-        return utf8.decode(result.advertisementData.manufacturerData.values.first);
+        final bytes = result.advertisementData.manufacturerData.values.first;
+        final decoded = utf8.decode(bytes);
+        if (decoded.contains('|')) {
+          return decoded;
+        }
       } catch (e) {
         print("❌ Error decoding manufacturer data: $e");
       }
@@ -331,7 +359,11 @@ class _StudentDashboardState extends State<StudentDashboard>
     // Try service data
     if (result.advertisementData.serviceData.isNotEmpty) {
       try {
-        return utf8.decode(result.advertisementData.serviceData.values.first);
+        final bytes = result.advertisementData.serviceData.values.first;
+        final decoded = utf8.decode(bytes);
+        if (decoded.contains('|')) {
+          return decoded;
+        }
       } catch (e) {
         print("❌ Error decoding service data: $e");
       }

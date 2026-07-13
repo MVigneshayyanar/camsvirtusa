@@ -214,22 +214,40 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       return;
     }
 
-    // Generate session ID with proper format
-    final sessionId = '${widget.facultyId}_${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(999999)}';
+    // Generate short session ID: facultyId + 6 char random alphanumeric suffix
+    final randomSuffix = List.generate(6, (index) {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      return chars[Random().nextInt(chars.length)];
+    }).join();
+    final sessionId = '${widget.facultyId}_$randomSuffix';
 
     print("🚀 Starting broadcast with Session ID: $sessionId");
 
-    final payloadData = {
-      'sessionId': sessionId,
-      'facultyId': widget.facultyId,
-      'className': widget.className,
-      'subject': selectedSubject,
-      'hour': selectedHour,
-      'date': DateFormat('dd-MM-yyyy').format(selectedDate),
-    };
+    // Write active session metadata to the class document in Firestore
+    try {
+      await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('departments')
+          .collection('all_departments')
+          .doc(widget.departmentId)
+          .collection('clasees')
+          .doc(widget.className)
+          .update({
+        'activeSession': {
+          'sessionId': sessionId,
+          'subject': selectedSubject,
+          'facultyId': widget.facultyId,
+          'startedAt': DateTime.now().toIso8601String(),
+        }
+      });
+      print("✅ Active session metadata written to Firestore class document.");
+    } catch (e) {
+      print("⚠️ Failed to write active session metadata: $e");
+    }
 
-    final payloadJson = jsonEncode(payloadData);
-    final manufacturerData = Uint8List.fromList(payloadJson.codeUnits);
+    // Broadcast compact plain string payload (fits easily in legacy 31-byte limit)
+    final payloadString = '$sessionId|${widget.className}';
+    final manufacturerData = Uint8List.fromList(payloadString.codeUnits);
 
     final advertiseData = AdvertiseData(
       serviceUuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe7",
@@ -391,6 +409,25 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       await _blePeripheral.stop();
       _liveUpdateTimer?.cancel();
       _responseSubscription?.cancel(); // Clean up Firestore listener
+
+      // Clear activeSession metadata from Firestore class document
+      try {
+        if (currentSessionId != null) {
+          await FirebaseFirestore.instance
+              .collection('colleges')
+              .doc('departments')
+              .collection('all_departments')
+              .doc(widget.departmentId)
+              .collection('clasees')
+              .doc(widget.className)
+              .update({
+            'activeSession': FieldValue.delete(),
+          });
+          print("✅ Active session metadata removed from Firestore.");
+        }
+      } catch (e) {
+        print("⚠️ Failed to remove active session metadata: $e");
+      }
 
       setState(() {
         isAdvertising = false;
