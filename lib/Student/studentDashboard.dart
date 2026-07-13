@@ -671,6 +671,7 @@ class _StudentDashboardState extends State<StudentDashboard>
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            /*
             IconButton(
               icon: Image.asset(
                 "assets/search.png",
@@ -678,6 +679,7 @@ class _StudentDashboardState extends State<StudentDashboard>
               ),
               onPressed: _goToSearch,
             ),
+            */
             IconButton(
               icon: Image.asset(
                 "assets/homeLogo.png",
@@ -936,18 +938,21 @@ class _StudentDashboardState extends State<StudentDashboard>
         mainAxisSpacing: screenWidth > 600 ? 20 : 16,
         childAspectRatio: screenWidth > 600 ? 1.1 : 1.0,
         children: [
+          /*
           _buildDashboardCard(
             context,
             label: "TIME TABLE",
             imagePath: "assets/timetable_ad.png",
             onTap: () => navigateToTimeTable("Time Table"),
           ),
+          */
           _buildDashboardCard(
             context,
             label: "ATTENDANCE",
             imagePath: "assets/Attendance.png",
             onTap: () => navigateToAttendance("Attendance"),
           ),
+          /*
           _buildDashboardCard(
             context,
             label: "ON DUTY FORM",
@@ -960,6 +965,7 @@ class _StudentDashboardState extends State<StudentDashboard>
             imagePath: "assets/LeaveForm.png",
             onTap: () => navigateToLeaveForm("Leave Form"),
           ),
+          */
         ],
       ),
     );

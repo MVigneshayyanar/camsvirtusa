@@ -175,6 +175,7 @@ class _StudentProfileState extends State<StudentProfile> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
+            /*
             IconButton(
               icon: Image.asset(
                 "assets/search.png",
@@ -182,6 +183,7 @@ class _StudentProfileState extends State<StudentProfile> {
               ),
               onPressed: _goToSearch,
             ),
+            */
             IconButton(
               icon: Image.asset(
                 "assets/homeLogo.png",
