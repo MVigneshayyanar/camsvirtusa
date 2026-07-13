@@ -174,7 +174,6 @@ class _StudentDashboardState extends State<StudentDashboard>
   // Auto-turn on Bluetooth
   Future<void> _turnOnBluetoothAutomatically() async {
     print("📱 Checking Bluetooth status...");
-
     if (!await FlutterBluePlus.isSupported) {
       print("❌ BLE not supported on this device");
       return;
@@ -191,7 +190,7 @@ class _StudentDashboardState extends State<StudentDashboard>
         // Wait for Bluetooth to turn on
         await FlutterBluePlus.adapterState
             .firstWhere((state) => state == BluetoothAdapterState.on)
-            .timeout(Duration(seconds: 10));
+            .timeout(Duration(seconds: 4));
 
         print("✅ Bluetooth turned ON successfully!");
 
@@ -211,6 +210,24 @@ class _StudentDashboardState extends State<StudentDashboard>
         }
       } catch (e) {
         print("❌ Failed to turn on Bluetooth: $e");
+        
+        // Show dialog asking user to enable Bluetooth manually (essential for Android 13+)
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => AlertDialog(
+              title: const Text("Bluetooth Required"),
+              content: const Text("Please turn on Bluetooth in your device settings to scan for attendance."),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("OK"),
+                ),
+              ],
+            ),
+          );
+        }
       }
     } else {
       print("✅ Bluetooth already ON");
@@ -376,29 +393,33 @@ class _StudentDashboardState extends State<StudentDashboard>
   }
 
   String? _extractSessionData(ScanResult result) {
-    // Try manufacturer data first
+    // Try manufacturer data first by scanning all entries
     if (result.advertisementData.manufacturerData.isNotEmpty) {
-      try {
-        final bytes = result.advertisementData.manufacturerData.values.first;
-        final decoded = utf8.decode(bytes);
-        if (decoded.contains('|')) {
-          return decoded;
+      for (final entry in result.advertisementData.manufacturerData.entries) {
+        try {
+          final bytes = entry.value;
+          final decoded = utf8.decode(bytes);
+          if (decoded.contains('|')) {
+            return decoded;
+          }
+        } catch (e) {
+          // Ignore decoding errors for other manufacturer IDs
         }
-      } catch (e) {
-        print("❌ Error decoding manufacturer data: $e");
       }
     }
 
     // Try service data
     if (result.advertisementData.serviceData.isNotEmpty) {
-      try {
-        final bytes = result.advertisementData.serviceData.values.first;
-        final decoded = utf8.decode(bytes);
-        if (decoded.contains('|')) {
-          return decoded;
+      for (final entry in result.advertisementData.serviceData.entries) {
+        try {
+          final bytes = entry.value;
+          final decoded = utf8.decode(bytes);
+          if (decoded.contains('|')) {
+            return decoded;
+          }
+        } catch (e) {
+          // Ignore
         }
-      } catch (e) {
-        print("❌ Error decoding service data: $e");
       }
     }
 
