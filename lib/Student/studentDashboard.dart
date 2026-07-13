@@ -57,9 +57,10 @@ class _StudentDashboardState extends State<StudentDashboard>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _fetchData();
     _setupNewsAnimation();
-    _initializeEverythingAutomatically(); // 🔥 Auto-initialize everything
+    _fetchData().then((_) {
+      _initializeEverythingAutomatically(); // 🔥 Auto-initialize everything after data is loaded
+    });
   }
 
   @override
