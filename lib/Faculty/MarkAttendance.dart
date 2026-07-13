@@ -718,7 +718,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      isDismissible: false,
+      isDismissible: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setModalState) {
           // Cancel previous timer
@@ -1605,42 +1605,100 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             ),
           ),
 
-          // Date Picker Row
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            child: SizedBox(
-              height: 62,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: getDateList().map((date) {
-                  final isSelected = DateFormat('yyyy-MM-dd').format(date) == DateFormat('yyyy-MM-dd').format(selectedDate);
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() => selectedDate = date);
-                        _onSelectionChanged();
-                      },
+          // Present and Absent Count Row (instead of Date Picker)
+          Builder(
+            builder: (context) {
+              final presentCount = students.where((s) => attendance[s['id']] == true).length;
+              final absentCount = students.length - presentCount;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
+                child: Row(
+                  children: [
+                    Expanded(
                       child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: isSelected ? kPrimary : Colors.grey,
+                          color: Colors.green.shade50,
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: [BoxShadow(color: kShadow, blurRadius: 6, offset: Offset(1, 4))],
+                          border: Border.all(color: Colors.green.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        width: 62,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text(DateFormat('dd').format(date), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: isSelected ? Colors.white : Colors.black87),),
-                            Text(DateFormat('EEE').format(date), style: TextStyle(color: isSelected ? Colors.white : Colors.black54, fontSize: 14),),
+                            Text(
+                              '$presentCount',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'PRESENT',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.green.shade700,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
-            ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$absentCount',
+                              style: TextStyle(
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'ABSENT',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.red.shade700,
+                                letterSpacing: 1.1,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
           ),
 
           // Search & Hour Selection

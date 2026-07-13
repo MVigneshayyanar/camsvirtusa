@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:permission_handler/permission_handler.dart';
 import 'routes.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -13,12 +14,23 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Timer(const Duration(seconds: 3), () {
+    _initPermissionsAndNavigate();
+  }
+
+  Future<void> _initPermissionsAndNavigate() async {
+    // Request minimal Ble scanning permissions at app start
+    await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+    ].request();
+
+    Timer(const Duration(seconds: 2), () {
       if (mounted) {
         Navigator.pushNamedAndRemoveUntil(
             context,
             AppRoutes.studentDashboard, // Replace with your target route
-                (route) => false
+            (route) => false
         );
       }
     });

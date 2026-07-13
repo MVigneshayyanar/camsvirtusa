@@ -23,7 +23,7 @@ class StudentDashboard extends StatefulWidget {
 }
 
 class _StudentDashboardState extends State<StudentDashboard>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   Map<String, dynamic>? studentData;
   bool _isLoading = true;
 
@@ -47,6 +47,7 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   // BLE state
   StreamSubscription<List<ScanResult>>? _scanSubscription;
+  StreamSubscription<BluetoothAdapterState>? _adapterStateSubscription;
   bool _isScanning = false;
   Set<String> _respondedSessions = {};
   String? _currentDetectedSession;
@@ -55,6 +56,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _fetchData();
     _setupNewsAnimation();
     _initializeEverythingAutomatically(); // 🔥 Auto-initialize everything
@@ -62,9 +64,19 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _adapterStateSubscription?.cancel();
     _newsController.dispose();
     _stopScanning();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      print("📱 App resumed - Rechecking permissions & services...");
+      _initializeEverythingAutomatically();
+    }
   }
 
   // 🔥 AUTOMATICALLY INITIALIZE ALL REQUIRED SERVICES
@@ -74,6 +86,27 @@ class _StudentDashboardState extends State<StudentDashboard>
 
       // Step 1: Request all permissions automatically
       await _requestAllPermissions();
+
+      // Setup live monitoring of Bluetooth state changes
+      _adapterStateSubscription?.cancel();
+      _adapterStateSubscription = FlutterBluePlus.adapterState.listen((state) {
+        if (state != BluetoothAdapterState.on) {
+          if (_bluetoothReady) {
+            setState(() {
+              _bluetoothReady = false;
+              _isScanning = false;
+            });
+            _turnOnBluetoothAutomatically();
+          }
+        } else {
+          if (!_bluetoothReady) {
+            setState(() {
+              _bluetoothReady = true;
+            });
+            _startBLEAutomatically();
+          }
+        }
+      });
 
       // Step 2: Turn on Bluetooth automatically
       await _turnOnBluetoothAutomatically();
