@@ -51,6 +51,18 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
     final String password = _passwordController.text.trim();
 
     try {
+      // ==== 0️⃣ Dummy Admin Bypass Check ====
+      if (enteredId == 'admin' && password == 'admin123') {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLoggedIn', true);
+        await prefs.setString('role', 'admin');
+        await prefs.setString('facultyId', enteredId);
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard, arguments: enteredId);
+        return;
+      }
+
       // ==== 1️⃣ Check FACULTY path ====
       final DocumentSnapshot facultyDoc = await FirebaseFirestore.instance
           .collection('colleges')

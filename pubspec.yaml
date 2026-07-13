@@ -11,27 +11,27 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  firebase_core: ^2.11.0
-  firebase_auth: ^4.5.0
-  cloud_firestore: ^4.8.4
-  firebase_messaging: ^14.5.0
+  firebase_core: ^4.11.0
+  firebase_auth: ^6.5.4
+  cloud_firestore: ^6.6.0
+  firebase_messaging: ^16.4.1
   google_fonts: ^6.1.0
   shared_preferences: ^2.2.2
   intl: ^0.20.2
   cached_network_image: ^3.3.1
   pdf: ^3.10.4
   path_provider: ^2.0.15
-  permission_handler: ^11.3.1
+  permission_handler: ^12.0.3
   open_file: ^3.2.1
-  firebase_storage: ^11.5.6
+  firebase_storage: ^13.4.3
   flutter_reactive_ble: ^5.3.1
-  flutter_blue_plus: ^1.5.3
-  flutter_ble_peripheral: ^1.0.0
-  camera: ^0.10.5+5
-  file_picker: ^8.0.3
+  flutter_blue_plus: ^2.3.10
+  flutter_ble_peripheral: ^2.1.1
+  camera: ^0.11.2+1
+  file_picker: ^11.0.2
   read_pdf_text: ^0.3.1
     # Use this instead of qr_code_scanner
-  mobile_scanner: ^5.0.0  # Compatible with newer Android Gradle Plugin
+  mobile_scanner: ^7.2.0  # Compatible with newer Android Gradle Plugin
     # OR
   qr_code_scanner_plus: ^2.0.12
 
@@ -45,9 +45,9 @@ dependencies:
   image_picker: ^1.1.2
 
 dev_dependencies:
-  flutter_launcher_icons: ^0.13.1
+  flutter_launcher_icons: ^0.14.4
   flutter_native_splash: ^2.3.3
-  flutter_lints: ^3.0.0
+  flutter_lints: ^6.0.0
 
 flutter_native_splash:
   color: "#FFFFFF"        # white background
@@ -59,10 +59,6 @@ flutter_icons:
   android: true
   ios: true
   image_path: "assets/homelogo1.png"
-
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^5.0.0
 
 
 flutter:
@@ -99,22 +95,3 @@ flutter:
     - assets/homeLogo.png
     - assets/search.png
     - assets/news.png
-dependency_overrides:
-executables:
-topics:
-  -
-documentation:
-ignored_advisories: []
-issue_tracker:
-repository:
-false_secrets:
-  -
-screenshots:
-  -
-homepage:
-platforms:
-
-
-
-
-

@@ -1,4 +1,4 @@
-package com.example.camsvirtusa
+package com.cams.app
 
 import io.flutter.embedding.android.FlutterActivity
 
