@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
+import 'package:geolocator/geolocator.dart';
 
 // Custom Color Palette
 const Color kPrimary = Color(0xFFFF7043);
@@ -223,6 +224,42 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
     print("🚀 Starting broadcast with Session ID: $sessionId");
 
+    // Get faculty GPS location for proximity verification with robust fallbacks
+    double? facLat;
+    double? facLng;
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        // Request enabling location services
+        print("⚠️ Location services are disabled on faculty device.");
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        try {
+          final pos = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.medium, // Medium accuracy is faster and sufficient for classroom proximity
+          ).timeout(const Duration(seconds: 4));
+          facLat = pos.latitude;
+          facLng = pos.longitude;
+        } catch (e) {
+          print("⚠️ getCurrentPosition failed or timed out: $e. Trying last known position...");
+          final lastPos = await Geolocator.getLastKnownPosition();
+          if (lastPos != null) {
+            facLat = lastPos.latitude;
+            facLng = lastPos.longitude;
+          }
+        }
+      }
+      print("📍 Faculty location: $facLat, $facLng");
+    } catch (e) {
+      print("⚠️ Could not get faculty location: $e");
+    }
+
     // Write active session metadata to the class document in Firestore
     try {
       await FirebaseFirestore.instance
@@ -238,6 +275,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           'subject': selectedSubject,
           'facultyId': widget.facultyId,
           'startedAt': DateTime.now().toIso8601String(),
+          if (facLat != null) 'lat': facLat,
+          if (facLng != null) 'lng': facLng,
         }
       });
       print("✅ Active session metadata written to Firestore class document.");
@@ -245,15 +284,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       print("⚠️ Failed to write active session metadata: $e");
     }
 
-    // Broadcast compact plain string payload (fits easily in legacy 31-byte limit)
-    final payloadString = '$sessionId|${widget.className}';
-    final manufacturerData = Uint8List.fromList(payloadString.codeUnits);
-
+    // Broadcast with minimal BLE payload for maximum device compatibility.
+    // Session data is already in Firestore — BLE is just a proximity beacon.
     final advertiseData = AdvertiseData(
       serviceUuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe7",
-      localName: "AttendanceSession",
       manufacturerId: 1234,
-      manufacturerData: manufacturerData,
+      manufacturerData: Uint8List.fromList([0x01]), // 1-byte beacon flag
     );
 
     try {

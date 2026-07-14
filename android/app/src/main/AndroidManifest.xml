@@ -27,7 +27,7 @@
     <!-- Declare that this app uses BLE -->
     <uses-feature
         android:name="android.hardware.bluetooth_le"
-        android:required="true" />
+        android:required="false" />
 
     <application
         android:label="Presenza"
