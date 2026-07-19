@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'studentProfile.dart';
 import 'studentAttendance.dart';
@@ -16,8 +17,9 @@ import 'StudentCurriculum.dart';
 
 class StudentDashboard extends StatefulWidget {
   final String studentId;
+  final String? verificationTime;
 
-  const StudentDashboard({Key? key, required this.studentId}) : super(key: key);
+  const StudentDashboard({Key? key, required this.studentId, this.verificationTime}) : super(key: key);
 
   @override
   _StudentDashboardState createState() => _StudentDashboardState();
@@ -27,6 +29,9 @@ class _StudentDashboardState extends State<StudentDashboard>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   Map<String, dynamic>? studentData;
   bool _isLoading = true;
+  Timer? _attendanceTimer;
+  bool _isAttendanceActive = true;
+  int _secondsRemaining = 180;
 
   // News Bar Animation Controller
   late AnimationController _newsController;
@@ -61,15 +66,70 @@ class _StudentDashboardState extends State<StudentDashboard>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _setupNewsAnimation();
+    _startAttendanceTimer();
     _fetchData().then((_) {
-      _initializeEverythingAutomatically(); // 🔥 Auto-initialize everything after data is loaded
-      _startFirestoreSessionListener(); // 🔥 Firestore fallback for phones where BLE fails
+      if (_isAttendanceActive) {
+        _initializeEverythingAutomatically();
+        _startFirestoreSessionListener();
+      }
     });
+  }
+
+  void _startAttendanceTimer() async {
+    DateTime? verifyTime;
+    if (widget.verificationTime != null) {
+      verifyTime = DateTime.tryParse(widget.verificationTime!);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      final lastVerify = prefs.getString('lastVerificationTime');
+      if (lastVerify != null) verifyTime = DateTime.tryParse(lastVerify);
+    }
+    
+    if (verifyTime == null || DateTime.now().difference(verifyTime).inMinutes >= 3) {
+      _deactivateAttendance();
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _secondsRemaining = 180 - DateTime.now().difference(verifyTime!).inSeconds;
+      });
+    }
+
+    _attendanceTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      
+      int seconds = 180 - DateTime.now().difference(verifyTime!).inSeconds;
+      
+      if (seconds <= 0) {
+        _deactivateAttendance();
+        timer.cancel();
+      } else {
+        setState(() {
+          _secondsRemaining = seconds;
+        });
+      }
+    });
+  }
+
+  void _deactivateAttendance() {
+    if (mounted) {
+      setState(() {
+        _isAttendanceActive = false;
+        _isScanning = false;
+      });
+      _stopScanning();
+      _firestoreSessionSubscription?.cancel();
+    }
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _attendanceTimer?.cancel();
     _adapterStateSubscription?.cancel();
     _firestoreSessionSubscription?.cancel();
     _newsController.dispose();
@@ -1019,7 +1079,9 @@ class _StudentDashboardState extends State<StudentDashboard>
                       ),
                       SizedBox(width: 4),
                       Text(
-                        _isScanning ? 'AUTO' : 'OFF',
+                        _isScanning 
+                            ? '${(_secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(_secondsRemaining % 60).toString().padLeft(2, '0')} AUTO' 
+                            : 'OFF',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
@@ -1061,6 +1123,39 @@ class _StudentDashboardState extends State<StudentDashboard>
           ),
           child: Column(
             children: [
+              if (!_isAttendanceActive)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text(
+                        "Attendance Deactivated (Timeout)",
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/faceVerification',
+                            arguments: widget.studentId,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                        ),
+                        child: const Text("Verify Face Again", style: TextStyle(color: Colors.white)),
+                      )
+                    ],
+                  ),
+                ),
               // User Welcome Section
               Row(
                 children: [
