@@ -44,6 +44,9 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
+  google_mlkit_face_detection: ^0.14.0
+  tflite_flutter: ^0.12.1
+  image: ^4.5.4
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4
@@ -96,3 +99,5 @@ flutter:
     - assets/homeLogo.png
     - assets/search.png
     - assets/news.png
+    - assets/mobilefacenet.tflite
+    - assets/Students/

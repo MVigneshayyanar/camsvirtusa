@@ -14,11 +14,13 @@ import '../Admin/facultyControl.dart';
 import '../Admin/departmentControl.dart';
 import '../Admin/classesList.dart';
 import '../Admin/adminDashboard.dart';
+import '../Authentication/face_verification_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
   static const String roleSelection = '/roleSelection';
   static const String studentLogin = '/studentLogin';
+  static const String faceVerification = '/faceVerification';
   static const String facultyLogin = '/facultyLogin';
   static const String otpVerification = '/otpVerification';
   static const String studentDashboard = '/studentDashboard';
@@ -41,6 +43,14 @@ class AppRoutes {
       case studentLogin:
         return _animatedRoute(const StudentLoginScreen(), settings);
 
+      case faceVerification:
+        final studentId = settings.arguments as String?;
+        if (studentId != null && studentId.isNotEmpty) {
+          return _noBackRoute(FaceVerificationScreen(studentId: studentId), settings);
+        } else {
+          return _errorRoute("Invalid or Missing Student ID for Verification", settings);
+        }
+
       case facultyLogin:
         return _animatedRoute(const FacultyLoginScreen(), settings);
 
@@ -48,12 +58,15 @@ class AppRoutes {
         return _animatedRoute(const OTPVerificationScreen(), settings);
 
       case studentDashboard:
-        final studentId = settings.arguments as String?;
-        if (studentId != null && studentId.isNotEmpty) {
-          return _noBackRoute(StudentDashboard(studentId: studentId), settings);
-        } else {
-          return _errorRoute("Invalid or Missing Student ID", settings);
+        if (settings.arguments is Map) {
+          final args = settings.arguments as Map;
+          final studentId = args['studentId'] as String?;
+          final verificationTime = args['verificationTime'] as String?;
+          if (studentId != null && studentId.isNotEmpty && verificationTime != null) {
+            return _noBackRoute(StudentDashboard(studentId: studentId, verificationTime: verificationTime), settings);
+          }
         }
+        return _errorRoute("Invalid or Missing Arguments for Dashboard", settings);
 
       case facultyDashboard:
         final facultyId = settings.arguments as String?;

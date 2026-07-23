@@ -58,17 +58,12 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (doc.exists) {
         final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         if (data['password'] == password) {
-          // ======= SAVE LOGIN STATE =======
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setBool('isLoggedIn', true);
-          await prefs.setString('role', 'student');
-          await prefs.setString('studentId', studentId);
-
+          // Do not save full login state here, wait for face verification
           // Navigate using named route and pass the studentId as argument
           if (!mounted) return;
           Navigator.pushReplacementNamed(
             context,
-            AppRoutes.studentDashboard,
+            AppRoutes.faceVerification,
             arguments: studentId,
           );
         } else {
