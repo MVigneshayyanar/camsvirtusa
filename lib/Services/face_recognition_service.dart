@@ -24,7 +24,7 @@ class FaceRecognitionService {
 
   // Verification threshold — minimum Euclidean distance to accept as same person.
   // With multiple reference embeddings this can be kept strict.
-  static const double verificationThreshold = 0.75;
+  static const double verificationThreshold = 0.85;
 
   // ---------------------------------------------------------------------------
   // Initialization
