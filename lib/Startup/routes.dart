@@ -12,15 +12,15 @@ import '../Admin/adminDashboard.dart';
 import '../Admin/studentControl.dart';
 import '../Admin/facultyControl.dart';
 import '../Admin/departmentControl.dart';
-import '../Admin/classesList.dart';
-import '../Admin/adminDashboard.dart';
 import '../Authentication/face_verification_screen.dart';
+import '../Authentication/face_enrollment_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
   static const String roleSelection = '/roleSelection';
   static const String studentLogin = '/studentLogin';
   static const String faceVerification = '/faceVerification';
+  static const String faceEnrollment = '/faceEnrollment';
   static const String facultyLogin = '/facultyLogin';
   static const String otpVerification = '/otpVerification';
   static const String studentDashboard = '/studentDashboard';
@@ -49,6 +49,14 @@ class AppRoutes {
           return _animatedRoute(FaceVerificationScreen(studentId: studentId), settings);
         } else {
           return _errorRoute("Invalid or Missing Student ID for Verification", settings);
+        }
+
+      case faceEnrollment:
+        final enrollStudentId = settings.arguments as String?;
+        if (enrollStudentId != null && enrollStudentId.isNotEmpty) {
+          return _noBackRoute(FaceEnrollmentScreen(studentId: enrollStudentId), settings);
+        } else {
+          return _errorRoute("Invalid or Missing Student ID for Enrollment", settings);
         }
 
       case facultyLogin:

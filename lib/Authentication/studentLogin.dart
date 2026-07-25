@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../Startup/routes.dart';
+import '../Services/face_recognition_service.dart';
 
 class StudentLoginScreen extends StatefulWidget {
   const StudentLoginScreen({super.key});
@@ -32,9 +33,18 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     final role = prefs.getString('role');
     final studentId = prefs.getString('studentId');
+    final verificationTime = prefs.getString('lastVerificationTime')
+        ?? DateTime.now().toIso8601String();
     if (isLoggedIn && role == 'student' && studentId != null) {
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, AppRoutes.studentDashboard, arguments: studentId);
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.studentDashboard,
+        arguments: {
+          'studentId': studentId,
+          'verificationTime': verificationTime,
+        },
+      );
     }
   }
 
@@ -58,14 +68,27 @@ class _StudentLoginScreenState extends State<StudentLoginScreen> {
       if (doc.exists) {
         final Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
         if (data['password'] == password) {
-          // Do not save full login state here, wait for face verification
-          // Navigate using named route and pass the studentId as argument
+          // Check whether this student has already enrolled their face
+          final faceService = FaceRecognitionService();
+          final hasEnrolled = await faceService.hasEnrolledFace(studentId);
+          faceService.dispose();
+
           if (!mounted) return;
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.faceVerification,
-            arguments: studentId,
-          );
+          if (hasEnrolled) {
+            // Already enrolled → go to verification
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.faceVerification,
+              arguments: studentId,
+            );
+          } else {
+            // First login → go to enrollment
+            Navigator.pushReplacementNamed(
+              context,
+              AppRoutes.faceEnrollment,
+              arguments: studentId,
+            );
+          }
         } else {
           setState(() => _errorMessage = "Incorrect password.");
         }
