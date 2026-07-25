@@ -44,7 +44,7 @@ dependencies:
   # Icons
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
-  google_mlkit_face_detection: ^0.13.0
+  google_mlkit_face_detection: ^0.13.1
   tflite_flutter: ^0.12.1
   image: ^4.5.4
 

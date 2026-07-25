@@ -1,0 +1,46 @@
+PODS:
+  - Flutter (1.0.0)
+  - open_file_ios (1.0.3):
+    - Flutter
+  - Protobuf (3.29.6)
+  - reactive_ble_mobile (0.0.1):
+    - Flutter
+    - FlutterMacOS
+    - Protobuf (~> 3.5)
+    - SwiftProtobuf (~> 1.0)
+  - read_pdf_text (0.0.1):
+    - Flutter
+  - SwiftProtobuf (1.38.1)
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - open_file_ios (from `.symlinks/plugins/open_file_ios/ios`)
+  - reactive_ble_mobile (from `.symlinks/plugins/reactive_ble_mobile/darwin`)
+  - read_pdf_text (from `.symlinks/plugins/read_pdf_text/ios`)
+
+SPEC REPOS:
+  trunk:
+    - Protobuf
+    - SwiftProtobuf
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  open_file_ios:
+    :path: ".symlinks/plugins/open_file_ios/ios"
+  reactive_ble_mobile:
+    :path: ".symlinks/plugins/reactive_ble_mobile/darwin"
+  read_pdf_text:
+    :path: ".symlinks/plugins/read_pdf_text/ios"
+
+SPEC CHECKSUMS:
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  open_file_ios: 46184d802ee7959203f6392abcfa0dd49fdb5be0
+  Protobuf: 8d5596f7468be5400861a6bbfb2dfe9d0d1cde34
+  reactive_ble_mobile: ea97709e18fa6f0b0592909725d7ae7e1c595b64
+  read_pdf_text: 7b045befb4ce44f6bb6c281a956ff2436fd6822a
+  SwiftProtobuf: 409d3aaec90e51b1705b1dd8065b56893450e77c
+
+PODFILE CHECKSUM: bc2730834d1bb4660ae20b6a74e5855df1bca0aa
+
+COCOAPODS: 1.17.0

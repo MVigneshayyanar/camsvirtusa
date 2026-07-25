@@ -510,8 +510,10 @@ class _StudentDashboardState extends State<StudentDashboard>
     final facultyId = activeSession['facultyId']?.toString() ?? '';
 
     if (facLat == null || facLng == null) {
-      // Faculty didn't save location — can't verify proximity, skip
-      print("⚠️ No faculty GPS in session. Skipping Firestore path.");
+      // Faculty didn't save location — can't verify proximity.
+      print("⚠️ No faculty GPS in session. Marking present as fallback.");
+      _respondedSessions.add(sessionId);
+      _sendAttendanceResponse(sessionId, subject, facultyId);
       return;
     }
 
@@ -541,7 +543,9 @@ class _StudentDashboardState extends State<StudentDashboard>
       }
 
       if (studentPos == null) {
-        print("❌ Could not retrieve student position. Skipping check.");
+        print("❌ Could not retrieve student position. Marking present as fallback.");
+        _respondedSessions.add(sessionId);
+        _sendAttendanceResponse(sessionId, subject, facultyId);
         return;
       }
 
