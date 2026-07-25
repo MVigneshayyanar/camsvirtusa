@@ -1306,14 +1306,12 @@ class _StudentDashboardState extends State<StudentDashboard>
         mainAxisSpacing: screenWidth > 600 ? 20 : 16,
         childAspectRatio: screenWidth > 600 ? 1.1 : 1.0,
         children: [
-          /*
           _buildDashboardCard(
             context,
             label: "TIME TABLE",
             imagePath: "assets/timetable_ad.png",
             onTap: () => navigateToTimeTable("Time Table"),
           ),
-          */
           _buildDashboardCard(
             context,
             label: "ATTENDANCE",

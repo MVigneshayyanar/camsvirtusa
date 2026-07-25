@@ -47,7 +47,7 @@ class _FacultyLoginScreenState extends State<FacultyLoginScreen> {
       _errorMessage = null;
     });
 
-    final String enteredId = _facultyIdController.text.trim();
+    final String enteredId = _facultyIdController.text.trim().toUpperCase();
     final String password = _passwordController.text.trim();
 
     try {

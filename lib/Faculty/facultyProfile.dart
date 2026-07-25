@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FacultyProfile extends StatefulWidget {
   final String facultyId;
@@ -67,6 +68,50 @@ class _FacultyProfileState extends State<FacultyProfile> {
 
   void _goToDashboard() {
     Navigator.pop(context);
+  }
+
+  void _logout() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirm Logout'),
+          content: const Text('Are you sure you want to log out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _performLogout();
+              },
+              child: const Text('Logout', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _performLogout() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/roleSelection',
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Logout error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildBottomNavigationBar() {
@@ -168,7 +213,6 @@ class _FacultyProfileState extends State<FacultyProfile> {
 
     // Extract data from facultyData or use defaults
     final employeeName = facultyData?['name']?.toString() ?? 'Unknown Faculty';
-    final academicYear = facultyData?['academicYear']?.toString() ?? 'Academic year : 2024-2025 / Even SEM';
     final jobTitle = facultyData?['jobTitle']?.toString() ?? 'Associate Professor';
     final department = facultyData?['department']?.toString() ?? 'M.Tech CSE';
     final employeeId = facultyData?['employeeId']?.toString() ?? widget.facultyId;
@@ -201,29 +245,7 @@ class _FacultyProfileState extends State<FacultyProfile> {
       ),
       body: Column(
         children: [
-          // Academic Year Banner
-          Container(
-            margin: const EdgeInsets.only(left: 16, right: 16, top: 16, bottom: 16),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF7F50),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  academicYear,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth > 600 ? 16 : 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
+          const SizedBox(height: 16),
           Expanded(
             child: SingleChildScrollView(
               child: Column(
@@ -361,6 +383,22 @@ class _FacultyProfileState extends State<FacultyProfile> {
 
       // Bottom Navigation Bar
       bottomNavigationBar: _buildBottomNavigationBar(),
+      floatingActionButton: SizedBox(
+        width: screenWidth > 600 ? 120 : 100,
+        height: screenWidth > 600 ? 45 : 40,
+        child: FloatingActionButton(
+          onPressed: _logout,
+          backgroundColor: const Color(0xFFFF7F50),
+          elevation: 0,
+          child: Text(
+            'Log out',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: screenWidth > 600 ? 14 : 12,
+            ),
+          ),
+        ),
+      ),
     );
   }
 

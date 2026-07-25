@@ -46,7 +46,7 @@ class AppRoutes {
       case faceVerification:
         final studentId = settings.arguments as String?;
         if (studentId != null && studentId.isNotEmpty) {
-          return _noBackRoute(FaceVerificationScreen(studentId: studentId), settings);
+          return _animatedRoute(FaceVerificationScreen(studentId: studentId), settings);
         } else {
           return _errorRoute("Invalid or Missing Student ID for Verification", settings);
         }
@@ -58,13 +58,18 @@ class AppRoutes {
         return _animatedRoute(const OTPVerificationScreen(), settings);
 
       case studentDashboard:
+        String? studentId;
+        String? verificationTime;
         if (settings.arguments is Map) {
           final args = settings.arguments as Map;
-          final studentId = args['studentId'] as String?;
-          final verificationTime = args['verificationTime'] as String?;
-          if (studentId != null && studentId.isNotEmpty && verificationTime != null) {
-            return _noBackRoute(StudentDashboard(studentId: studentId, verificationTime: verificationTime), settings);
-          }
+          studentId = args['studentId'] as String?;
+          verificationTime = args['verificationTime'] as String?;
+        } else if (settings.arguments is String) {
+          studentId = settings.arguments as String;
+          verificationTime = DateTime.now().toIso8601String();
+        }
+        if (studentId != null && studentId.isNotEmpty) {
+          return _noBackRoute(StudentDashboard(studentId: studentId, verificationTime: verificationTime), settings);
         }
         return _errorRoute("Invalid or Missing Arguments for Dashboard", settings);
 

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../Student/studentTimetable.dart';
+import 'facultyTimetable.dart';
 import 'facultyProfile.dart';
 import 'MarkAttendance.dart';
 
@@ -17,6 +17,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     with SingleTickerProviderStateMixin {
   Map<String, dynamic>? facultyData;
   bool _isLoading = true;
+  String _nextClassText = "Loading schedule...";
 
   // News Bar Animation Controller
   late AnimationController _newsController;
@@ -87,6 +88,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
           facultyData = doc.data();
           _isLoading = false;
         });
+        _fetchNextClass();
       } else {
         setState(() {
           facultyData = {'name': 'Unknown Faculty'};
@@ -101,6 +103,117 @@ class _FacultyDashboardState extends State<FacultyDashboard>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to load faculty data: $e')),
       );
+    }
+  }
+
+  Future<void> _fetchNextClass() async {
+    try {
+      final String? dept = facultyData?['department'];
+      final List? assigned = facultyData?['classes'];
+      if (dept == null || assigned == null || assigned.isEmpty) {
+        setState(() {
+          _nextClassText = "No classes assigned";
+        });
+        return;
+      }
+
+      final now = DateTime.now();
+      final daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      final String today = daysOfWeek[now.weekday - 1];
+      
+      if (today == "Saturday" || today == "Sunday") {
+        setState(() {
+          _nextClassText = "No classes today (Weekend)";
+        });
+        return;
+      }
+
+      final periodStartTimes = [
+        DateTime(now.year, now.month, now.day, 9, 0),
+        DateTime(now.year, now.month, now.day, 9, 50),
+        DateTime(now.year, now.month, now.day, 10, 55),
+        DateTime(now.year, now.month, now.day, 11, 45),
+        DateTime(now.year, now.month, now.day, 13, 25),
+        DateTime(now.year, now.month, now.day, 14, 15),
+        DateTime(now.year, now.month, now.day, 15, 20),
+      ];
+
+      int currentPeriodIdx = -1;
+      for (int i = 0; i < periodStartTimes.length; i++) {
+        if (now.isBefore(periodStartTimes[i])) {
+          currentPeriodIdx = i;
+          break;
+        }
+      }
+
+      if (currentPeriodIdx == -1) {
+        setState(() {
+          _nextClassText = "No more classes today";
+        });
+        return;
+      }
+
+      for (var className in assigned) {
+        final classDoc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('departments')
+            .collection('all_departments')
+            .doc(dept)
+            .collection('clasees')
+            .doc(className.toString())
+            .get();
+
+        if (classDoc.exists) {
+          final data = classDoc.data() as Map<String, dynamic>;
+          final semField = data['currentSemester'];
+          String sem = 'V';
+          if (semField is Map) {
+            sem = semField['semester']?.toString() ?? 'V';
+          } else {
+            sem = semField?.toString() ?? 'V';
+          }
+
+          final timetables = data['timetables'] as Map?;
+          final mappings = data['courseMapping'] as Map?;
+          
+          if (timetables != null && mappings != null) {
+            final semTimetable = timetables[sem] as Map?;
+            final semMappings = mappings[sem] as List?;
+            if (semTimetable != null && semMappings != null) {
+              final todayPeriods = semTimetable[today] as List?;
+              if (todayPeriods != null) {
+                for (int i = currentPeriodIdx; i < todayPeriods.length; i++) {
+                  final String abbrev = todayPeriods[i]?.toString() ?? "";
+                  if (abbrev.isNotEmpty && abbrev != "-") {
+                    final mapping = semMappings.firstWhere((m) {
+                      final mapData = m as Map?;
+                      return mapData != null &&
+                          mapData['abbreviation']?.toString().toLowerCase() == abbrev.toLowerCase() &&
+                          mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                    }, orElse: () => null);
+
+                    if (mapping != null) {
+                      final timeLabels = ["9:00 AM", "9:50 AM", "10:55 AM", "11:45 AM", "1:25 PM", "2:15 PM", "3:20 PM"];
+                      setState(() {
+                        _nextClassText = "$className | $abbrev | Period ${i + 1} (${timeLabels[i]})";
+                      });
+                      return;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      setState(() {
+        _nextClassText = "No classes remaining today";
+      });
+    } catch (e) {
+      setState(() {
+        _nextClassText = "Next class offline";
+      });
     }
   }
 
@@ -126,7 +239,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => TimeTablePage(studentId:widget.facultyId),
+        builder: (context) => TimeTablePage(facultyId: widget.facultyId),
       ),
     );
   }
@@ -354,7 +467,67 @@ class _FacultyDashboardState extends State<FacultyDashboard>
                   ),
                 ],
               ),
-              SizedBox(height: screenHeight > 600 ? 32 : 24),
+              const SizedBox(height: 16),
+
+              // Next Class Banner Card
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF36454F), 
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 6,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF7F50).withOpacity(0.15),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.hourglass_top,
+                        color: Color(0xFFFF7F50),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "TODAY'S SCHEDULE",
+                            style: TextStyle(
+                              color: Color(0xFFFF7F50),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                              letterSpacing: 1.0,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _nextClassText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
 
               // News Bar - Added here
               _buildNewsBar(),
@@ -395,18 +568,18 @@ class _FacultyDashboardState extends State<FacultyDashboard>
             imagePath: "assets/Attendance.png",
             onTap: _navigateToMarkAttendance,
           ),
-          _buildDashboardCard(
-            context,
-            label: "MY MENTEES",
-            imagePath: "assets/MyMentees.png",
-            onTap: _navigateToMentees,
-          ),
-          _buildDashboardCard(
-            context,
-            label: "REQUESTS",
-            imagePath: "assets/requests.png",
-            onTap: _navigateToRequests,
-          ),
+          // _buildDashboardCard(
+          //   context,
+          //   label: "MY MENTEES",
+          //   imagePath: "assets/MyMentees.png",
+          //   onTap: _navigateToMentees,
+          // ),
+          // _buildDashboardCard(
+          //   context,
+          //   label: "REQUESTS",
+          //   imagePath: "assets/requests.png",
+          //   onTap: _navigateToRequests,
+          // ),
         ],
       ),
     );
