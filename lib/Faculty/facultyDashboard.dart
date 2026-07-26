@@ -82,7 +82,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
 
   Future<void> _fetchFacultyData() async {
     try {
-
       final doc = await FirebaseFirestore.instance
           .collection('colleges')
           .doc('faculties')
@@ -124,9 +123,17 @@ class _FacultyDashboardState extends State<FacultyDashboard>
       }
 
       final now = DateTime.now();
-      final daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      final daysOfWeek = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ];
       final String today = daysOfWeek[now.weekday - 1];
-      
+
       if (today == "Saturday" || today == "Sunday") {
         setState(() {
           _nextClassText = "No classes today (Weekend)";
@@ -181,7 +188,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
 
           final timetables = data['timetables'] as Map?;
           final mappings = data['courseMapping'] as Map?;
-          
+
           if (timetables != null && mappings != null) {
             final semTimetable = timetables[sem] as Map?;
             final semMappings = mappings[sem] as List?;
@@ -194,19 +201,33 @@ class _FacultyDashboardState extends State<FacultyDashboard>
                     final mapping = semMappings.firstWhere((m) {
                       final mapData = m as Map?;
                       if (mapData == null) return false;
-                      if (mapData['abbreviation']?.toString().toLowerCase() != abbrev.toLowerCase()) return false;
-                      
-                      final isPrimaryFaculty = mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
-                      final isSecondaryFaculty = mapData['isElective'] == true && 
-                                                 mapData['facultyId2']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
-                      
+                      if (mapData['abbreviation']?.toString().toLowerCase() !=
+                          abbrev.toLowerCase()) return false;
+
+                      final isPrimaryFaculty =
+                          mapData['facultyId']?.toString().toUpperCase() ==
+                              widget.facultyId.toUpperCase();
+                      final isSecondaryFaculty =
+                          mapData['isElective'] == true &&
+                              mapData['facultyId2']?.toString().toUpperCase() ==
+                                  widget.facultyId.toUpperCase();
+
                       return isPrimaryFaculty || isSecondaryFaculty;
                     }, orElse: () => null);
 
                     if (mapping != null) {
-                      final timeLabels = ["9:00 AM", "9:50 AM", "10:55 AM", "11:45 AM", "1:25 PM", "2:15 PM", "3:20 PM"];
+                      final timeLabels = [
+                        "9:00 AM",
+                        "9:50 AM",
+                        "10:55 AM",
+                        "11:45 AM",
+                        "1:25 PM",
+                        "2:15 PM",
+                        "3:20 PM"
+                      ];
                       setState(() {
-                        _nextClassText = "$className | $abbrev | Period ${i + 1} (${timeLabels[i]})";
+                        _nextClassText =
+                            "$className | $abbrev | Period ${i + 1} (${timeLabels[i]})";
                       });
                       return;
                     }
@@ -263,7 +284,8 @@ class _FacultyDashboardState extends State<FacultyDashboard>
           appBar: AppBar(
             title: const Text('My Mentees'),
           ),
-          body: const Center(child: Text('My Mentees Page', style: TextStyle(fontSize: 24))),
+          body: const Center(
+              child: Text('My Mentees Page', style: TextStyle(fontSize: 24))),
         ),
       ),
     );
@@ -277,7 +299,8 @@ class _FacultyDashboardState extends State<FacultyDashboard>
           appBar: AppBar(
             title: const Text('Requests'),
           ),
-          body: const Center(child: Text('Requests Page', style: TextStyle(fontSize: 24))),
+          body: const Center(
+              child: Text('Requests Page', style: TextStyle(fontSize: 24))),
         ),
       ),
     );
@@ -300,7 +323,8 @@ class _FacultyDashboardState extends State<FacultyDashboard>
       ),
       padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFF6B47), // Slightly darker than your app bar color
+        color:
+            const Color(0xFFFF6B47), // Slightly darker than your app bar color
         borderRadius: BorderRadius.circular(screenWidth > 600 ? 12 : 10),
         boxShadow: [
           BoxShadow(
@@ -379,13 +403,15 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Center(
-          child: Text(
-            'FACULTY DASHBOARD',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: screenWidth > 600 ? 30 : 22, // Responsive title size
-            ),
+        backgroundColor: const Color(0xFFF97316),
+        centerTitle: false,
+        title: Text(
+          'FACULTY DASHBOARD',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
         ),
         automaticallyImplyLeading: false,
@@ -404,8 +430,9 @@ class _FacultyDashboardState extends State<FacultyDashboard>
               // User Welcome Section
               Row(
                 children: [
-                   CircleAvatar(
-                    radius: screenWidth > 600 ? 35 : 30, // Responsive avatar size
+                  CircleAvatar(
+                    radius:
+                        screenWidth > 600 ? 35 : 30, // Responsive avatar size
                     backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
                     child: Icon(
                       PhosphorIconsRegular.user,
@@ -419,7 +446,8 @@ class _FacultyDashboardState extends State<FacultyDashboard>
                       "Welcome $name...!!",
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: screenWidth > 600 ? 22 : 18, // Responsive font size
+                        fontSize:
+                            screenWidth > 600 ? 22 : 18, // Responsive font size
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -429,7 +457,8 @@ class _FacultyDashboardState extends State<FacultyDashboard>
               const SizedBox(height: 16),
 
               // Today's Schedule Banner
-              TodayScheduleWidget(userType: 'faculty', userId: widget.facultyId),
+              TodayScheduleWidget(
+                  userType: 'faculty', userId: widget.facultyId),
               const SizedBox(height: 16),
 
               // News Bar - Added here
@@ -452,13 +481,16 @@ class _FacultyDashboardState extends State<FacultyDashboard>
 
     return Expanded(
       child: GridView.count(
-        padding: EdgeInsets.all(screenWidth > 600 ? 24.0 : 16.0), // Responsive padding
-        crossAxisCount: screenWidth > 800 ? 3 : 2, // More columns on larger screens
+        padding: EdgeInsets.all(
+            screenWidth > 600 ? 24.0 : 16.0), // Responsive padding
+        crossAxisCount:
+            screenWidth > 800 ? 3 : 2, // More columns on larger screens
         crossAxisSpacing: screenWidth > 600 ? 20 : 16, // Responsive spacing
         mainAxisSpacing: screenWidth > 600 ? 20 : 16,
-        childAspectRatio: screenWidth > 600 ? 1.1 : 1.0, // Better aspect ratio on tablets
+        childAspectRatio:
+            screenWidth > 600 ? 1.1 : 1.0, // Better aspect ratio on tablets
         children: [
-           _buildDashboardCard(
+          _buildDashboardCard(
             context,
             label: "TIME TABLE",
             icon: PhosphorIconsRegular.calendarBlank,
@@ -487,11 +519,10 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     );
   }
 
-  Widget _buildDashboardCard(BuildContext context, {
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap
-  }) {
+  Widget _buildDashboardCard(BuildContext context,
+      {required String label,
+      required IconData icon,
+      required VoidCallback onTap}) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
@@ -510,9 +541,11 @@ class _FacultyDashboardState extends State<FacultyDashboard>
             children: [
               Icon(
                 icon,
-                size: screenWidth > 800 ? 80
-                    : screenWidth > 600 ? 54
-                    : 40,
+                size: screenWidth > 800
+                    ? 80
+                    : screenWidth > 600
+                        ? 54
+                        : 40,
                 color: Colors.white,
               ),
               SizedBox(height: screenWidth > 600 ? 12 : 8),

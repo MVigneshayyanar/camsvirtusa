@@ -79,7 +79,8 @@ class _StudentProfileState extends State<StudentProfile> {
             child: Text(
               value ?? '—',
               textAlign: TextAlign.right,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -106,23 +107,111 @@ class _StudentProfileState extends State<StudentProfile> {
   void _logout() {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to log out?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(), // Cancel
-              child: const Text('Cancel'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28.0),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logout Icon
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red.withOpacity(0.1),
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Colors.red,
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Title
+                const Text(
+                  "Confirm Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                // Description
+                const Text(
+                  "Are you sure you want to log out of your account?",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Colors.black12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _performLogout();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close dialog
-                _performLogout();
-              },
-              child: const Text('Logout', style: TextStyle(color: Colors.red)),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -137,11 +226,10 @@ class _StudentProfileState extends State<StudentProfile> {
       // Navigate to login page and clear all previous routes
       Navigator.of(context).pushNamedAndRemoveUntil(
         AppRoutes.login, // Redirect to login after logout
-            (Route<dynamic> route) => false,
+        (Route<dynamic> route) => false,
       );
 
       print("User logged out successfully - SharedPreferences cleared");
-
     } catch (e) {
       print("Error during logout: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -171,6 +259,7 @@ class _StudentProfileState extends State<StudentProfile> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         automaticallyImplyLeading: false,
         title: Text(
           'STUDENT PROFILE',
@@ -185,84 +274,93 @@ class _StudentProfileState extends State<StudentProfile> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: EdgeInsets.only(
-          bottom: screenHeight > 600 ? 100 : 80, // Responsive bottom padding
-        ),
-        child: Column(
-          children: [
-            Container(
-              width: double.infinity,
-              color: _orange,
               padding: EdgeInsets.only(
-                bottom: screenHeight > 600 ? 40 : 30, // Responsive padding
+                bottom:
+                    screenHeight > 600 ? 100 : 80, // Responsive bottom padding
               ),
               child: Column(
                 children: [
-                  CircleAvatar(
-                    radius: screenWidth > 600 ? 60 : 50, // Responsive avatar size
-                    backgroundColor: Colors.white,
-                    child: Icon(
-                      PhosphorIconsRegular.user,
-                      size: screenWidth > 600 ? 60 : 50,
-                      color: const Color(0xFFFF8C61),
+                  Container(
+                    width: double.infinity,
+                    color: const Color(0xFFF97316),
+                    padding: EdgeInsets.only(
+                      bottom:
+                          screenHeight > 600 ? 40 : 30, // Responsive padding
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: TextSpan(
-                      text: 'Hello! ',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenWidth > 600 ? 18 : 16, // Responsive font
-                      ),
+                    child: Column(
                       children: [
-                        TextSpan(
-                          text: name.toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: screenWidth > 600 ? 22 : 20, // Responsive font
+                        CircleAvatar(
+                          radius: screenWidth > 600
+                              ? 60
+                              : 50, // Responsive avatar size
+                          backgroundColor: Colors.white,
+                          child: Icon(
+                            PhosphorIconsRegular.user,
+                            size: screenWidth > 600 ? 60 : 50,
+                            color: const Color(0xFFFF8C61),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        RichText(
+                          text: TextSpan(
+                            text: 'Hello! ',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: screenWidth > 600
+                                  ? 18
+                                  : 16, // Responsive font
+                            ),
+                            children: [
+                              TextSpan(
+                                text: name.toUpperCase(),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: screenWidth > 600
+                                      ? 22
+                                      : 20, // Responsive font
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
                   ),
+                  SizedBox(height: screenHeight > 600 ? 20 : 16),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal:
+                          screenWidth > 600 ? 32 : 16, // Responsive padding
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: _cardGray,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: EdgeInsets.all(screenWidth > 600 ? 20 : 16),
+                      child: Column(
+                        children: [
+                          _infoRow('Name', name),
+                          _infoRow('College ID', id),
+                          _infoRow('Email', email),
+                          _infoRow('Department', department),
+                          _infoRow('Class', studentClass),
+                          _infoRow('Mentor ID', mentorId),
+                          _infoRow('Mentor Name', mentorName),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight > 600 ? 20 : 16),
                 ],
               ),
             ),
-
-            SizedBox(height: screenHeight > 600 ? 20 : 16),
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: screenWidth > 600 ? 32 : 16, // Responsive padding
-              ),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _cardGray,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: EdgeInsets.all(screenWidth > 600 ? 20 : 16),
-                child: Column(
-                  children: [
-                    _infoRow('Name', name),
-                    _infoRow('College ID', id),
-                    _infoRow('Email', email),
-                    _infoRow('Department', department),
-                    _infoRow('Class', studentClass),
-                    _infoRow('Mentor ID', mentorId),
-                    _infoRow('Mentor Name', mentorName),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: screenHeight > 600 ? 20 : 16),
-          ],
-        ),
-      ),
       floatingActionButton: Container(
         width: screenWidth > 600 ? 120 : 100, // Responsive width
         height: screenWidth > 600 ? 45 : 40, // Responsive height
         child: FloatingActionButton(
-          onPressed: _logout, // Remove shadow
+          onPressed: _logout,
+          backgroundColor: const Color(0xFFF97316),
           child: Text(
             'Log out',
             style: TextStyle(

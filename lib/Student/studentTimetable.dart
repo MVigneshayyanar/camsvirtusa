@@ -100,7 +100,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar( // Orange color
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: const Text(
           'TIME TABLE',
           style: const TextStyle(

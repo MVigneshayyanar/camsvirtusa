@@ -5,7 +5,8 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 class NewsScreen extends StatefulWidget {
   final int? initialNewsTimestamp;
   final bool isTab;
-  const NewsScreen({Key? key, this.initialNewsTimestamp, this.isTab = false}) : super(key: key);
+  const NewsScreen({Key? key, this.initialNewsTimestamp, this.isTab = false})
+      : super(key: key);
 
   @override
   State<NewsScreen> createState() => _NewsScreenState();
@@ -19,15 +20,19 @@ class _NewsScreenState extends State<NewsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
+        elevation: 0,
         automaticallyImplyLeading: !widget.isTab,
-        leading: widget.isTab ? null : IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: widget.isTab
+            ? null
+            : IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () => Navigator.pop(context),
+              ),
         title: const Text(
           "LATEST NEWS",
           style: TextStyle(
-            color: Colors.white,
+            color: Color.fromARGB(255, 255, 255, 255),
             fontSize: 20,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0,
@@ -70,8 +75,9 @@ class _NewsScreenState extends State<NewsScreen> {
             itemBuilder: (context, index) {
               var data = newsDocs[index].data() as Map<String, dynamic>;
               var timestamp = data['createdAt'] as int?;
-              bool isInitial = widget.initialNewsTimestamp != null && timestamp == widget.initialNewsTimestamp;
-              
+              bool isInitial = widget.initialNewsTimestamp != null &&
+                  timestamp == widget.initialNewsTimestamp;
+
               return NewsItemCard(
                 data: data,
                 initialExpanded: isInitial,
@@ -113,14 +119,17 @@ class _NewsItemCardState extends State<NewsItemCard> {
     var content = widget.data['content'] ?? '';
     var timestamp = widget.data['createdAt'] as int?;
     var dateStr = '';
-    
+
     if (timestamp != null) {
       var date = DateTime.fromMillisecondsSinceEpoch(timestamp);
-      dateStr = "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour)}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}";
+      dateStr =
+          "${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour)}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}";
     }
 
-    bool isPinned = widget.data['type'] == 'pinned' || widget.data['type'] == 'permanent';
-    bool isLongContent = content.toString().length > 150 || content.toString().split('\n').length > 3;
+    bool isPinned =
+        widget.data['type'] == 'pinned' || widget.data['type'] == 'permanent';
+    bool isLongContent = content.toString().length > 150 ||
+        content.toString().split('\n').length > 3;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -158,7 +167,8 @@ class _NewsItemCardState extends State<NewsItemCard> {
               if (isPinned)
                 Container(
                   margin: const EdgeInsets.only(left: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: const Color(0xFFFFF1F2),
                     borderRadius: BorderRadius.circular(8),
@@ -167,7 +177,8 @@ class _NewsItemCardState extends State<NewsItemCard> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(PhosphorIconsFill.pushPin, size: 12, color: Color(0xFFE11D48)),
+                      const Icon(PhosphorIconsFill.pushPin,
+                          size: 12, color: Color(0xFFE11D48)),
                       const SizedBox(width: 4),
                       const Text(
                         "Pinned",
@@ -215,7 +226,8 @@ class _NewsItemCardState extends State<NewsItemCard> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(PhosphorIconsRegular.clock, size: 14, color: Colors.grey.shade400),
+              Icon(PhosphorIconsRegular.clock,
+                  size: 14, color: Colors.grey.shade400),
               const SizedBox(width: 4),
               Text(
                 dateStr,

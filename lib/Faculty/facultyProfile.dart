@@ -68,23 +68,111 @@ class _FacultyProfileState extends State<FacultyProfile> {
   void _logout() {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Confirm Logout'),
-          content: const Text('Are you sure you want to log out?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28.0),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Logout Icon
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF97316).withOpacity(0.1),
+                  ),
+                  child: const Icon(
+                    Icons.logout_rounded,
+                    color: Color(0xFFF97316),
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Title
+                const Text(
+                  "Confirm Logout",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                // Description
+                const Text(
+                  "Are you sure you want to log out of your account?",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Colors.black12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Cancel",
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _performLogout();
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF97316),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Logout",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _performLogout();
-              },
-              child: const Text('Logout', style: TextStyle(color: Colors.red)),
-            ),
-          ],
+          ),
         );
       },
     );
@@ -118,14 +206,15 @@ class _FacultyProfileState extends State<FacultyProfile> {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
+          backgroundColor: const Color(0xFFF97316),
           title: Text(
             'FACULTY PROFILE',
             style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.0,
+            ),
           ),
           automaticallyImplyLeading: false,
         ),
@@ -135,20 +224,26 @@ class _FacultyProfileState extends State<FacultyProfile> {
 
     // Extract data from facultyData or use defaults
     final employeeName = facultyData?['name']?.toString() ?? 'Unknown Faculty';
-    final jobTitle = facultyData?['jobTitle']?.toString() ?? 'Associate Professor';
+    final jobTitle =
+        facultyData?['jobTitle']?.toString() ?? 'Associate Professor';
     final department = facultyData?['department']?.toString() ?? 'M.Tech CSE';
-    final employeeId = facultyData?['employeeId']?.toString() ?? widget.facultyId;
-    final highestQualification = facultyData?['qualification']?.toString() ?? 'PHD';
-    final dateOfJoining = facultyData?['dateOfJoining']?.toString() ?? '12/05/2010';
+    final employeeId =
+        facultyData?['employeeId']?.toString() ?? widget.facultyId;
+    final highestQualification =
+        facultyData?['qualification']?.toString() ?? 'PHD';
+    final dateOfJoining =
+        facultyData?['dateOfJoining']?.toString() ?? '12/05/2010';
     final dateOfBirth = facultyData?['dateOfBirth']?.toString() ?? '02.05.1975';
     final emailId = facultyData?['email']?.toString() ?? 'nithya.cj@siram.co';
     final contactNo = facultyData?['contactNo']?.toString() ?? '7344507768';
-    final address = facultyData?['address']?.toString() ?? '12 New Colony, XYZ city - 045';
+    final address =
+        facultyData?['address']?.toString() ?? '12 New Colony, XYZ city - 045';
     final profileImageUrl = facultyData?['profileImageUrl']?.toString();
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: Text(
           'FACULTY PROFILE',
           style: const TextStyle(
@@ -188,7 +283,8 @@ class _FacultyProfileState extends State<FacultyProfile> {
                         // Avatar
                         CircleAvatar(
                           radius: screenWidth > 600 ? 35 : 30,
-                          backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
+                          backgroundColor:
+                              const Color(0xFFFF8C61).withOpacity(0.12),
                           backgroundImage: profileImageUrl != null
                               ? NetworkImage(profileImageUrl)
                               : null,
@@ -245,14 +341,19 @@ class _FacultyProfileState extends State<FacultyProfile> {
                           style: TextStyle(
                             fontSize: screenWidth > 600 ? 16 : 14,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF4B5563),
+                            color: const Color.fromARGB(255, 0, 0, 0),
                             letterSpacing: 1.2,
                           ),
                         ),
                         SizedBox(height: screenWidth > 600 ? 16 : 12),
-                        _buildInfoCard('Job Title : $jobTitle', screenWidth),
-                        _buildInfoCard('Department : $department', screenWidth),
-                        _buildInfoCard('Employee ID : $employeeId', screenWidth),
+                        _buildGroupCard(
+                          screenWidth: screenWidth,
+                          items: [
+                            MapEntry('Job Title', jobTitle),
+                            MapEntry('Department', department),
+                            MapEntry('Employee ID', employeeId),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -272,17 +373,23 @@ class _FacultyProfileState extends State<FacultyProfile> {
                           style: TextStyle(
                             fontSize: screenWidth > 600 ? 16 : 14,
                             fontWeight: FontWeight.bold,
-                            color: const Color(0xFF4B5563),
+                            color: const Color.fromARGB(255, 0, 0, 0),
                             letterSpacing: 1.2,
                           ),
                         ),
                         SizedBox(height: screenWidth > 600 ? 16 : 12),
-                        _buildInfoCard('Highest Qualification : $highestQualification', screenWidth),
-                        _buildInfoCard('Date of Joining : $dateOfJoining', screenWidth),
-                        _buildInfoCard('Date of Birth : $dateOfBirth', screenWidth),
-                        _buildInfoCard('E-mail ID : $emailId', screenWidth),
-                        _buildInfoCard('Contact No : $contactNo', screenWidth),
-                        _buildInfoCard('Address : $address', screenWidth),
+                        _buildGroupCard(
+                          screenWidth: screenWidth,
+                          items: [
+                            MapEntry(
+                                'Highest Qualification', highestQualification),
+                            MapEntry('Date of Joining', dateOfJoining),
+                            MapEntry('Date of Birth', dateOfBirth),
+                            MapEntry('E-mail ID', emailId),
+                            MapEntry('Contact No', contactNo),
+                            MapEntry('Address', address),
+                          ],
+                        ),
                       ],
                     ),
                   ),
@@ -294,12 +401,12 @@ class _FacultyProfileState extends State<FacultyProfile> {
           ),
         ],
       ),
-
       floatingActionButton: SizedBox(
         width: screenWidth > 600 ? 120 : 100,
         height: screenWidth > 600 ? 45 : 40,
         child: FloatingActionButton(
           onPressed: _logout,
+          backgroundColor: const Color(0xFFF97316),
           child: Text(
             'Log out',
             style: TextStyle(
@@ -312,31 +419,71 @@ class _FacultyProfileState extends State<FacultyProfile> {
     );
   }
 
-  Widget _buildInfoCard(String text, double screenWidth) {
+  Widget _buildGroupCard({
+    required List<MapEntry<String, String>> items,
+    required double screenWidth,
+  }) {
     return Container(
       width: double.infinity,
-      margin: EdgeInsets.only(bottom: screenWidth > 600 ? 12 : 8),
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth > 600 ? 16 : 12,
-        vertical: screenWidth > 600 ? 16 : 12,
-      ),
       decoration: BoxDecoration(
         color: const Color(0xFF36454F),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: const [
           BoxShadow(
             color: Colors.black12,
-            blurRadius: 2,
-            offset: Offset(0, 1),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: screenWidth > 600 ? 15 : 13,
-          fontWeight: FontWeight.w400,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          children: List.generate(items.length, (index) {
+            final item = items[index];
+            return Column(
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: screenWidth > 600 ? 20 : 16,
+                    vertical: screenWidth > 600 ? 18 : 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        item.key,
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: screenWidth > 600 ? 15 : 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          item.value,
+                          textAlign: TextAlign.end,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenWidth > 600 ? 15 : 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (index < items.length - 1)
+                  const Divider(
+                    color: Colors.white12,
+                    height: 1,
+                    thickness: 1,
+                    indent: 16,
+                    endIndent: 16,
+                  ),
+              ],
+            );
+          }),
         ),
       ),
     );

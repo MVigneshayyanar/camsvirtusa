@@ -1603,6 +1603,7 @@ class _AttendancePageState extends State<AttendancePage>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: const Text(
           "ATTENDANCE",
           style: TextStyle(

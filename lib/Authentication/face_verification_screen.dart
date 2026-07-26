@@ -52,8 +52,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
-    _pulseAnim =
-        Tween<double>(begin: 1.0, end: 1.04).animate(_pulseController);
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.04).animate(_pulseController);
 
     _init();
   }
@@ -144,8 +143,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         return;
       }
 
-      final distance = _faceService.calculateBestDistance(
-          liveEmbedding, _storedEmbeddings!);
+      final distance =
+          _faceService.calculateBestDistance(liveEmbedding, _storedEmbeddings!);
       _lastDistance = distance;
 
       debugPrint('[FaceVerify] Best distance: $distance '
@@ -214,6 +213,20 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       _statusMessage = 'Position your face in the frame.';
     });
     _startAutoVerify();
+  }
+
+  void _skipVerification() {
+    _autoTimer?.cancel();
+    _autoTimer = null;
+    _pulseController.stop();
+    Navigator.pushReplacementNamed(
+      context,
+      AppRoutes.studentDashboard,
+      arguments: {
+        'studentId': widget.studentId,
+        'verificationTime': null,
+      },
+    );
   }
 
   // ── Dispose ──────────────────────────────────────────────────────────────────
@@ -320,8 +333,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
               ),
             )
           : const Center(
-              child: CircularProgressIndicator(
-                  color: Color(0xFFFF8C61)),
+              child: CircularProgressIndicator(color: Color(0xFFFF8C61)),
             ),
     );
   }
@@ -368,8 +380,8 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   height: 54,
                   child: ElevatedButton.icon(
                     onPressed: _retry,
-                    icon: const Icon(Icons.refresh_rounded,
-                        color: Colors.white),
+                    icon:
+                        const Icon(Icons.refresh_rounded, color: Colors.white),
                     label: const Text(
                       'Try Again',
                       style: TextStyle(
@@ -385,39 +397,69 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   ),
                 ),
                 const SizedBox(height: 12),
-                TextButton(
-                  onPressed: () => Navigator.pushReplacementNamed(
-                      context, AppRoutes.login, arguments: 'student'),
-                  child: const Text(
-                    'Back to Login',
-                    style: TextStyle(color: Colors.black45, fontSize: 14),
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pushReplacementNamed(
+                          context, AppRoutes.login,
+                          arguments: 'student'),
+                      child: const Text(
+                        'Back to Login',
+                        style: TextStyle(color: Colors.black45, fontSize: 14),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _skipVerification,
+                      child: const Text(
+                        'Skip Verification',
+                        style: TextStyle(
+                            color: Color(0xFFF97316),
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             )
           else if (!_verificationDone)
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-              child: ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _verify,
-                icon: const Icon(Icons.camera_alt_rounded,
-                    color: Colors.white),
-                label: const Text(
-                  'Verify Now',
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white),
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  height: 54,
+                  child: ElevatedButton.icon(
+                    onPressed: _isProcessing ? null : _verify,
+                    icon: const Icon(Icons.camera_alt_rounded,
+                        color: Colors.white),
+                    label: const Text(
+                      'Verify Now',
+                      style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      disabledBackgroundColor: _primary.withValues(alpha: 0.3),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(25)),
+                    ),
+                  ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _primary,
-                  disabledBackgroundColor:
-                      _primary.withValues(alpha: 0.3),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25)),
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: _skipVerification,
+                  child: const Text(
+                    'Skip Verification',
+                    style: TextStyle(
+                        color: Color(0xFFF97316),
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
+              ],
             ),
         ],
       ),

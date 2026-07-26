@@ -116,7 +116,13 @@ class _TimeTablePageState extends State<TimeTablePage> {
             final semMappings = mappings[sem] as List?;
 
             if (semTimetable != null && semMappings != null) {
-              final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+              final days = [
+                "Monday",
+                "Tuesday",
+                "Wednesday",
+                "Thursday",
+                "Friday"
+              ];
               for (var day in days) {
                 final periodsList = semTimetable[day] as List?;
                 if (periodsList != null) {
@@ -127,12 +133,19 @@ class _TimeTablePageState extends State<TimeTablePage> {
                         final mapping = semMappings.firstWhere((m) {
                           final mapData = m as Map?;
                           if (mapData == null) return false;
-                          if (mapData['abbreviation']?.toString().toLowerCase() != abbrev.toLowerCase()) return false;
-                          
-                          final isPrimaryFaculty = mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
-                          final isSecondaryFaculty = mapData['isElective'] == true && 
-                                                     mapData['facultyId2']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
-                          
+                          if (mapData['abbreviation']
+                                  ?.toString()
+                                  .toLowerCase() !=
+                              abbrev.toLowerCase()) return false;
+
+                          final isPrimaryFaculty =
+                              mapData['facultyId']?.toString().toUpperCase() ==
+                                  widget.facultyId.toUpperCase();
+                          final isSecondaryFaculty = mapData['isElective'] ==
+                                  true &&
+                              mapData['facultyId2']?.toString().toUpperCase() ==
+                                  widget.facultyId.toUpperCase();
+
                           return isPrimaryFaculty || isSecondaryFaculty;
                         }, orElse: () => null);
 
@@ -163,10 +176,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar( // Orange color
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: const Text(
           'TIME TABLE',
-          style: const TextStyle(
+          style: TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -187,11 +201,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
                 child: Text(
                   'Error: $_errorMessage',
                   style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.0,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -202,7 +216,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
                   child: _isLoading
                       ? const Center(
                           child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7F50)),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                                Color(0xFFFF7F50)),
                           ),
                         )
                       : _assignedClasses.isEmpty
@@ -210,11 +225,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
                               child: Text(
                                 'No classes assigned to you.',
                                 style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
                               ),
                             )
                           : RefreshIndicator(
@@ -226,20 +241,23 @@ class _TimeTablePageState extends State<TimeTablePage> {
                                   // Header Section
                                   Center(
                                     child: Container(
-                                      margin: const EdgeInsets.only(top: 24, bottom: 16),
-                                      padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                                      margin: const EdgeInsets.only(
+                                          top: 24, bottom: 16),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 25, vertical: 12),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF36454F), // Dark gray
+                                        color: const Color(
+                                            0xFF36454F), // Dark gray
                                         borderRadius: BorderRadius.circular(20),
                                       ),
                                       child: const Text(
                                         'TEACHER WEEKLY SCHEDULE',
                                         style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+                                          color: Colors.white,
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.0,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -263,13 +281,13 @@ class _TimeTablePageState extends State<TimeTablePage> {
   Widget _buildTimeTableGrid() {
     final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     final headers = [
-      "Day", 
-      "P1\n9:00 - 9:50", 
-      "P2\n9:50 - 10:40", 
-      "P3\n10:55 - 11:45", 
-      "P4\n11:45 - 12:35", 
-      "P5\n1:25 - 2:15", 
-      "P6\n2:15 - 3:05", 
+      "Day",
+      "P1\n9:00 - 9:50",
+      "P2\n9:50 - 10:40",
+      "P3\n10:55 - 11:45",
+      "P4\n11:45 - 12:35",
+      "P5\n1:25 - 2:15",
+      "P6\n2:15 - 3:05",
       "P7\n3:20 - 4:10"
     ];
 
@@ -294,7 +312,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
                 decoration: const BoxDecoration(color: Color(0xFFE5E5E5)),
                 children: headers.map((header) {
                   return Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                     alignment: Alignment.center,
                     child: Text(
                       header,
@@ -315,7 +334,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
                   children: [
                     // Day Label cell
                     Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 2),
                       color: const Color(0xFFF9F9F9),
                       alignment: Alignment.center,
                       child: Text(
@@ -329,20 +349,27 @@ class _TimeTablePageState extends State<TimeTablePage> {
                     ),
                     // 7 periods cells
                     ...List.generate(7, (index) {
-                      final String val = (periodsList != null && index < periodsList.length)
-                          ? periodsList[index]
-                          : "";
+                      final String val =
+                          (periodsList != null && index < periodsList.length)
+                              ? periodsList[index]
+                              : "";
                       final bool hasClass = val.isNotEmpty;
                       return Container(
-                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 1),
-                        color: hasClass ? const Color(0xFFFF7F50).withOpacity(0.15) : null,
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 6, horizontal: 1),
+                        color: hasClass
+                            ? const Color(0xFFFF7F50).withOpacity(0.15)
+                            : null,
                         alignment: Alignment.center,
                         child: Text(
                           hasClass ? val : "-",
                           style: TextStyle(
                             fontSize: 10,
-                            fontWeight: hasClass ? FontWeight.bold : FontWeight.normal,
-                            color: hasClass ? const Color(0xFFFF7F50) : Colors.grey,
+                            fontWeight:
+                                hasClass ? FontWeight.bold : FontWeight.normal,
+                            color: hasClass
+                                ? const Color(0xFFFF7F50)
+                                : Colors.grey,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -370,5 +397,4 @@ class _TimeTablePageState extends State<TimeTablePage> {
       ),
     );
   }
-
 }

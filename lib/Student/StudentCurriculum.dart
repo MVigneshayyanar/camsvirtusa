@@ -321,6 +321,7 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
 
   PreferredSizeWidget _buildAppBar(double screenHeight, double screenWidth) {
     return AppBar(
+      backgroundColor: const Color(0xFFF97316),
       title: Text(
         'CURRICULUM',
         style: TextStyle(
@@ -1791,6 +1792,7 @@ class ClubDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: Text(
           clubName,
           style: TextStyle(
@@ -1976,6 +1978,7 @@ class ClubCategoryPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: Text(
           '$categoryName Clubs',
           style: TextStyle(

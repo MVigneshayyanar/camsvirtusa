@@ -23,7 +23,9 @@ class StudentDashboard extends StatefulWidget {
   final String studentId;
   final String? verificationTime;
 
-  const StudentDashboard({Key? key, required this.studentId, this.verificationTime}) : super(key: key);
+  const StudentDashboard(
+      {Key? key, required this.studentId, this.verificationTime})
+      : super(key: key);
 
   @override
   _StudentDashboardState createState() => _StudentDashboardState();
@@ -53,8 +55,10 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   // --- BLE Configuration (Updated to match faculty broadcaster) ---
   static const String SERVICE_UUID = "bf27730d-860a-4e09-889c-2d8b6a9e0fe7";
-  static const String CHARACTERISTIC_UUID = "87654321-4321-4321-4321-CBA987654321";
-  static const double PROXIMITY_RADIUS_METERS = 150.0; // Max distance from faculty to be marked present
+  static const String CHARACTERISTIC_UUID =
+      "87654321-4321-4321-4321-CBA987654321";
+  static const double PROXIMITY_RADIUS_METERS =
+      100.0; // Max distance from faculty to be marked present
 
   // BLE state
   StreamSubscription<List<ScanResult>>? _scanSubscription;
@@ -88,15 +92,17 @@ class _StudentDashboardState extends State<StudentDashboard>
       final lastVerify = prefs.getString('lastVerificationTime');
       if (lastVerify != null) verifyTime = DateTime.tryParse(lastVerify);
     }
-    
-    if (verifyTime == null || DateTime.now().difference(verifyTime).inMinutes >= 3) {
+
+    if (verifyTime == null ||
+        DateTime.now().difference(verifyTime).inMinutes >= 3) {
       _deactivateAttendance();
       return;
     }
 
     if (mounted) {
       setState(() {
-        _secondsRemaining = 180 - DateTime.now().difference(verifyTime!).inSeconds;
+        _secondsRemaining =
+            180 - DateTime.now().difference(verifyTime!).inSeconds;
       });
     }
 
@@ -105,12 +111,13 @@ class _StudentDashboardState extends State<StudentDashboard>
         timer.cancel();
         return;
       }
-      
+
       int seconds = 180 - DateTime.now().difference(verifyTime!).inSeconds;
-      
+
       if (seconds <= 0) {
         _deactivateAttendance();
         timer.cancel();
+        _showReverificationPopup();
       } else {
         setState(() {
           _secondsRemaining = seconds;
@@ -119,13 +126,130 @@ class _StudentDashboardState extends State<StudentDashboard>
     });
   }
 
+  void _showReverificationPopup() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28.0),
+          ),
+          elevation: 0,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(28.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Custom Icon/Illustration
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFF97316).withOpacity(0.1),
+                  ),
+                  child: const Icon(
+                    Icons.face_retouching_natural_rounded,
+                    color: Color(0xFFF97316),
+                    size: 48,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Title
+                const Text(
+                  "Verify Face Again!",
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                // Description
+                const Text(
+                  "Your attendance session has timed out. Verify your face again to reactivate detection.",
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    height: 1.4,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 28),
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: Colors.black12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Skip",
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          Navigator.pushReplacementNamed(
+                            context,
+                            '/faceVerification',
+                            arguments: widget.studentId,
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF97316),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: const Text(
+                          "Verify Now",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   void _deactivateAttendance() {
     if (mounted) {
+      _stopScanning();
       setState(() {
         _isAttendanceActive = false;
-        _isScanning = false;
       });
-      _stopScanning();
       _firestoreSessionSubscription?.cancel();
     }
   }
@@ -145,7 +269,9 @@ class _StudentDashboardState extends State<StudentDashboard>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       print("📱 App resumed - Rechecking permissions & services...");
-      _initializeEverythingAutomatically();
+      if (_isAttendanceActive) {
+        _initializeEverythingAutomatically();
+      }
     }
   }
 
@@ -188,7 +314,6 @@ class _StudentDashboardState extends State<StudentDashboard>
       await _startBLEAutomatically();
 
       print("✅ All services initialized successfully!");
-
     } catch (e) {
       print("❌ Error during auto-initialization: $e");
     }
@@ -219,7 +344,8 @@ class _StudentDashboardState extends State<StudentDashboard>
           context: context,
           builder: (context) => AlertDialog(
             title: Text("Permissions Required"),
-            content: Text("Please grant all permissions for attendance tracking to work properly."),
+            content: Text(
+                "Please grant all permissions for attendance tracking to work properly."),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -280,7 +406,7 @@ class _StudentDashboardState extends State<StudentDashboard>
         }
       } catch (e) {
         print("❌ Failed to turn on Bluetooth: $e");
-        
+
         // Show dialog asking user to enable Bluetooth manually (essential for Android 13+)
         if (mounted) {
           showDialog(
@@ -288,7 +414,8 @@ class _StudentDashboardState extends State<StudentDashboard>
             barrierDismissible: false,
             builder: (context) => AlertDialog(
               title: const Text("Bluetooth Required"),
-              content: const Text("Please turn on Bluetooth in your device settings to scan for attendance."),
+              content: const Text(
+                  "Please turn on Bluetooth in your device settings to scan for attendance."),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
@@ -322,7 +449,8 @@ class _StudentDashboardState extends State<StudentDashboard>
           context: context,
           builder: (context) => AlertDialog(
             title: Text("Location Required"),
-            content: Text("Please enable Location services for Bluetooth scanning to work."),
+            content: Text(
+                "Please enable Location services for Bluetooth scanning to work."),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
@@ -361,7 +489,8 @@ class _StudentDashboardState extends State<StudentDashboard>
         androidUsesFineLocation: true,
       );
 
-      _scanSubscription = FlutterBluePlus.scanResults.listen(_handleScanResults);
+      _scanSubscription =
+          FlutterBluePlus.scanResults.listen(_handleScanResults);
 
       setState(() {
         _isScanning = true;
@@ -413,7 +542,8 @@ class _StudentDashboardState extends State<StudentDashboard>
             if (_respondedSessions.contains(sessionId)) continue;
 
             if (studentData != null && className == studentData!['class']) {
-              print("📡 [BLE-PAYLOAD] Found matching attendance session: $sessionId");
+              print(
+                  "📡 [BLE-PAYLOAD] Found matching attendance session: $sessionId");
               _respondedSessions.add(sessionId);
               _currentDetectedSession = sessionId;
               _fetchActiveSessionDetailsAndRespond(sessionId, className);
@@ -455,7 +585,8 @@ class _StudentDashboardState extends State<StudentDashboard>
           if (_respondedSessions.contains(deviceKey)) continue;
           _respondedSessions.add(deviceKey);
 
-          print("📡 [BLE-BEACON] Detected our beacon via ID/UUID/name. Checking Firestore for active session...");
+          print(
+              "📡 [BLE-BEACON] Detected our beacon via ID/UUID/name. Checking Firestore for active session...");
           _checkFirestoreForActiveSession(className);
         }
       } catch (e) {
@@ -506,7 +637,8 @@ class _StudentDashboardState extends State<StudentDashboard>
   }
 
   /// Verify student is within PROXIMITY_RADIUS_METERS of faculty, then mark attendance
-  Future<void> _verifyProximityAndRespond(Map<String, dynamic> activeSession) async {
+  Future<void> _verifyProximityAndRespond(
+      Map<String, dynamic> activeSession) async {
     final sessionId = activeSession['sessionId']?.toString() ?? '';
     final facLat = (activeSession['lat'] as num?)?.toDouble();
     final facLng = (activeSession['lng'] as num?)?.toDouble();
@@ -524,7 +656,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     try {
       // Robust location retrieval for student
       Position? studentPos;
-      
+
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         print("⚠️ Student location services disabled.");
@@ -535,37 +667,45 @@ class _StudentDashboardState extends State<StudentDashboard>
         permission = await Geolocator.requestPermission();
       }
 
-      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+      if (permission == LocationPermission.always ||
+          permission == LocationPermission.whileInUse) {
         try {
           studentPos = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.medium,
           ).timeout(const Duration(seconds: 4));
         } catch (e) {
-          print("⚠️ Student getCurrentPosition failed or timed out: $e. Trying last known...");
+          print(
+              "⚠️ Student getCurrentPosition failed or timed out: $e. Trying last known...");
           studentPos = await Geolocator.getLastKnownPosition();
         }
       }
 
       if (studentPos == null) {
-        print("❌ Could not retrieve student position. Marking present as fallback.");
+        print(
+            "❌ Could not retrieve student position. Marking present as fallback.");
         _respondedSessions.add(sessionId);
         _sendAttendanceResponse(sessionId, subject, facultyId);
         return;
       }
 
       final distanceMeters = Geolocator.distanceBetween(
-        studentPos.latitude, studentPos.longitude,
-        facLat, facLng,
+        studentPos.latitude,
+        studentPos.longitude,
+        facLat,
+        facLng,
       );
 
-      print("📍 Student distance from faculty: ${distanceMeters.toStringAsFixed(1)}m");
+      print(
+          "📍 Student distance from faculty: ${distanceMeters.toStringAsFixed(1)}m");
 
       if (distanceMeters <= PROXIMITY_RADIUS_METERS) {
-        print("✅ Student is within ${PROXIMITY_RADIUS_METERS}m — marking present!");
+        print(
+            "✅ Student is within ${PROXIMITY_RADIUS_METERS}m — marking present!");
         _respondedSessions.add(sessionId);
         _sendAttendanceResponse(sessionId, subject, facultyId);
       } else {
-        print("❌ Student too far (${distanceMeters.toStringAsFixed(0)}m). Not marking.");
+        print(
+            "❌ Student too far (${distanceMeters.toStringAsFixed(0)}m). Not marking.");
       }
     } catch (e) {
       print("⚠️ GPS proximity check failed: $e");
@@ -589,7 +729,8 @@ class _StudentDashboardState extends State<StudentDashboard>
 
       if (!classDoc.exists) return;
       final classData = classDoc.data();
-      final activeSession = classData?['activeSession'] as Map<String, dynamic>?;
+      final activeSession =
+          classData?['activeSession'] as Map<String, dynamic>?;
       if (activeSession == null) return;
 
       final sessionId = activeSession['sessionId']?.toString() ?? '';
@@ -607,7 +748,8 @@ class _StudentDashboardState extends State<StudentDashboard>
     }
   }
 
-  Future<void> _fetchActiveSessionDetailsAndRespond(String sessionId, String className) async {
+  Future<void> _fetchActiveSessionDetailsAndRespond(
+      String sessionId, String className) async {
     String subject = 'Class Session';
     String facultyId = sessionId.split('_')[0];
 
@@ -625,8 +767,10 @@ class _StudentDashboardState extends State<StudentDashboard>
 
         if (classDoc.exists) {
           final classData = classDoc.data();
-          final activeSession = classData?['activeSession'] as Map<String, dynamic>?;
-          if (activeSession != null && activeSession['sessionId'] == sessionId) {
+          final activeSession =
+              classData?['activeSession'] as Map<String, dynamic>?;
+          if (activeSession != null &&
+              activeSession['sessionId'] == sessionId) {
             subject = activeSession['subject'] ?? subject;
             facultyId = activeSession['facultyId'] ?? facultyId;
           }
@@ -675,7 +819,8 @@ class _StudentDashboardState extends State<StudentDashboard>
 
   // Send attendance response to Firestore
   // Send attendance response to Firestore with proper student name handling
-  Future<void> _sendAttendanceResponse(String sessionId, String subject, String facultyId) async {
+  Future<void> _sendAttendanceResponse(
+      String sessionId, String subject, String facultyId) async {
     try {
       // Ensure we have student data before proceeding
       if (studentData == null) {
@@ -693,7 +838,8 @@ class _StudentDashboardState extends State<StudentDashboard>
       }
 
       // Get student class for better identification
-      String studentClass = studentData?['class']?.toString() ?? 'Unknown Class';
+      String studentClass =
+          studentData?['class']?.toString() ?? 'Unknown Class';
 
       print("📝 Preparing attendance response:");
       print("   Student ID: ${widget.studentId}");
@@ -703,18 +849,18 @@ class _StudentDashboardState extends State<StudentDashboard>
       print("   Subject: $subject");
 
       // Send the response with complete student information
-      await FirebaseFirestore.instance
-          .collection('attendance_responses')
-          .add({
+      await FirebaseFirestore.instance.collection('attendance_responses').add({
         'sessionId': sessionId,
         'studentId': widget.studentId,
         'studentName': studentName, // Properly retrieved student name
         'studentClass': studentClass, // Add class for better identification
         'timestamp': FieldValue.serverTimestamp(),
-        'deviceId': '${widget.studentId}_${DateTime.now().millisecondsSinceEpoch}',
+        'deviceId':
+            '${widget.studentId}_${DateTime.now().millisecondsSinceEpoch}',
         'subject': subject,
         'facultyId': facultyId,
-        'responseTime': DateTime.now().toIso8601String(), // Add local timestamp as backup
+        'responseTime':
+            DateTime.now().toIso8601String(), // Add local timestamp as backup
         'status': 'present', // Explicitly mark as present
       });
 
@@ -739,8 +885,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                           style: TextStyle(fontWeight: FontWeight.bold)),
                       Text('Student: $studentName',
                           style: TextStyle(fontSize: 11)),
-                      Text('Subject: $subject',
-                          style: TextStyle(fontSize: 11)),
+                      Text('Subject: $subject', style: TextStyle(fontSize: 11)),
                     ],
                   ),
                 ),
@@ -863,7 +1008,8 @@ class _StudentDashboardState extends State<StudentDashboard>
           final classData = classDoc.data()!;
           final semesterField = classData['currentSemester'];
           if (semesterField is Map) {
-            currentSemester = semesterField['semester']?.toString() ?? currentSemester;
+            currentSemester =
+                semesterField['semester']?.toString() ?? currentSemester;
           } else if (semesterField != null) {
             currentSemester = semesterField.toString();
           }
@@ -880,7 +1026,7 @@ class _StudentDashboardState extends State<StudentDashboard>
           .get();
 
       if (!attendanceDoc.exists) return 0;
-      
+
       Map<String, dynamic>? attendanceData = attendanceDoc.data();
       if (attendanceData == null) return 0;
 
@@ -1029,8 +1175,6 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     final MediaQueryData mediaQuery = MediaQuery.of(context);
@@ -1044,6 +1188,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: Center(
           child: Text(
             'STUDENT DASHBOARD',
@@ -1078,8 +1223,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                       ),
                       SizedBox(width: 4),
                       Text(
-                        _isScanning 
-                            ? '${(_secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(_secondsRemaining % 60).toString().padLeft(2, '0')} AUTO' 
+                        _isScanning
+                            ? '${(_secondsRemaining ~/ 60).toString().padLeft(2, '0')}:${(_secondsRemaining % 60).toString().padLeft(2, '0')} AUTO'
                             : 'OFF',
                         style: TextStyle(
                           color: Colors.white,
@@ -1101,188 +1246,203 @@ class _StudentDashboardState extends State<StudentDashboard>
         ),
         child: _isLoading
             ? Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text("Initializing services..."),
-              SizedBox(height: 8),
-              Text(
-                "Please wait while we set up attendance detection",
-                style: TextStyle(fontSize: 12, color: Colors.grey),
-              ),
-            ],
-          ),
-        )
-            : Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth > 600 ? 24 : 16,
-            vertical: 16,
-          ),
-          child: Column(
-            children: [
-              if (!_isAttendanceActive)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.red),
-                  ),
-                  child: Column(
-                    children: [
-                      const Text(
-                        "Attendance Deactivated (Timeout)",
-                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 8),
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.pushReplacementNamed(
-                            context,
-                            '/faceVerification',
-                            arguments: widget.studentId,
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                        ),
-                        child: const Text("Verify Face Again", style: TextStyle(color: Colors.white)),
-                      )
-                    ],
-                  ),
-                ),
-              // User Welcome Section
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: screenWidth > 600 ? 35 : 30,
-                    backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
-                    child: Icon(
-                      PhosphorIconsRegular.user,
-                      size: screenWidth > 600 ? 35 : 30,
-                      color: const Color(0xFFFF8C61),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 16),
+                    Text("Initializing services..."),
+                    SizedBox(height: 8),
+                    Text(
+                      "Please wait while we set up attendance detection",
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                  ),
-                  SizedBox(width: screenWidth > 600 ? 20 : 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ],
+                ),
+              )
+            : Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth > 600 ? 24 : 16,
+                  vertical: 16,
+                ),
+                child: Column(
+                  children: [
+                    if (!_isAttendanceActive)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              "Attendance Deactivated (Timeout)",
+                              style: TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16),
+                            ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/faceVerification',
+                                  arguments: widget.studentId,
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                              ),
+                              child: const Text("Verify Face Again",
+                                  style: TextStyle(color: Colors.white)),
+                            )
+                          ],
+                        ),
+                      ),
+                    // User Welcome Section
+                    Row(
                       children: [
+                        CircleAvatar(
+                          radius: screenWidth > 600 ? 35 : 30,
+                          backgroundColor:
+                              const Color(0xFFFF8C61).withOpacity(0.12),
+                          child: Icon(
+                            PhosphorIconsRegular.user,
+                            size: screenWidth > 600 ? 35 : 30,
+                            color: const Color(0xFFFF8C61),
+                          ),
+                        ),
+                        SizedBox(width: screenWidth > 600 ? 20 : 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "Welcome $name...!!",
+                                style: TextStyle(
+                                  color: Colors.black,
+                                  fontSize: screenWidth > 600 ? 22 : 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              // Auto-detection status
+                              Container(
+                                margin: EdgeInsets.only(top: 4),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: _isScanning
+                                      ? Colors.green.shade100
+                                      : Colors.orange.shade100,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  !_isScanning
+                                      ? '⚠️ Detection inactive'
+                                      : (_currentDetectedSession != null
+                                          ? '⚡ Class active - Scanning...'
+                                          : '🎯 Scanning for class...'),
+                                  style: TextStyle(
+                                    color: _isScanning
+                                        ? Colors.green.shade700
+                                        : Colors.orange.shade700,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (_currentDetectedSession != null)
+                                Container(
+                                  margin: EdgeInsets.only(top: 2),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'Last: ${_currentDetectedSession?.substring(_currentDetectedSession!.length - 8) ?? "None"}',
+                                    style: TextStyle(
+                                      color: Colors.blue.shade700,
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: screenHeight > 600 ? 16 : 12),
+
+                    // Today's Schedule Banner
+                    TodayScheduleWidget(
+                        userType: 'student', userId: widget.studentId),
+                    SizedBox(height: screenHeight > 600 ? 16 : 12),
+
+                    // Attendance Section
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Attendance:",
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: screenWidth > 600 ? 17.5 : 15.5,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          width: screenWidth > 600 ? 250 : 200,
+                          height: screenWidth > 600 ? 25 : 20,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: const Color(0xFFe51f1f),
+                          ),
+                          child: Stack(
+                            children: [
+                              Container(
+                                width: (screenWidth > 600 ? 250.0 : 200.0) *
+                                    ((attendancePercent as num).toDouble() /
+                                            100.0)
+                                        .clamp(0.0, 1.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: const Color(0xFF44ce1b),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         Text(
-                          "Welcome $name...!!",
+                          "$attendancePercent%",
                           style: TextStyle(
                             color: Colors.black,
-                            fontSize: screenWidth > 600 ? 22 : 18,
+                            fontSize: screenWidth > 600 ? 16 : 14,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        // Auto-detection status
-                        Container(
-                          margin: EdgeInsets.only(top: 4),
-                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: _isScanning ? Colors.green.shade100 : Colors.orange.shade100,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            !_isScanning 
-                                ? '⚠️ Detection inactive' 
-                                : (_currentDetectedSession != null 
-                                    ? '⚡ Class active - Scanning...' 
-                                    : '🎯 Scanning for class...'),
-                            style: TextStyle(
-                              color: _isScanning ? Colors.green.shade700 : Colors.orange.shade700,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        if (_currentDetectedSession != null)
-                          Container(
-                            margin: EdgeInsets.only(top: 2),
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: Colors.blue.shade100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'Last: ${_currentDetectedSession?.substring(_currentDetectedSession!.length - 8) ?? "None"}',
-                              style: TextStyle(
-                                color: Colors.blue.shade700,
-                                fontSize: 9,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ),
                       ],
                     ),
-                  ),
-                ],
+                    SizedBox(height: screenHeight > 600 ? 16 : 12),
+
+                    // News Bar
+                    const LatestNewsWidget(),
+
+                    SizedBox(height: screenHeight > 600 ? 16 : 12),
+
+                    // Dashboard Grid
+                    _buildDashboardGrid(context),
+                  ],
+                ),
               ),
-              SizedBox(height: screenHeight > 600 ? 16 : 12),
-
-              // Today's Schedule Banner
-              TodayScheduleWidget(userType: 'student', userId: widget.studentId),
-              SizedBox(height: screenHeight > 600 ? 16 : 12),
-
-              // Attendance Section
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      "Attendance:",
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: screenWidth > 600 ? 20 : 18,
-                      ),
-                    ),
-                  ),
-                  Container(
-                    width: screenWidth > 600 ? 250 : 200,
-                    height: screenWidth > 600 ? 25 : 20,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: const Color(0xFFe51f1f),
-                    ),
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: (screenWidth > 600 ? 250.0 : 200.0) * ((attendancePercent as num).toDouble() / 100.0).clamp(0.0, 1.0),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: const Color(0xFF44ce1b),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    "$attendancePercent%",
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: screenWidth > 600 ? 16 : 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: screenHeight > 600 ? 16 : 12),
-
-              // News Bar
-              const LatestNewsWidget(),
-
-              SizedBox(height: screenHeight > 600 ? 16 : 12),
-
-              // Dashboard Grid
-              _buildDashboardGrid(context),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -1317,11 +1477,11 @@ class _StudentDashboardState extends State<StudentDashboard>
   }
 
   Widget _buildDashboardCard(
-      BuildContext context, {
-        required String label,
-        required IconData icon,
-        required VoidCallback onTap,
-      }) {
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Card(
@@ -1340,12 +1500,13 @@ class _StudentDashboardState extends State<StudentDashboard>
             children: [
               Icon(
                 icon,
-                size: screenWidth > 800 ? 80
-                    : screenWidth > 600 ? 54
-                    : 40,
+                size: screenWidth > 800
+                    ? 80
+                    : screenWidth > 600
+                        ? 54
+                        : 40,
                 color: Colors.white,
               ),
-
               SizedBox(height: screenWidth > 600 ? 12 : 8),
               Text(
                 label,
@@ -1363,7 +1524,5 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 }
-
-
 
 //in the above code the student dashboard is perfectly showing that attendance marked when i clieck the boardcast button in markattednace page but the student name is now showing in the live studetns signals

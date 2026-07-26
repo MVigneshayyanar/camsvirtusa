@@ -79,18 +79,84 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
       // Show confirmation alert
       showDialog(
         context: context,
+        barrierDismissible: true,
         builder: (context) {
-          return AlertDialog(
-            title: Text('Confirmation'),
-            content: Text('On Duty Application Submitted.'),
-            actions: [
-              TextButton(
-                child: Text('OK'),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28.0),
+            ),
+            elevation: 0,
+            backgroundColor: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Success Icon
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.green.withOpacity(0.1),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      color: Colors.green,
+                      size: 48,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  // Title
+                  const Text(
+                    "OD Submitted",
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  // Description
+                  const Text(
+                    "On Duty Application Submitted successfully.",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  // OK Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFF97316),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        "OK",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           );
         },
       );
@@ -289,6 +355,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: const Color(0xFFF97316),
         title: const Text('ON DUTY FORM'),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),

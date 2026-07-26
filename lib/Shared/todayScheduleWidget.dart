@@ -60,8 +60,10 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
     final now = DateTime.now();
     int currentIdx = -1;
     for (int i = 0; i < 7; i++) {
-      final start = DateTime(now.year, now.month, now.day, periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
-      final end = DateTime(now.year, now.month, now.day, periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
+      final start = DateTime(now.year, now.month, now.day,
+          periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
+      final end = DateTime(now.year, now.month, now.day,
+          periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
       if (now.isAfter(start) && now.isBefore(end)) {
         currentIdx = i;
         break;
@@ -76,7 +78,15 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
     try {
       _calculateCurrentPeriod();
       final now = DateTime.now();
-      final daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      final daysOfWeek = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+      ];
       final String today = daysOfWeek[now.weekday - 1];
 
       if (today == "Saturday" || today == "Sunday") {
@@ -89,19 +99,32 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
       List<Map<String, dynamic>> schedule = List.filled(7, {});
 
       if (widget.userType == 'student') {
-        final doc = await FirebaseFirestore.instance.collection('colleges').doc('students').collection('all_students').doc(widget.userId).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('students')
+            .collection('all_students')
+            .doc(widget.userId)
+            .get();
         if (doc.exists) {
           final data = doc.data()!;
           final dept = data['department'];
           final className = data['class'];
           if (dept != null && className != null) {
-            final classDoc = await FirebaseFirestore.instance.collection('colleges').doc('departments').collection('all_departments').doc(dept).collection('clasees').doc(className).get();
+            final classDoc = await FirebaseFirestore.instance
+                .collection('colleges')
+                .doc('departments')
+                .collection('all_departments')
+                .doc(dept)
+                .collection('clasees')
+                .doc(className)
+                .get();
             if (classDoc.exists) {
               final classData = classDoc.data()!;
               final currentSemesterField = classData['currentSemester'];
               String currentSem = 'V';
               if (currentSemesterField is Map) {
-                currentSem = currentSemesterField['semester']?.toString() ?? 'V';
+                currentSem =
+                    currentSemesterField['semester']?.toString() ?? 'V';
               } else {
                 currentSem = currentSemesterField?.toString() ?? 'V';
               }
@@ -111,7 +134,8 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
                 if (semTimetable != null && semTimetable[today] != null) {
                   final todayPeriods = semTimetable[today] as List;
                   for (int i = 0; i < 7 && i < todayPeriods.length; i++) {
-                    if (todayPeriods[i] != null && todayPeriods[i].toString().isNotEmpty) {
+                    if (todayPeriods[i] != null &&
+                        todayPeriods[i].toString().isNotEmpty) {
                       schedule[i] = {
                         'subject': todayPeriods[i].toString(),
                         'period': i,
@@ -124,20 +148,33 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
           }
         }
       } else if (widget.userType == 'faculty') {
-        final doc = await FirebaseFirestore.instance.collection('colleges').doc('faculties').collection('all_faculties').doc(widget.userId).get();
+        final doc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('faculties')
+            .collection('all_faculties')
+            .doc(widget.userId)
+            .get();
         if (doc.exists) {
           final data = doc.data()!;
           final dept = data['department'];
           final assignedClasses = data['classes'] as List?;
           if (dept != null && assignedClasses != null) {
             for (var className in assignedClasses) {
-              final classDoc = await FirebaseFirestore.instance.collection('colleges').doc('departments').collection('all_departments').doc(dept).collection('clasees').doc(className.toString()).get();
+              final classDoc = await FirebaseFirestore.instance
+                  .collection('colleges')
+                  .doc('departments')
+                  .collection('all_departments')
+                  .doc(dept)
+                  .collection('clasees')
+                  .doc(className.toString())
+                  .get();
               if (classDoc.exists) {
                 final classData = classDoc.data()!;
                 final currentSemesterField = classData['currentSemester'];
                 String currentSem = 'V';
                 if (currentSemesterField is Map) {
-                  currentSem = currentSemesterField['semester']?.toString() ?? 'V';
+                  currentSem =
+                      currentSemesterField['semester']?.toString() ?? 'V';
                 } else {
                   currentSem = currentSemesterField?.toString() ?? 'V';
                 }
@@ -148,22 +185,27 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
                     final todayPeriods = semTimetable[today] as List;
                     for (int i = 0; i < 7 && i < todayPeriods.length; i++) {
                       var subjectStr = todayPeriods[i]?.toString() ?? "";
-                      if (subjectStr.contains("(") && subjectStr.contains(")")) {
+                      if (subjectStr.contains("(") &&
+                          subjectStr.contains(")")) {
                         var parts = subjectStr.split("(");
                         var sub = parts[0].trim();
                         var facStr = parts[1].replaceAll(")", "").trim();
                         var facs = facStr.split(",");
-                        if (facs.any((f) => f.trim() == widget.userId || f.trim() == data['abbreviation'])) {
+                        if (facs.any((f) =>
+                            f.trim() == widget.userId ||
+                            f.trim() == data['abbreviation'])) {
                           schedule[i] = {
                             'subject': "$sub - $className",
                             'period': i,
                           };
                         }
-                      } else if (subjectStr.isNotEmpty && subjectStr.contains(widget.userId) || subjectStr.contains(data['abbreviation'] ?? '')) {
-                         schedule[i] = {
-                            'subject': "$subjectStr - $className",
-                            'period': i,
-                          };
+                      } else if (subjectStr.isNotEmpty &&
+                              subjectStr.contains(widget.userId) ||
+                          subjectStr.contains(data['abbreviation'] ?? '')) {
+                        schedule[i] = {
+                          'subject': "$subjectStr - $className",
+                          'period': i,
+                        };
                       }
                     }
                   }
@@ -199,14 +241,30 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
         child: const CircularProgressIndicator(color: Color(0xFFFF7F50)),
       );
     }
-    
+
     if (_errorMessage.isNotEmpty) {
       return Container(
         height: 100,
         alignment: Alignment.center,
-        child: Text("Error: $_errorMessage", style: const TextStyle(color: Colors.red)),
+        child: Text("Error: $_errorMessage",
+            style: const TextStyle(color: Colors.red)),
       );
     }
+
+    final now = DateTime.now();
+    final daysOfWeek = [
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+      "Sunday"
+    ];
+    final String today = daysOfWeek[now.weekday - 1];
+    bool isWeekend = today == "Saturday" || today == "Sunday";
+    bool isAfterSchool =
+        !isWeekend && (now.hour > 16 || (now.hour == 16 && now.minute >= 10));
 
     bool hasClasses = _todaySchedule.any((period) => period.isNotEmpty);
 
@@ -254,7 +312,23 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
             ],
           ),
           const SizedBox(height: 16),
-          if (!hasClasses)
+          if (isWeekend)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                "No classes today.",
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            )
+          else if (isAfterSchool)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                "Classes are over for $today.",
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+            )
+          else if (!hasClasses)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 8.0),
               child: Text(
@@ -277,7 +351,12 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
                     firstUpcomingIdx = 7;
                     final now = DateTime.now();
                     for (int i = 0; i < 7; i++) {
-                      final end = DateTime(now.year, now.month, now.day, periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
+                      final end = DateTime(
+                          now.year,
+                          now.month,
+                          now.day,
+                          periodEndTimes[i]['hour']!,
+                          periodEndTimes[i]['minute']!);
                       if (now.isBefore(end)) {
                         firstUpcomingIdx = i;
                         break;
@@ -288,15 +367,25 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
                   // Hide completed hours (in the past)
                   if (index < firstUpcomingIdx) return const SizedBox.shrink();
                   // Hide future empty hours
-                  if (!hasClass && !isCurrent && index > firstUpcomingIdx) return const SizedBox.shrink();
+                  if (!hasClass && !isCurrent && index > firstUpcomingIdx)
+                    return const SizedBox.shrink();
 
                   return Container(
                     margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isCurrent ? Colors.green.shade500 : (hasClass ? Colors.white.withOpacity(0.1) : Colors.transparent),
+                      color: isCurrent
+                          ? Colors.green.shade500
+                          : (hasClass
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.transparent),
                       borderRadius: BorderRadius.circular(12),
-                      border: isCurrent ? null : Border.all(color: hasClass ? Colors.white24 : Colors.white10),
+                      border: isCurrent
+                          ? null
+                          : Border.all(
+                              color:
+                                  hasClass ? Colors.white24 : Colors.white10),
                     ),
                     child: Column(
                       children: [
@@ -312,9 +401,12 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
                         Text(
                           hasClass ? (period['subject'] ?? '') : 'Free',
                           style: TextStyle(
-                            color: isCurrent ? Colors.white : (hasClass ? Colors.white : Colors.white54),
+                            color: isCurrent
+                                ? Colors.white
+                                : (hasClass ? Colors.white : Colors.white54),
                             fontSize: 12,
-                            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                            fontWeight:
+                                isCurrent ? FontWeight.bold : FontWeight.normal,
                           ),
                         ),
                       ],
