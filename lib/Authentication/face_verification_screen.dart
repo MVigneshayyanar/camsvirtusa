@@ -36,6 +36,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
   bool _verificationSuccess = false;
   String _statusMessage = '';
   double? _lastDistance;
+  int _attemptCount = 0;
 
   // ── animation ────────────────────────────────────────────────────────────────
   late AnimationController _pulseController;
@@ -178,13 +179,21 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
           },
         );
       } else {
-        setState(() {
-          _verificationDone = true;
-          _verificationSuccess = false;
-          _statusMessage = 'Faces do not match.';
-          _isProcessing = false;
-        });
-        _autoTimer?.cancel();
+        _attemptCount++;
+        if (_attemptCount < 5) {
+          setState(() {
+            _statusMessage = 'Verifying... (Attempt $_attemptCount/5)';
+            _isProcessing = false;
+          });
+        } else {
+          _autoTimer?.cancel();
+          setState(() {
+            _verificationDone = true;
+            _verificationSuccess = false;
+            _statusMessage = 'Verification failed. Faces do not match.';
+            _isProcessing = false;
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -201,6 +210,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       _verificationDone = false;
       _verificationSuccess = false;
       _lastDistance = null;
+      _attemptCount = 0;
       _statusMessage = 'Position your face in the frame.';
     });
     _startAutoVerify();
