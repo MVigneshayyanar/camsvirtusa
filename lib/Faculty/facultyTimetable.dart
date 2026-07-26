@@ -1,5 +1,7 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'facultyDashboard.dart';
 import 'facultyProfile.dart';
 
@@ -124,9 +126,14 @@ class _TimeTablePageState extends State<TimeTablePage> {
                       if (abbrev.isNotEmpty && abbrev != "-") {
                         final mapping = semMappings.firstWhere((m) {
                           final mapData = m as Map?;
-                          return mapData != null &&
-                              mapData['abbreviation']?.toString().toLowerCase() == abbrev.toLowerCase() &&
-                              mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                          if (mapData == null) return false;
+                          if (mapData['abbreviation']?.toString().toLowerCase() != abbrev.toLowerCase()) return false;
+                          
+                          final isPrimaryFaculty = mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                          final isSecondaryFaculty = mapData['isElective'] == true && 
+                                                     mapData['facultyId2']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                          
+                          return isPrimaryFaculty || isSecondaryFaculty;
                         }, orElse: () => null);
 
                         if (mapping != null) {
@@ -156,24 +163,22 @@ class _TimeTablePageState extends State<TimeTablePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFF7F50), // Orange color
+      appBar: AppBar( // Orange color
         title: const Text(
           'TIME TABLE',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
-            fontSize: 25,
-            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
         ),
-        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pop();
           },
         ),
-        elevation: 0,
       ),
       body: _errorMessage != null
           ? Center(
@@ -181,7 +186,12 @@ class _TimeTablePageState extends State<TimeTablePage> {
                 padding: const EdgeInsets.all(24.0),
                 child: Text(
                   'Error: $_errorMessage',
-                  style: const TextStyle(color: Colors.red, fontSize: 16),
+                  style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -199,7 +209,12 @@ class _TimeTablePageState extends State<TimeTablePage> {
                           ? const Center(
                               child: Text(
                                 'No classes assigned to you.',
-                                style: TextStyle(color: Colors.grey, fontSize: 16),
+                                style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
                               ),
                             )
                           : RefreshIndicator(
@@ -219,11 +234,12 @@ class _TimeTablePageState extends State<TimeTablePage> {
                                       ),
                                       child: const Text(
                                         'TEACHER WEEKLY SCHEDULE',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                        style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
                                       ),
                                     ),
                                   ),
@@ -241,13 +257,21 @@ class _TimeTablePageState extends State<TimeTablePage> {
                 ),
               ],
             ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
   Widget _buildTimeTableGrid() {
     final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    final headers = ["Day", "P1\n9:00", "P2\n9:50", "P3\n10:55", "P4\n11:45", "P5\n1:25", "P6\n2:15", "P7\n3:20"];
+    final headers = [
+      "Day", 
+      "P1\n9:00 - 9:50", 
+      "P2\n9:50 - 10:40", 
+      "P3\n10:55 - 11:45", 
+      "P4\n11:45 - 12:35", 
+      "P5\n1:25 - 2:15", 
+      "P6\n2:15 - 3:05", 
+      "P7\n3:20 - 4:10"
+    ];
 
     return SizedBox(
       height: 380,
@@ -256,81 +280,82 @@ class _TimeTablePageState extends State<TimeTablePage> {
         minScale: 0.8,
         maxScale: 4.0,
         child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: Table(
-          defaultColumnWidth: const FlexColumnWidth(),
-          border: TableBorder.all(
-            color: const Color(0xFF36454F), 
-            width: 1.0, 
-            borderRadius: BorderRadius.circular(6),
-          ),
-          children: [
-            // Headers row
-            TableRow(
-              decoration: const BoxDecoration(color: Color(0xFFE5E5E5)),
-              children: headers.map((header) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                  alignment: Alignment.center,
-                  child: Text(
-                    header,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 9,
-                      color: Color(0xFF36454F),
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              }).toList(),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Table(
+            defaultColumnWidth: const FlexColumnWidth(),
+            border: TableBorder.all(
+              color: const Color(0xFF36454F),
+              width: 1.0,
+              borderRadius: BorderRadius.circular(6),
             ),
-            // Days rows
-            ...days.map((day) {
-              final periodsList = _teacherSchedule[day];
-              return TableRow(
-                children: [
-                  // Day Label cell
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-                    color: const Color(0xFFF9F9F9),
+            children: [
+              // Headers row
+              TableRow(
+                decoration: const BoxDecoration(color: Color(0xFFE5E5E5)),
+                children: headers.map((header) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                     alignment: Alignment.center,
                     child: Text(
-                      day.toUpperCase().substring(0, 3), // e.g. MON
+                      header,
                       style: const TextStyle(
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        fontSize: 9,
-                        color: Color(0xFF36454F),
+                        color: Colors.black87,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  // 7 periods cells
-                  ...List.generate(7, (index) {
-                    final String val = (periodsList != null && index < periodsList.length)
-                        ? periodsList[index]
-                        : "";
-                    final bool hasClass = val.isNotEmpty;
-                    return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 1),
-                      color: hasClass ? const Color(0xFFFF7F50).withOpacity(0.15) : null,
+                  );
+                }).toList(),
+              ),
+              // Days rows
+              ...days.map((day) {
+                final periodsList = _teacherSchedule[day];
+                return TableRow(
+                  children: [
+                    // Day Label cell
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+                      color: const Color(0xFFF9F9F9),
                       alignment: Alignment.center,
                       child: Text(
-                        hasClass ? val : "-",
-                        style: TextStyle(
-                          fontWeight: hasClass ? FontWeight.bold : FontWeight.normal,
-                          fontSize: 7.5,
-                          color: hasClass ? const Color(0xFFFF7F50) : Colors.grey,
+                        day.toUpperCase().substring(0, 3),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF7F50),
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                    );
-                  }),
-                ],
-              );
-            }),
-          ],
+                    ),
+                    // 7 periods cells
+                    ...List.generate(7, (index) {
+                      final String val = (periodsList != null && index < periodsList.length)
+                          ? periodsList[index]
+                          : "";
+                      final bool hasClass = val.isNotEmpty;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 1),
+                        color: hasClass ? const Color(0xFFFF7F50).withOpacity(0.15) : null,
+                        alignment: Alignment.center,
+                        child: Text(
+                          hasClass ? val : "-",
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: hasClass ? FontWeight.bold : FontWeight.normal,
+                            color: hasClass ? const Color(0xFFFF7F50) : Colors.grey,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              }),
+            ],
+          ),
         ),
       ),
-    ));
+    );
   }
 
   Widget _buildCourseMappingsList() {
@@ -346,53 +371,4 @@ class _TimeTablePageState extends State<TimeTablePage> {
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32,
-              ),
-              onPressed: () => _goToDashboard(context),
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => FacultyProfile(facultyId: widget.facultyId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

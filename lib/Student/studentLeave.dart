@@ -1,5 +1,7 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:intl/intl.dart';
 import 'studentDashboard.dart'; // Add this import
 
@@ -106,11 +108,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: _orange,
-        title: Text(
-          "LEAVE FORM",
-          style: TextStyle(color: Colors.white),
-        ),
-        centerTitle: true, // This centers the title
+        title: const Text("LEAVE FORM"),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white), // White back arrow
           onPressed: () {
@@ -139,7 +137,6 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -147,7 +144,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 16)),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -168,7 +165,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Number of Days:", style: TextStyle(fontSize: 16)),
+        Text("Number of Days:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -184,7 +181,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Type of Leave:", style: TextStyle(fontSize: 16)),
+        Text("Type of Leave:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         DropdownButtonFormField<String>(
           value: selectedLeaveType,
           onChanged: (newValue) {
@@ -212,7 +209,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Reason:", style: TextStyle(fontSize: 16)),
+        Text("Reason:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextFormField(
           controller: reasonController,
           maxLines: 10, // Increased height to 10 lines
@@ -233,57 +230,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onPressed: _submitForm,
-      child: Text("APPLY", style: TextStyle(color: Colors.white)),
+      child: Text("APPLY", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32, // Responsive height
-              ),
-              onPressed: _goToDashboard,
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StudentProfile(studentId: widget.studentId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

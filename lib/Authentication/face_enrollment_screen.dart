@@ -202,7 +202,6 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen>
       backgroundColor: _bgColor,
       appBar: AppBar(
         backgroundColor: _bgColor,
-        elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
           'Face Enrollment',
@@ -213,7 +212,6 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen>
             letterSpacing: 1.1,
           ),
         ),
-        centerTitle: true,
       ),
       body: SafeArea(
         child: _currentStep == 5 ? _buildSuccessView() : _buildEnrollmentView(),
@@ -388,7 +386,6 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen>
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(25),
                 ),
-                elevation: 0,
               ),
               child: (_isCapturing || _isSaving)
                   ? const SizedBox(

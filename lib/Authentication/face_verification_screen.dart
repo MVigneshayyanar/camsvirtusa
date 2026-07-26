@@ -225,7 +225,6 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
       backgroundColor: _bgColor,
       appBar: AppBar(
         backgroundColor: _bgColor,
-        elevation: 0,
         automaticallyImplyLeading: false,
         title: const Text(
           'Face Verification',
@@ -236,7 +235,6 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
             letterSpacing: 1.1,
           ),
         ),
-        centerTitle: true,
       ),
       body: SafeArea(
         child: Column(
@@ -373,14 +371,13 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       backgroundColor: _primary,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(25)),
-                      elevation: 0,
                     ),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: () => Navigator.pushReplacementNamed(
-                      context, AppRoutes.studentLogin),
+                      context, AppRoutes.login, arguments: 'student'),
                   child: const Text(
                     'Back to Login',
                     style: TextStyle(color: Colors.black45, fontSize: 14),
@@ -409,7 +406,6 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       _primary.withValues(alpha: 0.3),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(25)),
-                  elevation: 0,
                 ),
               ),
             ),

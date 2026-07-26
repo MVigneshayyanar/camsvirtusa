@@ -1,34 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../Authentication/studentLogin.dart';
-import '../Authentication/facultyLogin.dart';
-import '../Authentication/otpVerification.dart';
+import '../Authentication/loginScreen.dart';
 import '../Startup/splashScreen.dart';
-import '../Startup/roleSelection.dart';
 import '../Student/studentDashboard.dart';
 import '../Faculty/facultyDashboard.dart';
-import '../Admin/adminDashboard.dart';
-import '../Admin/studentControl.dart';
-import '../Admin/facultyControl.dart';
-import '../Admin/departmentControl.dart';
+import '../Student/studentMainScreen.dart';
+import '../Faculty/facultyMainScreen.dart';
 import '../Authentication/face_verification_screen.dart';
 import '../Authentication/face_enrollment_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
-  static const String roleSelection = '/roleSelection';
   static const String studentLogin = '/studentLogin';
   static const String faceVerification = '/faceVerification';
   static const String faceEnrollment = '/faceEnrollment';
   static const String facultyLogin = '/facultyLogin';
-  static const String otpVerification = '/otpVerification';
+  static const String login = '/login';
   static const String studentDashboard = '/studentDashboard';
   static const String facultyDashboard = '/facultyDashboard';
-  static const String adminDashboard = '/adminDashboard';
-  static const String studentControl = '/studentControl';
-  static const String facultyControl = '/facultyControl';
-  static const String departmentControl = '/departmentControl';
   static const String classStudents = '/classStudents';
 
 
@@ -37,11 +27,13 @@ class AppRoutes {
       case splash:
         return _animatedRoute(SplashWrapper(), settings);
 
-      case roleSelection:
-        return _animatedRoute(const RoleSelectionScreen(), settings);
 
       case studentLogin:
-        return _animatedRoute(const StudentLoginScreen(), settings);
+        return _animatedRoute(const LoginScreen(initialRole: 'student'), settings);
+
+      case login:
+        final role = settings.arguments as String? ?? 'student';
+        return _animatedRoute(LoginScreen(initialRole: role), settings);
 
       case faceVerification:
         final studentId = settings.arguments as String?;
@@ -60,10 +52,7 @@ class AppRoutes {
         }
 
       case facultyLogin:
-        return _animatedRoute(const FacultyLoginScreen(), settings);
-
-      case otpVerification:
-        return _animatedRoute(const OTPVerificationScreen(), settings);
+        return _animatedRoute(const LoginScreen(initialRole: 'faculty'), settings);
 
       case studentDashboard:
         String? studentId;
@@ -77,29 +66,19 @@ class AppRoutes {
           verificationTime = DateTime.now().toIso8601String();
         }
         if (studentId != null && studentId.isNotEmpty) {
-          return _noBackRoute(StudentDashboard(studentId: studentId, verificationTime: verificationTime), settings);
+          return _noBackRoute(StudentMainScreen(studentId: studentId, verificationTime: verificationTime), settings);
         }
         return _errorRoute("Invalid or Missing Arguments for Dashboard", settings);
 
       case facultyDashboard:
         final facultyId = settings.arguments as String?;
         if (facultyId != null && facultyId.isNotEmpty) {
-          return _noBackRoute(FacultyDashboard(facultyId: facultyId), settings);
+          return _noBackRoute(FacultyMainScreen(facultyId: facultyId), settings);
         } else {
           return _errorRoute("Invalid or Missing Faculty ID", settings);
         }
 
-      case adminDashboard:
-        return _noBackRoute(const AdminDashboard(), settings);
 
-      case studentControl:
-        return _animatedRoute(const StudentControlPage(), settings);
-
-      case facultyControl:
-        return _animatedRoute(const FacultyOverviewPage(), settings);
-
-      case departmentControl:
-        return _animatedRoute(const DepartmentControlPage(), settings);
 
       default:
         return _errorRoute("Page Not Found", settings);
@@ -114,10 +93,8 @@ class AppRoutes {
         if (!snapshot.hasData) {
           return const SplashScreen();
         }
-        if (snapshot.data == true) {
-          return const RoleSelectionScreen(); // or directly to dashboard if you store role
-        }
-        return const RoleSelectionScreen();
+        // Always go to LoginScreen — it handles auto-redirect if already logged in
+        return const LoginScreen();
       },
     );
   }

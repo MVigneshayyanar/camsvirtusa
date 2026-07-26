@@ -1,5 +1,7 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 import 'studentDashboard.dart'; // Add this import
 
@@ -112,7 +114,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 16)),
+        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -141,7 +143,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Number of days:", style: TextStyle(fontSize: 16)),
+        Text("Number of days:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -160,7 +162,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Duration Type:", style: TextStyle(fontSize: 16)),
+        Text("Duration Type:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         DropdownButtonFormField<String>(
           value: selectedDurationType,
           onChanged: (newValue) {
@@ -195,7 +197,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Select Periods:", style: TextStyle(fontSize: 16)),
+        Text("Select Periods:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         SizedBox(height: 8),
         Wrap(
           spacing: 3,
@@ -227,7 +229,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
           SizedBox(height: 8),
           Text(
             'Selected: ${selectedPeriods.map((p) => 'Period $p').join(', ')}',
-            style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
       ],
@@ -238,7 +240,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Type of On Duty:", style: TextStyle(fontSize: 16)),
+        Text("Type of On Duty:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         DropdownButtonFormField<String>(
           value: selectedLeaveType,
           onChanged: (newValue) {
@@ -266,7 +268,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Reason:", style: TextStyle(fontSize: 16)),
+        Text("Reason:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           controller: reasonController,
           maxLines: 8,
@@ -281,71 +283,19 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32, // Responsive height
-              ),
-              onPressed: _goToDashboard,
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StudentProfile(studentId: widget.studentId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('ON DUTY FORM', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFFFF7F50),
-        centerTitle: true,
+        title: const Text('ON DUTY FORM'),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pop();
           },
         ),
-        elevation: 0,
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -370,9 +320,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
               Center(
                 child: ElevatedButton(
                   onPressed: _submitForm,
-                  child: const Text("APPLY", style: TextStyle(color: Colors.white)),
+                  child: const Text("APPLY", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFFFF7F50),
                     padding: EdgeInsets.symmetric(vertical: 15, horizontal: 40),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
@@ -382,7 +331,6 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 }

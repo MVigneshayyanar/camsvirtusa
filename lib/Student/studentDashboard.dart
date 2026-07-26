@@ -1,3 +1,6 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
+import '../Shared/latestNewsWidget.dart';
+import '../Shared/todayScheduleWidget.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -10,6 +13,7 @@ import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import 'studentProfile.dart';
 import 'studentAttendance.dart';
@@ -784,9 +788,11 @@ class _StudentDashboardState extends State<StudentDashboard>
     _newsController.forward();
     await Future.delayed(const Duration(seconds: 10));
     if (mounted) {
-      setState(() {
-        currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-      });
+      if (newsItems.isNotEmpty) {
+        setState(() {
+          currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+        });
+      }
       _newsController.reset();
       _startNewsRotation();
     }
@@ -839,8 +845,30 @@ class _StudentDashboardState extends State<StudentDashboard>
       Map<String, dynamic>? studentData = studentDoc.data();
       if (studentData == null) return 0;
 
-      String? currentSemester = studentData['current_semester'];
-      if (currentSemester == null) return 0;
+      String currentSemester = 'V'; // Default fallback
+      final department = studentData['department'];
+      final className = studentData['class'];
+
+      if (department != null && className != null) {
+        final classDoc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('departments')
+            .collection('all_departments')
+            .doc(department)
+            .collection('clasees')
+            .doc(className)
+            .get();
+
+        if (classDoc.exists) {
+          final classData = classDoc.data()!;
+          final semesterField = classData['currentSemester'];
+          if (semesterField is Map) {
+            currentSemester = semesterField['semester']?.toString() ?? currentSemester;
+          } else if (semesterField != null) {
+            currentSemester = semesterField.toString();
+          }
+        }
+      }
 
       var attendanceDoc = await FirebaseFirestore.instance
           .collection('colleges')
@@ -852,15 +880,34 @@ class _StudentDashboardState extends State<StudentDashboard>
           .get();
 
       if (!attendanceDoc.exists) return 0;
-
+      
       Map<String, dynamic>? attendanceData = attendanceDoc.data();
       if (attendanceData == null) return 0;
 
-      var percent = attendanceData['P'];
-      if (percent is num) {
-        return percent.toDouble();
+      var percent = 0.0;
+      var totalMarks = 0;
+      var presentCount = 0;
+
+      attendanceData.forEach((key, value) {
+        if (key == 'P' || key == 'A' || key == 'OD') return;
+        if (value is Map) {
+          value.forEach((hourStr, subjectMap) {
+            if (subjectMap is Map) {
+              subjectMap.forEach((subject, status) {
+                totalMarks++;
+                if (status.toString().toUpperCase() == 'P') {
+                  presentCount++;
+                }
+              });
+            }
+          });
+        }
+      });
+
+      if (totalMarks > 0) {
+        percent = (presentCount / totalMarks) * 100;
       }
-      return 0;
+      return percent;
     } catch (e) {
       print("Error fetching attendance percentage: $e");
       return 0;
@@ -904,12 +951,10 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
-  void _goToSearch() {
+  void _goToNews() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => StudentCurriculum(studentId: widget.studentId),
-      ),
+      MaterialPageRoute(builder: (context) => const NewsScreen()),
     );
   }
 
@@ -984,57 +1029,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
 
-    return Container(
-      height: 70 + bottomSafeArea,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            /*
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: _goToSearch,
-            ),
-            */
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32,
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => StudentProfile(studentId: widget.studentId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1054,12 +1049,12 @@ class _StudentDashboardState extends State<StudentDashboard>
             'STUDENT DASHBOARD',
             style: TextStyle(
               color: Colors.white,
-              fontSize: screenWidth > 600 ? 30 : 22,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.0,
             ),
           ),
         ),
-        backgroundColor: const Color(0xFFFF7F50),
-        elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
           Padding(
@@ -1165,7 +1160,12 @@ class _StudentDashboardState extends State<StudentDashboard>
                 children: [
                   CircleAvatar(
                     radius: screenWidth > 600 ? 35 : 30,
-                    backgroundImage: const AssetImage('assets/account.png'),
+                    backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
+                    child: Icon(
+                      PhosphorIconsRegular.user,
+                      size: screenWidth > 600 ? 35 : 30,
+                      color: const Color(0xFFFF8C61),
+                    ),
                   ),
                   SizedBox(width: screenWidth > 600 ? 20 : 16),
                   Expanded(
@@ -1223,7 +1223,11 @@ class _StudentDashboardState extends State<StudentDashboard>
                   ),
                 ],
               ),
-              SizedBox(height: screenHeight > 600 ? 32 : 24),
+              SizedBox(height: screenHeight > 600 ? 16 : 12),
+
+              // Today's Schedule Banner
+              TodayScheduleWidget(userType: 'student', userId: widget.studentId),
+              SizedBox(height: screenHeight > 600 ? 16 : 12),
 
               // Attendance Section
               Row(
@@ -1247,20 +1251,10 @@ class _StudentDashboardState extends State<StudentDashboard>
                     child: Stack(
                       children: [
                         Container(
-                          width: (screenWidth > 600 ? 246 : 196),
+                          width: (screenWidth > 600 ? 250.0 : 200.0) * ((attendancePercent as num).toDouble() / 100.0).clamp(0.0, 1.0),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(10),
                             color: const Color(0xFF44ce1b),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(10),
-                              color: const Color(0xFFe51f1f),
-                            ),
-                            width: 4,
                           ),
                         ),
                       ],
@@ -1277,12 +1271,12 @@ class _StudentDashboardState extends State<StudentDashboard>
                   ),
                 ],
               ),
-              SizedBox(height: screenHeight > 600 ? 24 : 16),
+              SizedBox(height: screenHeight > 600 ? 16 : 12),
 
               // News Bar
-              _buildNewsBar(),
+              const LatestNewsWidget(),
 
-              SizedBox(height: screenHeight > 600 ? 24 : 16),
+              SizedBox(height: screenHeight > 600 ? 16 : 12),
 
               // Dashboard Grid
               _buildDashboardGrid(context),
@@ -1290,7 +1284,6 @@ class _StudentDashboardState extends State<StudentDashboard>
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -1309,29 +1302,15 @@ class _StudentDashboardState extends State<StudentDashboard>
           _buildDashboardCard(
             context,
             label: "TIME TABLE",
-            imagePath: "assets/timetable_ad.png",
+            icon: PhosphorIconsRegular.calendarBlank,
             onTap: () => navigateToTimeTable("Time Table"),
           ),
           _buildDashboardCard(
             context,
             label: "ATTENDANCE",
-            imagePath: "assets/Attendance.png",
+            icon: PhosphorIconsRegular.checkSquare,
             onTap: () => navigateToAttendance("Attendance"),
           ),
-          /*
-          _buildDashboardCard(
-            context,
-            label: "ON DUTY FORM",
-            imagePath: "assets/ODForm.png",
-            onTap: () => navigateToODForm("On Duty Form"),
-          ),
-          _buildDashboardCard(
-            context,
-            label: "LEAVE FORM",
-            imagePath: "assets/LeaveForm.png",
-            onTap: () => navigateToLeaveForm("Leave Form"),
-          ),
-          */
         ],
       ),
     );
@@ -1340,7 +1319,7 @@ class _StudentDashboardState extends State<StudentDashboard>
   Widget _buildDashboardCard(
       BuildContext context, {
         required String label,
-        required String imagePath,
+        required IconData icon,
         required VoidCallback onTap,
       }) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -1359,11 +1338,12 @@ class _StudentDashboardState extends State<StudentDashboard>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                imagePath,
-                height: screenWidth > 800 ? 80
+              Icon(
+                icon,
+                size: screenWidth > 800 ? 80
                     : screenWidth > 600 ? 54
                     : 40,
+                color: Colors.white,
               ),
 
               SizedBox(height: screenWidth > 600 ? 12 : 8),

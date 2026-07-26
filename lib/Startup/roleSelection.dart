@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../Startup/routes.dart';
 
 class RoleSelectionScreen extends StatelessWidget {
@@ -19,11 +20,18 @@ class RoleSelectionScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Decorative image
-                  Image.asset(
-                    "assets/college.png",
-                    height: 225,
-                    width: 225,
+                  // Decorative school icon container
+                  Container(
+                    padding: const EdgeInsets.all(25),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF36454F).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      PhosphorIconsRegular.buildings,
+                      size: 150,
+                      color: const Color(0xFF36454F),
+                    ),
                   ),
 
                   const SizedBox(height: 75),
@@ -42,10 +50,10 @@ class RoleSelectionScreen extends StatelessWidget {
 
                   // STUDENT Role Button
                   RoleButton(
-                    icon: Image.asset("assets/cap.png", height: 300, width: 30),
+                    icon: Icon(PhosphorIconsRegular.graduationCap, color: Colors.white),
                     text: "STUDENT",
                     onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.studentLogin);
+                      Navigator.pushNamed(context, AppRoutes.login, arguments: 'student');
                     },
                   ),
 
@@ -54,10 +62,10 @@ class RoleSelectionScreen extends StatelessWidget {
 
                   // FACULTY Role Button
                   RoleButton(
-                    icon: Image.asset("assets/stick.png", height: 10000, width: 1000),
+                    icon: Icon(PhosphorIconsRegular.chalkboardTeacher, color: Colors.white),
                     text: "FACULTY",
                     onTap: () {
-                      Navigator.pushNamed(context, AppRoutes.facultyLogin);
+                      Navigator.pushNamed(context, AppRoutes.login, arguments: 'faculty');
                     },
                   ),
                 ],

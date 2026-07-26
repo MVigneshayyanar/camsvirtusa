@@ -321,8 +321,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
 
   PreferredSizeWidget _buildAppBar(double screenHeight, double screenWidth) {
     return AppBar(
-      backgroundColor: const Color(0xFFFF7F50),
-      elevation: 0,
       title: Text(
         'CURRICULUM',
         style: TextStyle(
@@ -331,7 +329,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           fontSize: screenWidth * 0.05,
         ),
       ),
-      centerTitle: true,
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(120),
         child: Column(
@@ -582,7 +579,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               child: ElevatedButton(
                 onPressed: () => _showJoinClubDialog(screenHeight, screenWidth),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF7F50),
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
                   shape: RoundedRectangleBorder(
@@ -1165,7 +1161,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           ElevatedButton(
             onPressed: () => _showSuccessMessage('Registered for ${event['title']}'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7F50),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1193,7 +1188,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               icon: Icon(Icons.add, size: screenWidth * 0.05),
               label: Text('Add New Task', style: TextStyle(fontSize: screenWidth * 0.035)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF7F50),
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
                 shape: RoundedRectangleBorder(
@@ -1376,7 +1370,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           ElevatedButton(
             onPressed: () => _showSuccessMessage('Applied for ${job['title']}'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7F50),
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
@@ -1463,7 +1456,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
             child: ElevatedButton(
               onPressed: () => _showSuccessMessage('Feedback submitted successfully!'),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFF7F50),
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: screenHeight * 0.018),
                 shape: RoundedRectangleBorder(
@@ -1616,7 +1608,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               _showSuccessMessage('Download link is ready - check the dialog above');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7F50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('OK', style: TextStyle(color: Colors.white)),
@@ -1671,7 +1662,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               _showSuccessMessage('Browse clubs feature coming soon!');
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7F50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text('Browse', style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.035)),
@@ -1731,7 +1721,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               }
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFFF7F50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             child: Text('Add Task', style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.035)),
@@ -1764,7 +1753,6 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: const Color(0xFFFF7F50),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(16),
@@ -1803,7 +1791,6 @@ class ClubDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF7F50),
         title: Text(
           clubName,
           style: TextStyle(
@@ -1812,7 +1799,6 @@ class ClubDetailPage extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: EdgeInsets.all(screenWidth * 0.01),
@@ -1902,7 +1888,6 @@ class ClubDetailPage extends StatelessWidget {
                   Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF7F50),
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -1991,7 +1976,6 @@ class ClubCategoryPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF7F50),
         title: Text(
           '$categoryName Clubs',
           style: TextStyle(
@@ -2000,7 +1984,6 @@ class ClubCategoryPage extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        elevation: 0,
       ),
       body: ListView.builder(
         padding: EdgeInsets.all(screenWidth * 0.04),
@@ -2075,7 +2058,6 @@ class ClubCategoryPage extends StatelessWidget {
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF7F50),
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(
                     horizontal: screenWidth * 0.03,

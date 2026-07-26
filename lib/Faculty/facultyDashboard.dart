@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../Shared/latestNewsWidget.dart';
+import 'package:camsvirtusa/Shared/newsScreen.dart';
+import '../Shared/todayScheduleWidget.dart';
 import 'facultyTimetable.dart';
 import 'facultyProfile.dart';
 import 'MarkAttendance.dart';
@@ -65,9 +69,11 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     _newsController.forward();
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) {
-        setState(() {
-          currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
-        });
+        if (newsItems.isNotEmpty) {
+          setState(() {
+            currentNewsIndex = (currentNewsIndex + 1) % newsItems.length;
+          });
+        }
         _newsController.reset();
         _startNewsRotation();
       }
@@ -187,9 +193,14 @@ class _FacultyDashboardState extends State<FacultyDashboard>
                   if (abbrev.isNotEmpty && abbrev != "-") {
                     final mapping = semMappings.firstWhere((m) {
                       final mapData = m as Map?;
-                      return mapData != null &&
-                          mapData['abbreviation']?.toString().toLowerCase() == abbrev.toLowerCase() &&
-                          mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                      if (mapData == null) return false;
+                      if (mapData['abbreviation']?.toString().toLowerCase() != abbrev.toLowerCase()) return false;
+                      
+                      final isPrimaryFaculty = mapData['facultyId']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                      final isSecondaryFaculty = mapData['isElective'] == true && 
+                                                 mapData['facultyId2']?.toString().toUpperCase() == widget.facultyId.toUpperCase();
+                      
+                      return isPrimaryFaculty || isSecondaryFaculty;
                     }, orElse: () => null);
 
                     if (mapping != null) {
@@ -251,7 +262,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
         builder: (context) => Scaffold(
           appBar: AppBar(
             title: const Text('My Mentees'),
-            backgroundColor: const Color(0xFFFF7F50),
           ),
           body: const Center(child: Text('My Mentees Page', style: TextStyle(fontSize: 24))),
         ),
@@ -266,7 +276,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
         builder: (context) => Scaffold(
           appBar: AppBar(
             title: const Text('Requests'),
-            backgroundColor: const Color(0xFFFF7F50),
           ),
           body: const Center(child: Text('Requests Page', style: TextStyle(fontSize: 24))),
         ),
@@ -274,18 +283,10 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     );
   }
 
-  void _goToSearch() {
+  void _goToNews() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFFFF7F50),
-            title: const Text("Search", style: TextStyle(color: Colors.white)),
-          ),
-          body: const Center(child: Text("Search Page")),
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => const NewsScreen()),
     );
   }
 
@@ -360,51 +361,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     );
   }
 
-  Widget _buildBottomNavigationBar() {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
-      decoration: const BoxDecoration(
-        color: Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: _goToSearch,
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32, // Responsive height
-              ),
-              onPressed: () {
-                // Already on home, maybe refresh or do nothing
-              },
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: _navigateToProfile,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     // Get media query data for responsive design
@@ -432,8 +388,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
             ),
           ),
         ),
-        backgroundColor: const Color(0xFFFF7F50),
-        elevation: 0,
         automaticallyImplyLeading: false,
       ),
       body: Container(
@@ -450,9 +404,14 @@ class _FacultyDashboardState extends State<FacultyDashboard>
               // User Welcome Section
               Row(
                 children: [
-                  CircleAvatar(
+                   CircleAvatar(
                     radius: screenWidth > 600 ? 35 : 30, // Responsive avatar size
-                    backgroundImage: const AssetImage('assets/account.png'),
+                    backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
+                    child: Icon(
+                      PhosphorIconsRegular.user,
+                      size: screenWidth > 600 ? 35 : 30,
+                      color: const Color(0xFFFF8C61),
+                    ),
                   ),
                   SizedBox(width: screenWidth > 600 ? 20 : 16),
                   Expanded(
@@ -469,68 +428,12 @@ class _FacultyDashboardState extends State<FacultyDashboard>
               ),
               const SizedBox(height: 16),
 
-              // Next Class Banner Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF36454F), 
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 6,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF7F50).withOpacity(0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.hourglass_top,
-                        color: Color(0xFFFF7F50),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            "TODAY'S SCHEDULE",
-                            style: TextStyle(
-                              color: Color(0xFFFF7F50),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                              letterSpacing: 1.0,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _nextClassText,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Today's Schedule Banner
+              TodayScheduleWidget(userType: 'faculty', userId: widget.facultyId),
               const SizedBox(height: 16),
 
               // News Bar - Added here
-              _buildNewsBar(),
+              const LatestNewsWidget(),
 
               SizedBox(height: screenHeight > 600 ? 24 : 16),
 
@@ -540,7 +443,6 @@ class _FacultyDashboardState extends State<FacultyDashboard>
           ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
   }
 
@@ -556,16 +458,16 @@ class _FacultyDashboardState extends State<FacultyDashboard>
         mainAxisSpacing: screenWidth > 600 ? 20 : 16,
         childAspectRatio: screenWidth > 600 ? 1.1 : 1.0, // Better aspect ratio on tablets
         children: [
-          _buildDashboardCard(
+           _buildDashboardCard(
             context,
             label: "TIME TABLE",
-            imagePath: "assets/timetable_ad.png",
+            icon: PhosphorIconsRegular.calendarBlank,
             onTap: navigateToTimeTable,
           ),
           _buildDashboardCard(
             context,
             label: "MARK ATTENDANCE",
-            imagePath: "assets/Attendance.png",
+            icon: PhosphorIconsRegular.checkSquare,
             onTap: _navigateToMarkAttendance,
           ),
           // _buildDashboardCard(
@@ -587,7 +489,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
 
   Widget _buildDashboardCard(BuildContext context, {
     required String label,
-    required String imagePath,
+    required IconData icon,
     required VoidCallback onTap
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -606,12 +508,12 @@ class _FacultyDashboardState extends State<FacultyDashboard>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                imagePath,
-                // Dynamically shrink image height to prevent overflow
-                height: screenWidth > 800 ? 80
+              Icon(
+                icon,
+                size: screenWidth > 800 ? 80
                     : screenWidth > 600 ? 54
                     : 40,
+                color: Colors.white,
               ),
               SizedBox(height: screenWidth > 600 ? 12 : 8),
               Text(

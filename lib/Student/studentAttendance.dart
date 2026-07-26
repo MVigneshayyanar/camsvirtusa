@@ -1,7 +1,9 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'dart:io';
 import 'package:camsvirtusa/Student/studentDashboard.dart';
 import 'package:camsvirtusa/Student/studentProfile.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -22,6 +24,27 @@ class _AttendancePageState extends State<AttendancePage>
   late AnimationController _controller;
   Map<String, Map<int, Map<String, String>>> attendanceData = {};
   bool loading = false;
+  int _currentPeriodIndex = -1;
+  String _currentDateStr = '';
+
+  final periodStartTimes = [
+    {'hour': 9, 'minute': 0},
+    {'hour': 9, 'minute': 50},
+    {'hour': 10, 'minute': 55},
+    {'hour': 11, 'minute': 45},
+    {'hour': 13, 'minute': 25},
+    {'hour': 14, 'minute': 15},
+    {'hour': 15, 'minute': 20},
+  ];
+  final periodEndTimes = [
+    {'hour': 9, 'minute': 50},
+    {'hour': 10, 'minute': 40},
+    {'hour': 11, 'minute': 45},
+    {'hour': 12, 'minute': 35},
+    {'hour': 14, 'minute': 15},
+    {'hour': 15, 'minute': 5},
+    {'hour': 16, 'minute': 10},
+  ];
 
   // Add these variables to store dynamic attendance statistics
   int presentCount = 0;
@@ -39,6 +62,7 @@ class _AttendancePageState extends State<AttendancePage>
   @override
   void initState() {
     super.initState();
+    _calculateCurrentPeriod();
     _controller = AnimationController(
       duration: const Duration(milliseconds: 700),
       vsync: this,
@@ -54,6 +78,23 @@ class _AttendancePageState extends State<AttendancePage>
     super.dispose();
   }
 
+  void _calculateCurrentPeriod() {
+    final now = DateTime.now();
+    int currentIdx = -1;
+    for (int i = 0; i < 7; i++) {
+      final start = DateTime(now.year, now.month, now.day, periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
+      final end = DateTime(now.year, now.month, now.day, periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
+      if (now.isAfter(start) && now.isBefore(end)) {
+        currentIdx = i;
+        break;
+      }
+    }
+    setState(() {
+      _currentPeriodIndex = currentIdx;
+      _currentDateStr = "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
+    });
+  }
+
   /// Fetch student's current semester and attendance data
   Future<void> _fetchStudentAndAttendance() async {
     setState(() => loading = true);
@@ -67,8 +108,32 @@ class _AttendancePageState extends State<AttendancePage>
 
       if (!studentDoc.exists) throw Exception('Student not found');
 
-      final data = studentDoc.data();
-      String currentSemester = data?['current_semester'] ?? semesters.first;
+      final data = studentDoc.data()!;
+      String currentSemester = semesters.first;
+
+      final department = data['department'];
+      final className = data['class'];
+      
+      if (department != null && className != null) {
+        final classDoc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('departments')
+            .collection('all_departments')
+            .doc(department)
+            .collection('clasees')
+            .doc(className)
+            .get();
+
+        if (classDoc.exists) {
+          final classData = classDoc.data()!;
+          final semesterField = classData['currentSemester'];
+          if (semesterField is Map) {
+            currentSemester = semesterField['semester']?.toString() ?? currentSemester;
+          } else if (semesterField != null) {
+            currentSemester = semesterField.toString();
+          }
+        }
+      }
 
       setState(() {
         selectedSemester = currentSemester;
@@ -1181,15 +1246,18 @@ class _AttendancePageState extends State<AttendancePage>
                           ));
 
                           // Add individual cell for each hour
-                          for (final cell in cells) {
+                          for (int i = 0; i < cells.length; i++) {
+                            final cell = cells[i];
+                            final h = hours[i];
                             final subj = cell['subject'] as String;
                             final status = cell['status'] as String;
 
+                            final isCurrentClass = date == _currentDateStr && h == _currentPeriodIndex;
                             colChildren.add(Container(
                               width: dimensions['dateColumnWidth']!,
                               height: dimensions['hourCellHeight']!,
                               decoration: BoxDecoration(
-                                color: status.isNotEmpty ? getStatusColor(status) : Colors.grey.shade100,
+                                color: isCurrentClass ? Colors.green.shade500 : (status.isNotEmpty ? getStatusColor(status) : Colors.grey.shade100),
                                 border: const Border(
                                   right: BorderSide(color: Colors.white, width: 2.5),
                                   top: BorderSide(color: Colors.white, width: 2.5),
@@ -1308,13 +1376,12 @@ class _AttendancePageState extends State<AttendancePage>
                     children: [
                       CircleAvatar(
                         radius: isLargeScreen ? 45 : 36,
-                        backgroundColor: Colors.white70,
-                        backgroundImage: AssetImage('assets/account.png'),
-                        onBackgroundImageError: (exception, stackTrace) {
-                          // Fallback to icon if image fails to load
-                          print('Error loading profile image: $exception');
-                        },
-                        child: null, // Remove the child when using backgroundImage
+                        backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
+                        child: Icon(
+                          PhosphorIconsRegular.user,
+                          size: isLargeScreen ? 45 : 36,
+                          color: const Color(0xFFFF8C61),
+                        ),
                       ),
 
                       SizedBox(width: dimensions['padding']!),
@@ -1534,13 +1601,17 @@ class _AttendancePageState extends State<AttendancePage>
     final isLargeScreen = mediaQuery.size.width > 600;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: Color(0xFFFF7F50),
-        title: Text(
+        title: const Text(
           "ATTENDANCE",
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
         ),
-        centerTitle: true, // This centers the title
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white), // White back arrow
           onPressed: () {
@@ -1599,7 +1670,6 @@ class _AttendancePageState extends State<AttendancePage>
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
   void _goToDashboard(BuildContext context) {
@@ -1611,55 +1681,6 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32,
-              ),
-              onPressed: () => _goToDashboard(context),
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StudentProfile(studentId: widget.studentId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 

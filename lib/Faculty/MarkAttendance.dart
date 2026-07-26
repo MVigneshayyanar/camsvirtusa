@@ -24,11 +24,35 @@ class MarkAttendance extends StatefulWidget {
 }
 
 class _MarkAttendanceState extends State<MarkAttendance> {
-  List<String> classes = [];
+  List<String> assignedClasses = [];
+  List<String> allClasses = [];
   bool isLoading = true;
   String error = '';
   String facultyName = '';
   String departmentId = '';
+  String currentClass = '';
+  String abbreviation = '';
+  String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  final periodStartTimes = [
+    {'hour': 9, 'minute': 0},
+    {'hour': 9, 'minute': 50},
+    {'hour': 10, 'minute': 55},
+    {'hour': 11, 'minute': 45},
+    {'hour': 13, 'minute': 25},
+    {'hour': 14, 'minute': 15},
+    {'hour': 15, 'minute': 20},
+  ];
+  final periodEndTimes = [
+    {'hour': 9, 'minute': 50},
+    {'hour': 10, 'minute': 40},
+    {'hour': 11, 'minute': 45},
+    {'hour': 12, 'minute': 35},
+    {'hour': 14, 'minute': 15},
+    {'hour': 15, 'minute': 5},
+    {'hour': 16, 'minute': 10},
+  ];
 
   @override
   void initState() {
@@ -55,15 +79,79 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       setState(() {
         facultyName = data['name'] ?? 'Unknown Faculty';
         departmentId = data['department'] ?? '';
-        classes = List<String>.from(data['classes'] ?? []);
+        abbreviation = data['abbreviation'] ?? '';
+        assignedClasses = List<String>.from(data['classes'] ?? []);
         error = '';
       });
+
+      if (departmentId.isNotEmpty) {
+        final classesSnapshot = await FirebaseFirestore.instance.collection('colleges').doc('departments').collection('all_departments').doc(departmentId).collection('clasees').get();
+        setState(() {
+          allClasses = classesSnapshot.docs.map((doc) => doc.id).toList();
+        });
+      }
+
+      _calculateCurrentClass();
     } catch (e) {
       setState(() {
         error = 'Error loading faculty details: $e';
       });
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _calculateCurrentClass() async {
+    try {
+      final now = DateTime.now();
+      int currentIdx = -1;
+      for (int i = 0; i < 7; i++) {
+        final start = DateTime(now.year, now.month, now.day, periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
+        final end = DateTime(now.year, now.month, now.day, periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
+        if (now.isAfter(start) && now.isBefore(end)) {
+          currentIdx = i;
+          break;
+        }
+      }
+      if (currentIdx == -1) return;
+
+      final daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+      final String today = daysOfWeek[now.weekday - 1];
+      if (today == "Saturday" || today == "Sunday") return;
+
+      for (var cName in assignedClasses) {
+        final classDoc = await FirebaseFirestore.instance.collection('colleges').doc('departments').collection('all_departments').doc(departmentId).collection('clasees').doc(cName).get();
+        if (classDoc.exists) {
+          final classData = classDoc.data()!;
+          final currentSemesterField = classData['currentSemester'];
+          String currentSem = 'V';
+          if (currentSemesterField is Map) {
+            currentSem = currentSemesterField['semester']?.toString() ?? 'V';
+          } else {
+            currentSem = currentSemesterField?.toString() ?? 'V';
+          }
+          final timetables = classData['timetables'] as Map?;
+          if (timetables != null) {
+            final semTimetable = timetables[currentSem];
+            if (semTimetable != null && semTimetable[today] != null) {
+              final todayPeriods = semTimetable[today] as List;
+              if (currentIdx < todayPeriods.length) {
+                var subjectStr = todayPeriods[currentIdx]?.toString() ?? "";
+                if (subjectStr.contains(widget.facultyId) || subjectStr.contains(abbreviation)) {
+                  if (mounted) {
+                    setState(() {
+                      currentClass = cName;
+                    });
+                  }
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print("Error calculating current class: $e");
     }
   }
 
@@ -88,50 +176,88 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         backgroundColor: kPrimary,
         title: Text(
           'ATTENDANCE REGISTER',
-          style: TextStyle(color: Colors.white, fontSize: 20),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
-        centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pop();
           },
         ),
-        elevation: 0,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : error.isNotEmpty
           ? Center(child: Text(error))
-          : classes.isEmpty
-          ? const Center(child: Text('No classes assigned'))
-          : ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: classes.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (context, idx) {
-          final className = classes[idx];
-          return Card(
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14)),
-            elevation: 2,
-            child: ListTile(
-              leading: const Icon(Icons.class_, color: Color(0xFF36454F)),
-              title: Text(
-                className,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87),
-              ),
-              trailing: const Icon(
-                  Icons.arrow_forward_ios,
-                  color: Color(0xFF36454F)),
-              onTap: () => _openClassAttendance(className),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: (val) {
+                      setState(() {
+                        searchQuery = val.toLowerCase();
+                      });
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'Search any class by ID to swap...',
+                      prefixIcon: const Icon(Icons.search),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Builder(
+                    builder: (context) {
+                      final displayClasses = searchQuery.isEmpty 
+                          ? assignedClasses 
+                          : allClasses.where((c) => c.toLowerCase().contains(searchQuery)).toList();
+                      
+                      if (displayClasses.isEmpty) {
+                        return const Center(child: Text('No classes found'));
+                      }
+
+                      return ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        itemCount: displayClasses.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, idx) {
+                          final className = displayClasses[idx];
+                          final isCurrent = className == currentClass;
+                          final isAssigned = assignedClasses.contains(className);
+                          
+                          return Card(
+                            color: isCurrent ? Colors.green.shade50 : Colors.white,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: isCurrent ? BorderSide(color: Colors.green, width: 2) : BorderSide.none,
+                            ),
+                            elevation: isCurrent ? 4 : 2,
+                            child: ListTile(
+                              leading: Icon(Icons.class_, color: isCurrent ? Colors.green : const Color(0xFF36454F)),
+                              title: Text(
+                                className + (isCurrent ? " (Ongoing)" : (!isAssigned ? " (Other Class)" : "")),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                              ),
+                              trailing: Icon(
+                                  Icons.arrow_forward_ios,
+                                  color: isCurrent ? Colors.green : const Color(0xFF36454F)),
+                              onTap: () => _openClassAttendance(className),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
     );
   }
 }
@@ -811,19 +937,15 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           children: [
                             Text(
                               'Broadcasting Active',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                             Text(
                               'Subject: ${advertisingSubject ?? 'Unknown'}',
-                              style: TextStyle(color: Colors.white70, fontSize: 14),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                             Text(
                               '${detectedStudentIds.length} students detected',
-                              style: TextStyle(color: Colors.white70, fontSize: 14),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -866,7 +988,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             SizedBox(width: 8),
                             Text(
                               'Live Student Signals (${liveDetectedStudents.length})',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -882,12 +1004,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                               SizedBox(height: 16),
                               Text(
                                 'Waiting for student signals...',
-                                style: TextStyle(color: Colors.grey, fontSize: 16),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                               ),
                               SizedBox(height: 8),
                               Text(
                                 'Students should open their app for auto-detection',
-                                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                               ),
                             ],
                           ),
@@ -917,14 +1039,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                     student['name'].toString().isNotEmpty
                                         ? student['name'].toString().substring(0, 1).toUpperCase()
                                         : '?',
-                                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 title: Text(
                                   student['name'] ?? 'Unknown Student',
-                                  style: TextStyle(
-                                    fontWeight: isNew ? FontWeight.bold : FontWeight.w600,
-                                  ),
+                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -932,7 +1052,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                     Text('ID: ${student['id']}'),
                                     Text(
                                       'Detected: ${DateFormat('HH:mm:ss').format(timestamp)}',
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                     ),
                                   ],
                                 ),
@@ -948,7 +1068,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                         ),
                                         child: Text(
                                           'NEW',
-                                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                         ),
                                       ),
                                       SizedBox(width: 8),
@@ -982,9 +1102,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Session ID:', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                          Text('Session ID:', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                           Text(currentSessionId?.substring(currentSessionId!.length - 8) ?? 'Unknown',
-                              style: TextStyle(fontSize: 10, fontFamily: 'monospace')),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                         ],
                       ),
                       ElevatedButton.icon(
@@ -1029,11 +1149,11 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             SizedBox(height: 4),
             Text(
               value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -1046,6 +1166,58 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     try {
       selectedSemester = semesters.first;
       selectedHour = hours.first;
+      
+      try {
+        final classDoc = await FirebaseFirestore.instance.collection('colleges').doc('departments').collection('all_departments').doc(widget.departmentId).collection('clasees').doc(widget.className).get();
+        if (classDoc.exists) {
+          final classData = classDoc.data()!;
+          final semesterField = classData['currentSemester'];
+          if (semesterField is Map) {
+            selectedSemester = semesterField['semester']?.toString() ?? semesters.first;
+          } else if (semesterField != null) {
+            selectedSemester = semesterField.toString();
+          }
+
+          final now = DateTime.now();
+          final daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+          final today = daysOfWeek[now.weekday - 1];
+
+          final periodStartTimes = [{'hour': 9, 'minute': 0}, {'hour': 9, 'minute': 50}, {'hour': 10, 'minute': 55}, {'hour': 11, 'minute': 45}, {'hour': 13, 'minute': 25}, {'hour': 14, 'minute': 15}, {'hour': 15, 'minute': 20}];
+          final periodEndTimes = [{'hour': 9, 'minute': 50}, {'hour': 10, 'minute': 40}, {'hour': 11, 'minute': 45}, {'hour': 12, 'minute': 35}, {'hour': 14, 'minute': 15}, {'hour': 15, 'minute': 5}, {'hour': 16, 'minute': 10}];
+
+          int currentIdx = -1;
+          for (int i = 0; i < 7; i++) {
+            final start = DateTime(now.year, now.month, now.day, periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
+            final end = DateTime(now.year, now.month, now.day, periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
+            if (now.isAfter(start) && now.isBefore(end)) {
+              currentIdx = i;
+              break;
+            }
+          }
+
+          if (currentIdx != -1 && today != "Saturday" && today != "Sunday") {
+            final timetables = classData['timetables'] as Map?;
+            if (timetables != null) {
+              final semTimetable = timetables[selectedSemester];
+              if (semTimetable != null && semTimetable[today] != null) {
+                final todayPeriods = semTimetable[today] as List;
+                if (currentIdx < todayPeriods.length) {
+                  String subStr = todayPeriods[currentIdx]?.toString() ?? "";
+                  if (subStr.isNotEmpty) {
+                    final parts = subStr.split('/');
+                    if (parts.isNotEmpty) {
+                      selectedSubject = parts[0].trim();
+                    }
+                    selectedHour = (currentIdx + 1).toString();
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Error fetching auto-select data: $e');
+      }
       await Future.wait([
         _fetchStudentsForClass(),
         _loadSemesterData(selectedSemester!),
@@ -1064,9 +1236,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     await _fetchSubjectsForSemester(semester);
     await _fetchFacultySubjectMapping(semester);
     setState(() {
-      selectedSubject = getSubjectsForThisFaculty().isNotEmpty
-          ? getSubjectsForThisFaculty().first
-          : null;
+      final availableSubjects = getSubjectsForThisFaculty().isNotEmpty ? getSubjectsForThisFaculty() : subjects;
+      if (selectedSubject == null || !availableSubjects.contains(selectedSubject)) {
+        selectedSubject = availableSubjects.isNotEmpty
+            ? availableSubjects.first
+            : null;
+      }
     });
   }
 
@@ -1089,16 +1264,22 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       if (doc.exists) {
         final data = doc.data() ?? {};
 
-        if (data.containsKey(semester)) {
+        if (data.containsKey('courseMapping') && data['courseMapping'] != null) {
+          final mappingData = data['courseMapping'] as Map<String, dynamic>;
+          if (mappingData.containsKey(semester)) {
+            final mappings = List<Map<String, dynamic>>.from(mappingData[semester] ?? []);
+            subjects = mappings.map((m) => m['abbreviation'] as String).toList();
+            print('✅ Fetched ${subjects.length} subjects from courseMapping for semester $semester');
+          }
+        }
+        
+        // Fallback for older data format
+        if (subjects.isEmpty && data.containsKey(semester)) {
           subjects = List<String>.from(data[semester] ?? []);
-          print('✅ Fetched ${subjects.length} subjects for semester $semester: $subjects');
-        } else {
-          subjects = [];
-          print('❌ No subjects found for semester: $semester');
+          print('✅ Fetched ${subjects.length} subjects from legacy array for semester $semester');
         }
       } else {
         subjects = [];
-        print('❌ No class document found');
       }
     } catch (e) {
       print('❌ Error fetching subjects: $e');
@@ -1124,21 +1305,29 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       if (doc.exists) {
         final data = doc.data() ?? {};
 
-        if (data.containsKey('faculty') && data['faculty'] != null) {
-          final facultyData = data['faculty'] as Map<String, dynamic>;
+        if (data.containsKey('courseMapping') && data['courseMapping'] != null) {
+          final mappingData = data['courseMapping'] as Map<String, dynamic>;
 
+          if (mappingData.containsKey(semester)) {
+            facultySubjectMappings = List<Map<String, dynamic>>.from(
+              mappingData[semester] ?? [],
+            );
+            print('✅ Fetched ${facultySubjectMappings.length} faculty mappings from courseMapping');
+          } else {
+            facultySubjectMappings = [];
+          }
+        } else if (data.containsKey('faculty') && data['faculty'] != null) {
+          // Legacy support
+          final facultyData = data['faculty'] as Map<String, dynamic>;
           if (facultyData.containsKey(semester)) {
             facultySubjectMappings = List<Map<String, dynamic>>.from(
               facultyData[semester] ?? [],
             );
-            print('✅ Fetched ${facultySubjectMappings.length} faculty mappings');
           } else {
             facultySubjectMappings = [];
-            print('❌ No faculty mappings for semester: $semester');
           }
         } else {
           facultySubjectMappings = [];
-          print('❌ No faculty field found');
         }
       } else {
         facultySubjectMappings = [];
@@ -1287,17 +1476,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   List<String> getSubjectsForThisFaculty() {
     return facultySubjectMappings
-        .where((m) => m['facultyId'] == widget.facultyId)
-        .map((m) => m['subject'] as String)
+        .where((m) => m['facultyId'] == widget.facultyId || m['facultyId2'] == widget.facultyId)
+        .map((m) => (m['abbreviation'] ?? m['subject'] ?? '') as String)
+        .where((s) => s.isNotEmpty)
         .toList();
   }
 
   Future<void> _updateAttendancePercentagesFromHistory() async {
-    int presentCount = 0;
-    int absentCount = 0;
-    int onDutyCount = 0;
-    int totalMarks = 0;
-
     for (var student in students) {
       final attendanceRef = FirebaseFirestore.instance
           .collection('colleges')
@@ -1309,6 +1494,11 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
       final docSnap = await attendanceRef.get();
       final data = docSnap.data() ?? {};
+
+      int presentCount = 0;
+      int absentCount = 0;
+      int onDutyCount = 0;
+      int totalMarks = 0;
 
       data.forEach((key, value) {
         if (key == 'P' || key == 'A' || key == 'OD') return;
@@ -1325,20 +1515,10 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           });
         }
       });
-    }
 
-    double presentPercentage = totalMarks > 0 ? (presentCount / totalMarks) * 100 : 0;
-    double absentPercentage = totalMarks > 0 ? (absentCount / totalMarks) * 100 : 0;
-    double onDutyPercentage = totalMarks > 0 ? (onDutyCount / totalMarks) * 100 : 0;
-
-    for (var student in students) {
-      final attendanceRef = FirebaseFirestore.instance
-          .collection('colleges')
-          .doc('students')
-          .collection('all_students')
-          .doc(student['id'])
-          .collection('attendance')
-          .doc(selectedSemester!);
+      double presentPercentage = totalMarks > 0 ? (presentCount / totalMarks) * 100 : 0;
+      double absentPercentage = totalMarks > 0 ? (absentCount / totalMarks) * 100 : 0;
+      double onDutyPercentage = totalMarks > 0 ? (onDutyCount / totalMarks) * 100 : 0;
 
       await attendanceRef.set({
         'P': presentPercentage,
@@ -1359,6 +1539,40 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       return;
     }
     setState(() => isSaving = true);
+    
+    final ValueNotifier<int> progressNotifier = ValueNotifier<int>(0);
+    int totalStudents = students.length;
+    int completedStudents = 0;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          contentPadding: const EdgeInsets.all(24),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(color: kPrimary),
+              const SizedBox(height: 20),
+              const Text("Saving Attendance", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 12),
+              ValueListenableBuilder<int>(
+                valueListenable: progressNotifier,
+                builder: (context, value, child) {
+                  return Text(
+                    "$value%",
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
     try {
       final dateKey = DateFormat('dd-MM-yyyy').format(selectedDate);
       final subject = selectedSubject!;
@@ -1380,21 +1594,35 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         final end = (i + batchSize < students.length) ? i + batchSize : students.length;
         batches.add(students.sublist(i, end));
       }
-      final futures = batches.map((batch) => _saveAttendanceForBatch(batch, dateKey, hourIndices, subject));
+      final futures = batches.map((batch) => _saveAttendanceForBatch(batch, dateKey, hourIndices, subject, () {
+        completedStudents++;
+        progressNotifier.value = ((completedStudents / totalStudents) * 100).toInt();
+      }));
       await Future.wait(futures);
-      await _updateAttendancePercentagesFromHistory();
+      
+      if (!mounted) return;
+      Navigator.of(context).pop(); // dismiss loading dialog
+      
       final hourText = isContinuousMode && selectedEndHour != null
           ? 'Hours $selectedHour-$selectedEndHour'
           : 'Hour $selectedHour';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Attendance saved successfully for $hourText')),
       );
+
+      // Fire and forget updating percentages so it doesn't block UI
+      _updateAttendancePercentagesFromHistory();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Save failed: $e')),
-      );
+      if (mounted) {
+        Navigator.of(context).pop(); // dismiss loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Save failed: $e')),
+        );
+      }
     } finally {
-      setState(() => isSaving = false);
+      if (mounted) {
+        setState(() => isSaving = false);
+      }
     }
   }
 
@@ -1403,6 +1631,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       String dateKey,
       List<int> hourIndices,
       String subject,
+      VoidCallback onStudentSaved,
       ) async {
     final futures = batch.map((s) async {
       final studentId = s['id'];
@@ -1427,6 +1656,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           attendanceDay["$hourIdx"] = {subject: status};
         }
         await attendanceRef.set({dateKey: attendanceDay}, SetOptions(merge: true));
+        onStudentSaved();
       } catch (e) {
         print('Error saving attendance for student $studentId: $e');
         rethrow;
@@ -1455,10 +1685,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         backgroundColor: kBackground,
         appBar: AppBar(
           backgroundColor: kPrimary,
-          elevation: 0,
           title: const Text(
             'ATTENDANCE REGISTER',
-            style: TextStyle(color: Colors.white, fontSize: 20),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
           ),
           leading: const BackButton(color: Colors.white),
         ),
@@ -1473,19 +1702,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               const SizedBox(height: 20), // Fixed: Added missing height value
               const Text(
                 'Loading class data...',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Please wait',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.black38,
-                ),
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -1509,8 +1731,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       backgroundColor: kBackground,
       appBar: AppBar(
         backgroundColor: kPrimary,
-        elevation: 0,
-        title: const Text('MARK ATTENDANCE', style: TextStyle(color: Colors.white, fontSize: 24),),
+        title: const Text('MARK ATTENDANCE', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),
         actions: [
           // BLE Broadcasting Button
           IconButton(
@@ -1552,7 +1773,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     Expanded(
                       child: Text(
                         'Broadcasting ${advertisingSubject ?? 'Unknown'} • ${detectedStudentIds.length} students detected • Tap to view live',
-                        style: TextStyle(color: Colors.green.shade800, fontSize: 12),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                       ),
                     ),
                     TweenAnimationBuilder(
@@ -1616,24 +1837,29 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                       color: Colors.grey,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedSubject,
-                        isExpanded: true,
-                        hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Select Subject'),),
-                        onChanged: (v) {
-                          setState(() => selectedSubject = v);
-                          _onSelectionChanged();
-                        },
-                        items: getSubjectsForThisFaculty().map((e) =>
-                            DropdownMenuItem(
-                              value: e,
-                              child: Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8),
-                                child: Text(e),
-                              ),
-                            )).toList(),
-                      ),
+                    child: Builder(
+                      builder: (context) {
+                        final availableSubjects = getSubjectsForThisFaculty().isNotEmpty ? getSubjectsForThisFaculty() : subjects;
+                        return DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: availableSubjects.contains(selectedSubject) ? selectedSubject : null,
+                            isExpanded: true,
+                            hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Select Subject'),),
+                            onChanged: (v) {
+                              setState(() => selectedSubject = v);
+                              _onSelectionChanged();
+                            },
+                            items: availableSubjects.map((e) =>
+                                DropdownMenuItem(
+                                  value: e,
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(horizontal: 8),
+                                    child: Text(e),
+                                  ),
+                                )).toList(),
+                          ),
+                        );
+                      }
                     ),
                   ),
                 ),
@@ -1670,21 +1896,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           children: [
                             Text(
                               '$presentCount',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green.shade700,
-                              ),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'PRESENT',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.green.shade700,
-                                letterSpacing: 1.1,
-                              ),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -1711,21 +1928,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           children: [
                             Text(
                               '$absentCount',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.red.shade700,
-                              ),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               'ABSENT',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.red.shade700,
-                                letterSpacing: 1.1,
-                              ),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
@@ -1789,7 +1997,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           child: Center(
                             child: Text(
                               isContinuousMode ? 'Multiple Hours' : 'Single Hour',
-                              style: TextStyle(color: isContinuousMode ? Colors.white : Colors.black87, fontWeight: FontWeight.w600, fontSize: 12),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             ),
                           ),
                         ),
@@ -1812,7 +2020,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             value: selectedHour,
                             isExpanded: true,
                             dropdownColor: Color(0xFF222F3E),
-                            hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Start Hour', style: TextStyle(color: Colors.white),),),
+                            hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('Start Hour', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),),
                             onChanged: (v) {
                               setState(() {
                                 selectedHour = v;
@@ -1826,14 +2034,14 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                               });
                               _onSelectionChanged();
                             },
-                            style: const TextStyle(color: Colors.white),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                             iconEnabledColor: Colors.white,
                             items: hours.map((e) =>
                                 DropdownMenuItem(
                                   value: e,
                                   child: Padding(
                                     padding: EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(isContinuousMode ? 'Hour $e' : 'Hour $e', style: const TextStyle(color: Colors.white),),
+                                    child: Text(isContinuousMode ? 'Hour $e' : 'Hour $e', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),
                                   ),
                                 )).toList(),
                           ),
@@ -1842,7 +2050,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     ),
                     if (isContinuousMode) ...[
                       const SizedBox(width: 8),
-                      const Text('to', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.black54,),),
+                      const Text('to', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Container(
@@ -1856,19 +2064,19 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                               value: selectedEndHour,
                               isExpanded: true,
                               dropdownColor: Color(0xFF222F3E),
-                              hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('End Hour', style: TextStyle(color: Colors.white)),),
+                              hint: const Padding(padding: EdgeInsets.symmetric(horizontal: 8.0), child: Text('End Hour', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),),
                               onChanged: (v) {
                                 setState(() => selectedEndHour = v);
                                 _onSelectionChanged();
                               },
-                              style: const TextStyle(color: Colors.white),
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                               iconEnabledColor: Colors.white,
                               items: getAvailableEndHours().map((e) =>
                                   DropdownMenuItem(
                                     value: e,
                                     child: Padding(
                                       padding: EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text('Hour $e', style: const TextStyle(color: Colors.white),),
+                                      child: Text('Hour $e', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),),
                                     ),
                                   )).toList(),
                             ),
@@ -1899,11 +2107,11 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                   children: [
                     const Expanded(
                       flex: 2,
-                      child: Text("STUDENT ID", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text("STUDENT ID", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                     ),
                     const Expanded(
                       flex: 3,
-                      child: Text("NAME", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      child: Text("NAME", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                     ),
                     Expanded(
                       flex: 2,
@@ -1915,7 +2123,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                 ? "HOURS $selectedHour-$selectedEndHour"
                                 : "HOUR ${selectedHour ?? '-'}",
                             textAlign: TextAlign.end,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(width: 8),
                           PopupMenuButton<String>(
@@ -1987,10 +2195,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                     Flexible(
                                       child: Text(
                                         sid,
-                                        style: TextStyle(
-                                          fontWeight: detectedViaBLE ? FontWeight.bold : FontWeight.w500,
-                                          color: detectedViaBLE ? Colors.blue.shade800 : Colors.black,
-                                        ),
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -2009,11 +2214,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                   Flexible(
                                     child: Text(
                                       sname,
-                                      style: TextStyle(
-                                        fontWeight: detectedViaBLE ? FontWeight.w600 : FontWeight.w400,
-                                        fontSize: 15,
-                                        color: detectedViaBLE ? Colors.blue.shade700 : Colors.black,
-                                      ),
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -2027,11 +2228,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                       ),
                                       child: Text(
                                         'AUTO',
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 8,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                                       ),
                                     ),
                                   ],

@@ -1,5 +1,7 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'studentDashboard.dart';
 import 'studentProfile.dart';
 
@@ -98,24 +100,22 @@ class _TimeTablePageState extends State<TimeTablePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFFF7F50), // Orange color
+      appBar: AppBar( // Orange color
         title: const Text(
           'TIME TABLE',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
-            fontSize: 25,
-            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
         ),
-        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
             Navigator.of(context).pop();
           },
         ),
-        elevation: 0,
       ),
       body: _isLoading
           ? const Center(
@@ -129,7 +129,12 @@ class _TimeTablePageState extends State<TimeTablePage> {
                     padding: const EdgeInsets.all(24.0),
                     child: Text(
                       'Error: $_errorMessage',
-                      style: const TextStyle(color: Colors.red, fontSize: 16),
+                      style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -152,10 +157,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
                           child: Text(
                             'CURRENT SEMESTER : ${_currentSemester ?? "V"}',
                             style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
                           ),
                         ),
                       ),
@@ -170,7 +176,6 @@ class _TimeTablePageState extends State<TimeTablePage> {
                     ],
                   ),
                 ),
-      bottomNavigationBar: _buildBottomNavigationBar(context),
     );
   }
 
@@ -186,7 +191,12 @@ class _TimeTablePageState extends State<TimeTablePage> {
               SizedBox(height: 16),
               Text(
                 'No timetable configured for this semester.',
-                style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -196,7 +206,16 @@ class _TimeTablePageState extends State<TimeTablePage> {
     }
 
     final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    final headers = ["Day", "P1\n9:00", "P2\n9:50", "P3\n10:55", "P4\n11:45", "P5\n1:25", "P6\n2:15", "P7\n3:20"];
+    final headers = [
+      "Day", 
+      "P1\n9:00 - 9:50", 
+      "P2\n9:50 - 10:40", 
+      "P3\n10:55 - 11:45", 
+      "P4\n11:45 - 12:35", 
+      "P5\n1:25 - 2:15", 
+      "P6\n2:15 - 3:05", 
+      "P7\n3:20 - 4:10"
+    ];
 
     return SizedBox(
       height: 380,
@@ -224,9 +243,9 @@ class _TimeTablePageState extends State<TimeTablePage> {
                   child: Text(
                     header,
                     style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      fontSize: 9,
-                      color: Color(0xFF36454F),
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -246,9 +265,9 @@ class _TimeTablePageState extends State<TimeTablePage> {
                     child: Text(
                       day.toUpperCase().substring(0, 3), // e.g. MON
                       style: const TextStyle(
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        fontSize: 9,
-                        color: Color(0xFF36454F),
+                        color: Color(0xFFFF7F50),
                       ),
                     ),
                   ),
@@ -263,9 +282,9 @@ class _TimeTablePageState extends State<TimeTablePage> {
                       child: Text(
                         val.isEmpty ? "-" : val,
                         style: TextStyle(
-                          fontWeight: val.isEmpty ? FontWeight.normal : FontWeight.bold,
-                          fontSize: 8,
-                          color: val.isEmpty ? Colors.grey : const Color(0xFFFF7F50),
+                          fontSize: 10,
+                          fontWeight: val.isNotEmpty ? FontWeight.bold : FontWeight.normal,
+                          color: val.isNotEmpty ? const Color(0xFFFF7F50) : Colors.grey,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -277,7 +296,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
           ],
         ),
       ),
-    ));
+    ),
+    );
   }
 
   Widget _buildCourseMappingsList() {
@@ -300,9 +320,9 @@ class _TimeTablePageState extends State<TimeTablePage> {
             const Text(
               'COURSE DETAILS & HANDLING FACULTY',
               style: TextStyle(
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: Color(0xFF36454F),
+                color: Color(0xFF1E293B),
               ),
             ),
             const Divider(height: 24, thickness: 1.5),
@@ -313,6 +333,9 @@ class _TimeTablePageState extends State<TimeTablePage> {
               final abbrev = mapData['abbreviation'] ?? '';
               final name = mapData['name'] ?? '';
               final facultyName = mapData['facultyName'] ?? '';
+              final isElective = mapData['isElective'] ?? false;
+              final name2 = mapData['name2'] ?? '';
+              final facultyName2 = mapData['facultyName2'] ?? '';
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12.0),
@@ -328,9 +351,9 @@ class _TimeTablePageState extends State<TimeTablePage> {
                       child: Text(
                         abbrev,
                         style: const TextStyle(
-                          fontWeight: FontWeight.bold,
                           color: Color(0xFFFF7F50),
                           fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -342,20 +365,54 @@ class _TimeTablePageState extends State<TimeTablePage> {
                           Text(
                             name,
                             style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              color: Color(0xFF36454F),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF334155),
                             ),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'Staff: $facultyName',
                             style: TextStyle(
-                              color: Colors.grey[600],
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
                             ),
                           ),
+                          if (isElective) ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                "OR",
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              name2,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF334155),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Staff: $facultyName2',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -378,53 +435,4 @@ class _TimeTablePageState extends State<TimeTablePage> {
     );
   }
 
-  Widget _buildBottomNavigationBar(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {},
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32,
-              ),
-              onPressed: () => _goToDashboard(context),
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26,
-              ),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => StudentProfile(studentId: widget.studentId),
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

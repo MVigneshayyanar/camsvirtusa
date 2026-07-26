@@ -1,7 +1,10 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'studentDashboard.dart';
+import '../Startup/routes.dart';
 
 class StudentProfile extends StatefulWidget {
   final String studentId;
@@ -93,18 +96,10 @@ class _StudentProfileState extends State<StudentProfile> {
     );
   }
 
-  void _goToSearch() {
+  void _goToNews() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: _orange,
-            title: const Text("Search", style: TextStyle(color: Colors.white)),
-          ),
-          body: const Center(child: Text("Search Page")),
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => const NewsScreen()),
     );
   }
 
@@ -141,7 +136,7 @@ class _StudentProfileState extends State<StudentProfile> {
 
       // Navigate to login page and clear all previous routes
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/roleSelection', // Replace with your login route
+        AppRoutes.login, // Redirect to login after logout
             (Route<dynamic> route) => false,
       );
 
@@ -157,51 +152,6 @@ class _StudentProfileState extends State<StudentProfile> {
         ),
       );
     }
-  }
-
-  Widget _buildBottomNavigationBar() {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea, // Add safe area to prevent overlap
-      decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea), // Add bottom padding for safe area
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            /*
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: _goToSearch,
-            ),
-            */
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32, // Responsive height
-              ),
-              onPressed: _goToDashboard,
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26, // Responsive height
-              ),
-              onPressed: () {}, // Already on profile page
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   @override
@@ -221,20 +171,16 @@ class _StudentProfileState extends State<StudentProfile> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        automaticallyImplyLeading: false,
         title: Text(
           'STUDENT PROFILE',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
-            fontSize: screenWidth > 600 ? 30 : 24, // Responsive title
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
         ),
-        centerTitle: true,
-        backgroundColor: const Color(0xFFFF7F50),
-        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -255,7 +201,11 @@ class _StudentProfileState extends State<StudentProfile> {
                   CircleAvatar(
                     radius: screenWidth > 600 ? 60 : 50, // Responsive avatar size
                     backgroundColor: Colors.white,
-                    backgroundImage: AssetImage('assets/account.png'),
+                    child: Icon(
+                      PhosphorIconsRegular.user,
+                      size: screenWidth > 600 ? 60 : 50,
+                      color: const Color(0xFFFF8C61),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   RichText(
@@ -308,14 +258,11 @@ class _StudentProfileState extends State<StudentProfile> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
       floatingActionButton: Container(
         width: screenWidth > 600 ? 120 : 100, // Responsive width
         height: screenWidth > 600 ? 45 : 40, // Responsive height
         child: FloatingActionButton(
-          onPressed: _logout,
-          backgroundColor: const Color(0xFFFF7F50),
-          elevation: 0, // Remove shadow
+          onPressed: _logout, // Remove shadow
           child: Text(
             'Log out',
             style: TextStyle(

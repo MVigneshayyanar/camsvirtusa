@@ -1,6 +1,9 @@
+import 'package:camsvirtusa/Shared/newsScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../Startup/routes.dart';
 
 class FacultyProfile extends StatefulWidget {
   final String facultyId;
@@ -51,18 +54,10 @@ class _FacultyProfileState extends State<FacultyProfile> {
     }
   }
 
-  void _goToSearch() {
+  void _goToNews() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => Scaffold(
-          appBar: AppBar(
-            backgroundColor: const Color(0xFFFF7F50),
-            title: const Text("Search", style: TextStyle(color: Colors.white)),
-          ),
-          body: const Center(child: Text("Search Page")),
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => const NewsScreen()),
     );
   }
 
@@ -101,7 +96,7 @@ class _FacultyProfileState extends State<FacultyProfile> {
       await prefs.clear();
 
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/roleSelection',
+        AppRoutes.login,
         (Route<dynamic> route) => false,
       );
     } catch (e) {
@@ -114,73 +109,6 @@ class _FacultyProfileState extends State<FacultyProfile> {
     }
   }
 
-  Widget _buildBottomNavigationBar() {
-    final mediaQuery = MediaQuery.of(context);
-    final double bottomSafeArea = mediaQuery.padding.bottom;
-    final double screenWidth = mediaQuery.size.width;
-
-    return Container(
-      height: 70 + bottomSafeArea,
-      decoration: const BoxDecoration(
-        color: Color(0xFFE5E5E5),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(40)),
-      ),
-      child: Padding(
-        padding: EdgeInsets.only(bottom: bottomSafeArea),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            IconButton(
-              icon: Image.asset(
-                "assets/search.png",
-                height: screenWidth > 600 ? 30 : 26,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.search,
-                    color: const Color(0xFF6B7280),
-                    size: screenWidth > 600 ? 28 : 24,
-                  );
-                },
-              ),
-              onPressed: _goToSearch,
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/homeLogo.png",
-                height: screenWidth > 600 ? 36 : 32,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.home_outlined,
-                    color: const Color(0xFF6B7280),
-                    size: screenWidth > 600 ? 32 : 28,
-                  );
-                },
-              ),
-              onPressed: _goToDashboard,
-            ),
-            IconButton(
-              icon: Image.asset(
-                "assets/account.png",
-                height: screenWidth > 600 ? 30 : 26,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.person,
-                    color: const Color(0xFFFF7F50),
-                    size: screenWidth > 600 ? 28 : 24,
-                  );
-                },
-              ),
-              onPressed: () {
-                // Already on profile, do nothing or refresh
-                _fetchFacultyData();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final MediaQueryData mediaQuery = MediaQuery.of(context);
@@ -190,24 +118,18 @@ class _FacultyProfileState extends State<FacultyProfile> {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: const Color(0xFFFF7F50),
           title: Text(
             'FACULTY PROFILE',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: screenWidth > 600 ? 25 : 25,
-              fontWeight: FontWeight.w500,
-            ),
+            style: const TextStyle(
+            color: Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
-          centerTitle: true,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
           ),
-          elevation: 0,
+          automaticallyImplyLeading: false,
         ),
         body: const Center(child: CircularProgressIndicator()),
-        bottomNavigationBar: _buildBottomNavigationBar(),
       );
     }
 
@@ -227,21 +149,16 @@ class _FacultyProfileState extends State<FacultyProfile> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF7F50),
         title: Text(
           'FACULTY PROFILE',
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
-            fontSize: screenWidth > 600 ? 25 : 25,
-            fontWeight: FontWeight.w500,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
           ),
         ),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        elevation: 0,
+        automaticallyImplyLeading: false,
       ),
       body: Column(
         children: [
@@ -271,19 +188,16 @@ class _FacultyProfileState extends State<FacultyProfile> {
                         // Avatar
                         CircleAvatar(
                           radius: screenWidth > 600 ? 35 : 30,
-                          backgroundColor: const Color(0xFFFF7F50),
+                          backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
                           backgroundImage: profileImageUrl != null
                               ? NetworkImage(profileImageUrl)
-                              : const AssetImage('assets/account.png') as ImageProvider,
-                          onBackgroundImageError: (exception, stackTrace) {
-                            // Handle image loading errors
-                          },
-                          child: profileImageUrl == null && facultyData?['profileImage'] == null
+                              : null,
+                          child: profileImageUrl == null
                               ? Icon(
-                            Icons.person,
-                            size: screenWidth > 600 ? 40 : 35,
-                            color: Colors.white,
-                          )
+                                  PhosphorIconsRegular.user,
+                                  size: screenWidth > 600 ? 40 : 35,
+                                  color: const Color(0xFFFF8C61),
+                                )
                               : null,
                         ),
                         SizedBox(width: screenWidth > 600 ? 20 : 16),
@@ -381,15 +295,11 @@ class _FacultyProfileState extends State<FacultyProfile> {
         ],
       ),
 
-      // Bottom Navigation Bar
-      bottomNavigationBar: _buildBottomNavigationBar(),
       floatingActionButton: SizedBox(
         width: screenWidth > 600 ? 120 : 100,
         height: screenWidth > 600 ? 45 : 40,
         child: FloatingActionButton(
           onPressed: _logout,
-          backgroundColor: const Color(0xFFFF7F50),
-          elevation: 0,
           child: Text(
             'Log out',
             style: TextStyle(

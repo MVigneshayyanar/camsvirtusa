@@ -47,6 +47,7 @@ dependencies:
   google_mlkit_face_detection: ^0.13.1
   tflite_flutter: ^0.12.1
   image: ^4.5.4
+  phosphor_flutter: ^2.1.0
 
 dev_dependencies:
   flutter_launcher_icons: ^0.14.4
@@ -70,34 +71,5 @@ flutter:
 
   assets:
     - assets/logo.png
-    - assets/role_top.png
-    - assets/view_profile.png
-    - assets/ODForm.png
-    - assets/Attendance.png
-    - assets/LeaveForm.png
-    - assets/check_attendance.png
-    - assets/on_duty.png
-    - assets/leave_form.png
-    - assets/MTechVtt.png
-    - assets/account.png
-    - assets/requests.png
-    - assets/student_details.png
-    - assets/student_ad.png
-    - assets/staff_ad.png
-    - assets/batch_ad.png
-    - assets/department_ad.png
-    - assets/timetable_ad.png
-    - assets/college.png
-    - assets/login_illustration.png
-    - assets/cap.png
-    - assets/stick.png
-    - assets/MyMentees.png
-    - assets/faculty.png
-    - assets/otp.png
-    - assets/student.png
-    - assets/account.png
-    - assets/homeLogo.png
-    - assets/search.png
-    - assets/news.png
+    - assets/homelogo1.png
     - assets/mobilefacenet.tflite
-    - assets/Students/
