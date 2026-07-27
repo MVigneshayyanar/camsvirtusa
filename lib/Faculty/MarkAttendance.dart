@@ -24,6 +24,7 @@ class MarkAttendance extends StatefulWidget {
 
 class _MarkAttendanceState extends State<MarkAttendance> {
   List<String> assignedClasses = [];
+  List<String> todayClasses = [];
   List<String> allClasses = [];
   bool isLoading = true;
   String error = '';
@@ -115,12 +116,12 @@ class _MarkAttendanceState extends State<MarkAttendance> {
             periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
         final end = DateTime(now.year, now.month, now.day,
             periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
-        if (now.isAfter(start) && now.isBefore(end)) {
+        if ((now.isAfter(start) || now.isAtSameMomentAs(start)) &&
+            (now.isBefore(end) || now.isAtSameMomentAs(end))) {
           currentIdx = i;
           break;
         }
       }
-      if (currentIdx == -1) return;
 
       final daysOfWeek = [
         "Monday",
@@ -132,7 +133,17 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         "Sunday"
       ];
       final String today = daysOfWeek[now.weekday - 1];
-      if (today == "Saturday" || today == "Sunday") return;
+      if (today == "Saturday" || today == "Sunday") {
+        if (mounted) {
+          setState(() {
+            todayClasses = assignedClasses;
+          });
+        }
+        return;
+      }
+
+      List<String> tempTodayClasses = [];
+      String? tempCurrentClass;
 
       for (var cName in assignedClasses) {
         final classDoc = await FirebaseFirestore.instance
@@ -157,21 +168,32 @@ class _MarkAttendanceState extends State<MarkAttendance> {
             final semTimetable = timetables[currentSem];
             if (semTimetable != null && semTimetable[today] != null) {
               final todayPeriods = semTimetable[today] as List;
-              if (currentIdx < todayPeriods.length) {
-                var subjectStr = todayPeriods[currentIdx]?.toString() ?? "";
+              bool hasClassToday = false;
+              for (int j = 0; j < todayPeriods.length; j++) {
+                var subjectStr = todayPeriods[j]?.toString() ?? "";
                 if (subjectStr.contains(widget.facultyId) ||
                     subjectStr.contains(abbreviation)) {
-                  if (mounted) {
-                    setState(() {
-                      currentClass = cName;
-                    });
+                  hasClassToday = true;
+                  if (currentIdx == j) {
+                    tempCurrentClass = cName;
                   }
-                  break;
                 }
+              }
+              if (hasClassToday) {
+                tempTodayClasses.add(cName);
               }
             }
           }
         }
+      }
+      
+      if (mounted) {
+        setState(() {
+          todayClasses = tempTodayClasses.isEmpty ? assignedClasses : tempTodayClasses;
+          if (tempCurrentClass != null) {
+            currentClass = tempCurrentClass;
+          }
+        });
       }
     } catch (e) {
       print("Error calculating current class: $e");
@@ -246,7 +268,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                       child: Builder(
                         builder: (context) {
                           final displayClasses = searchQuery.isEmpty
-                              ? assignedClasses
+                              ? todayClasses
                               : allClasses
                                   .where((c) =>
                                       c.toLowerCase().contains(searchQuery))
@@ -267,7 +289,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                               final className = displayClasses[idx];
                               final isCurrent = className == currentClass;
                               final isAssigned =
-                                  assignedClasses.contains(className);
+                                  todayClasses.contains(className);
 
                               return Card(
                                 color: isCurrent
