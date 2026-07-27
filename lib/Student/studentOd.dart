@@ -6,7 +6,6 @@ import 'package:intl/intl.dart'; // Import for date formatting
 import 'studentDashboard.dart'; // Add this import
 
 class OnDutyFormPage extends StatefulWidget {
-
   final String studentId;
 
   const OnDutyFormPage({Key? key, required this.studentId}) : super(key: key);
@@ -48,7 +47,9 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isFromDate ? (fromDate ?? DateTime.now()) : (toDate ?? DateTime.now()),
+      initialDate: isFromDate
+          ? (fromDate ?? DateTime.now())
+          : (toDate ?? DateTime.now()),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
       helpText: 'Select the date',
@@ -68,8 +69,12 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
   }
 
   void _submitForm() {
-    if (fromDate != null && toDate != null && selectedLeaveType != null && reasonController.text.isNotEmpty) {
-      if (selectedDurationType == 'Specific Periods' && selectedPeriods.isEmpty) {
+    if (fromDate != null &&
+        toDate != null &&
+        selectedLeaveType != null &&
+        reasonController.text.isNotEmpty) {
+      if (selectedDurationType == 'Specific Periods' &&
+          selectedPeriods.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Please select at least one period.')),
         );
@@ -137,7 +142,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
                         Navigator.of(context).pop();
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF97316),
+                        backgroundColor: const Color(0xFFFF7F50),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
@@ -180,7 +185,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -197,8 +203,12 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
           ),
           controller: TextEditingController(
             text: isFromDate
-                ? (fromDate == null ? '' : DateFormat('dd/MM/yyyy').format(fromDate!))
-                : (toDate == null ? '' : DateFormat('dd/MM/yyyy').format(toDate!)),
+                ? (fromDate == null
+                    ? ''
+                    : DateFormat('dd/MM/yyyy').format(fromDate!))
+                : (toDate == null
+                    ? ''
+                    : DateFormat('dd/MM/yyyy').format(toDate!)),
           ),
         ),
       ],
@@ -209,7 +219,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Number of days:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Number of days:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -228,14 +239,16 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Duration Type:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Duration Type:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         DropdownButtonFormField<String>(
           value: selectedDurationType,
           onChanged: (newValue) {
             setState(() {
               selectedDurationType = newValue!;
               if (selectedDurationType == 'Full Day') {
-                selectedPeriods.clear(); // Clear periods if full day is selected
+                selectedPeriods
+                    .clear(); // Clear periods if full day is selected
               }
             });
           },
@@ -263,7 +276,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Select Periods:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Select Periods:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         SizedBox(height: 8),
         Wrap(
           spacing: 3,
@@ -306,7 +320,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Type of On Duty:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Type of On Duty:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         DropdownButtonFormField<String>(
           value: selectedLeaveType,
           onChanged: (newValue) {
@@ -334,7 +349,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Reason:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Reason:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           controller: reasonController,
           maxLines: 8,
@@ -349,13 +365,12 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: const Text('ON DUTY FORM'),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
@@ -387,10 +402,15 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> {
               Center(
                 child: ElevatedButton(
                   onPressed: _submitForm,
-                  child: const Text("APPLY", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  child: const Text("APPLY",
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: 15, horizontal: 40),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
               ),

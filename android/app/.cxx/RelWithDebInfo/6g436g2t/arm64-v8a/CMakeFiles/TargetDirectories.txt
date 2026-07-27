@@ -1,0 +1,2 @@
+C:/CompanyProjects/Presenza/camsvirtusa/android/app/.cxx/RelWithDebInfo/6g436g2t/arm64-v8a/CMakeFiles/edit_cache.dir
+C:/CompanyProjects/Presenza/camsvirtusa/android/app/.cxx/RelWithDebInfo/6g436g2t/arm64-v8a/CMakeFiles/rebuild_cache.dir

@@ -5,13 +5,15 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class StudentCurriculum extends StatefulWidget {
   final String studentId;
 
-  const StudentCurriculum({Key? key, required this.studentId}) : super(key: key);
+  const StudentCurriculum({Key? key, required this.studentId})
+      : super(key: key);
 
   @override
   State<StudentCurriculum> createState() => _StudentCurriculumState();
 }
 
-class _StudentCurriculumState extends State<StudentCurriculum> with SingleTickerProviderStateMixin {
+class _StudentCurriculumState extends State<StudentCurriculum>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
 
@@ -56,7 +58,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         'uploadedBy': 'Prof. Dr. Smith',
         'uploadedAt': '2024-11-15',
         'downloadUrl': 'https://example.com/linear-algebra.pdf',
-        'description': 'Comprehensive notes on matrix operations and determinants'
+        'description':
+            'Comprehensive notes on matrix operations and determinants'
       },
       {
         'id': '2',
@@ -149,13 +152,18 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     List<Map<String, dynamic>> filtered = List.from(_studyMaterials);
 
     if (_selectedSubject != 'All') {
-      filtered = filtered.where((material) =>
-      material['subject']?.toLowerCase() == _selectedSubject.toLowerCase()).toList();
+      filtered = filtered
+          .where((material) =>
+              material['subject']?.toLowerCase() ==
+              _selectedSubject.toLowerCase())
+          .toList();
     }
 
     if (_selectedSemester != 'All') {
-      filtered = filtered.where((material) =>
-      material['semester']?.toString() == _selectedSemester).toList();
+      filtered = filtered
+          .where((material) =>
+              material['semester']?.toString() == _selectedSemester)
+          .toList();
     }
 
     return filtered;
@@ -166,8 +174,10 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     List<Map<String, dynamic>> filtered = List.from(_questionPapers);
 
     if (_selectedSubject != 'All') {
-      filtered = filtered.where((paper) =>
-      paper['subject']?.toLowerCase() == _selectedSubject.toLowerCase()).toList();
+      filtered = filtered
+          .where((paper) =>
+              paper['subject']?.toLowerCase() == _selectedSubject.toLowerCase())
+          .toList();
     }
 
     return filtered;
@@ -201,9 +211,12 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     try {
       // Search in study materials
       for (var material in _studyMaterials) {
-        if (material['title']?.toString().toLowerCase().contains(query) == true ||
-            material['subject']?.toString().toLowerCase().contains(query) == true ||
-            material['description']?.toString().toLowerCase().contains(query) == true) {
+        if (material['title']?.toString().toLowerCase().contains(query) ==
+                true ||
+            material['subject']?.toString().toLowerCase().contains(query) ==
+                true ||
+            material['description']?.toString().toLowerCase().contains(query) ==
+                true) {
           results.add({
             'title': material['title'],
             'type': 'Study Material',
@@ -217,7 +230,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
       // Search in question papers
       for (var paper in _questionPapers) {
         if (paper['title']?.toString().toLowerCase().contains(query) == true ||
-            paper['subject']?.toString().toLowerCase().contains(query) == true) {
+            paper['subject']?.toString().toLowerCase().contains(query) ==
+                true) {
           results.add({
             'title': paper['title'],
             'type': 'Question Paper',
@@ -230,9 +244,24 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
 
       // Add other search results (clubs, events, etc.)
       final otherData = [
-        {'title': 'Coding Club', 'type': 'Club', 'icon': Icons.code, 'color': Colors.purple},
-        {'title': 'Tech Fest 2024', 'type': 'Event', 'icon': Icons.event, 'color': Colors.green},
-        {'title': 'Software Developer - TCS', 'type': 'Job', 'icon': Icons.work, 'color': Colors.red},
+        {
+          'title': 'Coding Club',
+          'type': 'Club',
+          'icon': Icons.code,
+          'color': Colors.purple
+        },
+        {
+          'title': 'Tech Fest 2024',
+          'type': 'Event',
+          'icon': Icons.event,
+          'color': Colors.green
+        },
+        {
+          'title': 'Software Developer - TCS',
+          'type': 'Job',
+          'icon': Icons.work,
+          'color': Colors.red
+        },
       ];
 
       for (var item in otherData) {
@@ -315,13 +344,15 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: _buildAppBar(screenHeight, screenWidth),
-      body: _isSearching ? _buildSearchView(screenHeight, screenWidth) : _buildMainContent(screenHeight, screenWidth),
+      body: _isSearching
+          ? _buildSearchView(screenHeight, screenWidth)
+          : _buildMainContent(screenHeight, screenWidth),
     );
   }
 
   PreferredSizeWidget _buildAppBar(double screenHeight, double screenWidth) {
     return AppBar(
-      backgroundColor: const Color(0xFFF97316),
+      backgroundColor: const Color(0xFFFF7F50),
       title: Text(
         'CURRICULUM',
         style: TextStyle(
@@ -336,7 +367,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           children: [
             // Search Bar
             Container(
-              margin: EdgeInsets.fromLTRB(screenWidth * 0.04, 0, screenWidth * 0.04, screenHeight * 0.02),
+              margin: EdgeInsets.fromLTRB(screenWidth * 0.04, 0,
+                  screenWidth * 0.04, screenHeight * 0.02),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(30),
@@ -352,19 +384,25 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
                 controller: _searchController,
                 decoration: InputDecoration(
                   hintText: 'Search materials, papers, events...',
-                  hintStyle: TextStyle(color: Colors.grey[400], fontSize: screenWidth * 0.035),
-                  prefixIcon: Icon(Icons.search, color: const Color(0xFFFF7F50), size: screenWidth * 0.05),
+                  hintStyle: TextStyle(
+                      color: Colors.grey[400], fontSize: screenWidth * 0.035),
+                  prefixIcon: Icon(Icons.search,
+                      color: const Color(0xFFFF7F50), size: screenWidth * 0.05),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
-                    icon: Icon(Icons.clear, color: const Color(0xFFFF7F50), size: screenWidth * 0.05),
-                    onPressed: () {
-                      _searchController.clear();
-                      setState(() => _isSearching = false);
-                    },
-                  )
+                          icon: Icon(Icons.clear,
+                              color: const Color(0xFFFF7F50),
+                              size: screenWidth * 0.05),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _isSearching = false);
+                          },
+                        )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05, vertical: screenHeight * 0.02),
+                  contentPadding: EdgeInsets.symmetric(
+                      horizontal: screenWidth * 0.05,
+                      vertical: screenHeight * 0.02),
                 ),
               ),
             ),
@@ -379,8 +417,12 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
                   indicatorWeight: 3,
                   labelColor: Colors.white,
                   unselectedLabelColor: Colors.white70,
-                  labelStyle: TextStyle(fontWeight: FontWeight.w600, fontSize: screenWidth * 0.035),
-                  unselectedLabelStyle: TextStyle(fontWeight: FontWeight.normal, fontSize: screenWidth * 0.035),
+                  labelStyle: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: screenWidth * 0.035),
+                  unselectedLabelStyle: TextStyle(
+                      fontWeight: FontWeight.normal,
+                      fontSize: screenWidth * 0.035),
                   tabs: const [
                     Tab(text: 'Clubs'),
                     Tab(text: 'Library'),
@@ -407,7 +449,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
             Center(
               child: Padding(
                 padding: EdgeInsets.all(screenHeight * 0.04),
-                child: const CircularProgressIndicator(color: Color(0xFFFF7F50)),
+                child:
+                    const CircularProgressIndicator(color: Color(0xFFFF7F50)),
               ),
             )
           else if (_searchResults.isEmpty)
@@ -458,7 +501,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
   Widget _buildSearchResults(double screenHeight, double screenWidth) {
     return ListView.separated(
       itemCount: _searchResults.length,
-      separatorBuilder: (context, index) => SizedBox(height: screenHeight * 0.01),
+      separatorBuilder: (context, index) =>
+          SizedBox(height: screenHeight * 0.01),
       itemBuilder: (context, index) {
         final result = _searchResults[index];
         return _buildSearchResultCard(result, screenHeight, screenWidth);
@@ -466,7 +510,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildSearchResultCard(Map<String, dynamic> result, double screenHeight, double screenWidth) {
+  Widget _buildSearchResultCard(
+      Map<String, dynamic> result, double screenHeight, double screenWidth) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -569,9 +614,11 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
       ),
       child: Column(
         children: [
-          _buildClubItem('Coding Club', 'Next meeting: Today 4 PM', Icons.code, Colors.blue, screenHeight, screenWidth),
+          _buildClubItem('Coding Club', 'Next meeting: Today 4 PM', Icons.code,
+              Colors.blue, screenHeight, screenWidth),
           const Divider(height: 1),
-          _buildClubItem('Photography Club', 'Workshop on Saturday', Icons.camera_alt, Colors.green, screenHeight, screenWidth),
+          _buildClubItem('Photography Club', 'Workshop on Saturday',
+              Icons.camera_alt, Colors.green, screenHeight, screenWidth),
           SizedBox(height: screenHeight * 0.02),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04),
@@ -599,7 +646,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildClubItem(String title, String subtitle, IconData icon, Color color, double screenHeight, double screenWidth) {
+  Widget _buildClubItem(String title, String subtitle, IconData icon,
+      Color color, double screenHeight, double screenWidth) {
     return ListTile(
       contentPadding: EdgeInsets.all(screenWidth * 0.04),
       leading: Container(
@@ -620,26 +668,41 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: screenWidth * 0.032
-        ),
+        style:
+            TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.032),
       ),
-      trailing: Icon(
-          Icons.arrow_forward_ios_rounded,
-          color: Colors.grey[400],
-          size: screenWidth * 0.04
-      ),
+      trailing: Icon(Icons.arrow_forward_ios_rounded,
+          color: Colors.grey[400], size: screenWidth * 0.04),
       onTap: () => _navigateToClubDetail(title, screenHeight, screenWidth),
     );
   }
 
   Widget _buildClubCategoriesGrid(double screenHeight, double screenWidth) {
     final categories = [
-      {'name': 'Technical', 'icon': Icons.computer, 'color': Colors.blue, 'count': 12},
-      {'name': 'Cultural', 'icon': Icons.palette, 'color': Colors.purple, 'count': 8},
-      {'name': 'Sports', 'icon': Icons.sports_soccer, 'color': Colors.green, 'count': 15},
-      {'name': 'Academic', 'icon': Icons.school, 'color': Colors.orange, 'count': 6},
+      {
+        'name': 'Technical',
+        'icon': Icons.computer,
+        'color': Colors.blue,
+        'count': 12
+      },
+      {
+        'name': 'Cultural',
+        'icon': Icons.palette,
+        'color': Colors.purple,
+        'count': 8
+      },
+      {
+        'name': 'Sports',
+        'icon': Icons.sports_soccer,
+        'color': Colors.green,
+        'count': 15
+      },
+      {
+        'name': 'Academic',
+        'icon': Icons.school,
+        'color': Colors.orange,
+        'count': 6
+      },
     ];
 
     return GridView.builder(
@@ -659,7 +722,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildCategoryCard(Map<String, dynamic> category, double screenHeight, double screenWidth) {
+  Widget _buildCategoryCard(
+      Map<String, dynamic> category, double screenHeight, double screenWidth) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -673,7 +737,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         ],
       ),
       child: InkWell(
-        onTap: () => _navigateToClubCategory(category['name'] as String, screenHeight, screenWidth),
+        onTap: () => _navigateToClubCategory(
+            category['name'] as String, screenHeight, screenWidth),
         borderRadius: BorderRadius.circular(16),
         child: Padding(
           padding: EdgeInsets.all(screenWidth * 0.04),
@@ -757,15 +822,15 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             SizedBox(height: screenHeight * 0.015),
-            _isLoadingMaterials ? _buildLoadingView(screenHeight) : _buildMaterialsList(screenHeight, screenWidth),
+            _isLoadingMaterials
+                ? _buildLoadingView(screenHeight)
+                : _buildMaterialsList(screenHeight, screenWidth),
           ],
         ),
       ),
     );
   }
-
 
   Widget _buildLoadingView(double screenHeight) {
     return Center(
@@ -817,27 +882,21 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         padding: EdgeInsets.all(screenHeight * 0.04),
         child: Column(
           children: [
-            Icon(
-                Icons.folder_open,
-                size: screenWidth * 0.16,
-                color: Colors.grey[300]
-            ),
+            Icon(Icons.folder_open,
+                size: screenWidth * 0.16, color: Colors.grey[300]),
             SizedBox(height: screenHeight * 0.02),
             Text(
               'No materials found',
               style: TextStyle(
                   fontSize: screenWidth * 0.045,
                   color: Colors.grey[600],
-                  fontWeight: FontWeight.w500
-              ),
+                  fontWeight: FontWeight.w500),
             ),
             SizedBox(height: screenHeight * 0.01),
             Text(
               'Try changing your filter criteria',
               style: TextStyle(
-                  fontSize: screenWidth * 0.035,
-                  color: Colors.grey[400]
-              ),
+                  fontSize: screenWidth * 0.035, color: Colors.grey[400]),
             ),
           ],
         ),
@@ -845,8 +904,10 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildMaterialItem(Map<String, dynamic> material, double screenHeight, double screenWidth) {
-    final fileType = material['fileType']?.toString().toLowerCase() ?? 'unknown';
+  Widget _buildMaterialItem(
+      Map<String, dynamic> material, double screenHeight, double screenWidth) {
+    final fileType =
+        material['fileType']?.toString().toLowerCase() ?? 'unknown';
     final fileColor = _getFileColor(fileType);
     final fileIcon = _getFileIcon(fileType);
 
@@ -875,18 +936,14 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           Text(
             'Subject: ${material['subject'] ?? 'N/A'} • Sem: ${material['semester'] ?? 'N/A'}',
             style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: screenWidth * 0.028
-            ),
+                color: Colors.grey[600], fontSize: screenWidth * 0.028),
           ),
           if (material['uploadedBy'] != null) ...[
             SizedBox(height: screenHeight * 0.002),
             Text(
               'Uploaded by: ${material['uploadedBy']}',
               style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: screenWidth * 0.028
-              ),
+                  color: Colors.grey[500], fontSize: screenWidth * 0.028),
             ),
           ],
           if (material['uploadedAt'] != null) ...[
@@ -894,9 +951,7 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
             Text(
               'Date: ${_formatDate(material['uploadedAt'])}',
               style: TextStyle(
-                  color: Colors.grey[500],
-                  fontSize: screenWidth * 0.028
-              ),
+                  color: Colors.grey[500], fontSize: screenWidth * 0.028),
             ),
           ],
         ],
@@ -906,9 +961,7 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         children: [
           Container(
             padding: EdgeInsets.symmetric(
-                horizontal: screenWidth * 0.02,
-                vertical: screenHeight * 0.005
-            ),
+                horizontal: screenWidth * 0.02, vertical: screenHeight * 0.005),
             decoration: BoxDecoration(
               color: fileColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
@@ -923,11 +976,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
             ),
           ),
           SizedBox(width: screenWidth * 0.02),
-          Icon(
-              Icons.download,
-              color: Colors.grey[400],
-              size: screenWidth * 0.05
-          ),
+          Icon(Icons.download,
+              color: Colors.grey[400], size: screenWidth * 0.05),
         ],
       ),
       onTap: () => _downloadMaterial(material),
@@ -991,11 +1041,15 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         padding: EdgeInsets.all(screenHeight * 0.04),
         child: Column(
           children: [
-            Icon(Icons.quiz_outlined, size: screenWidth * 0.16, color: Colors.grey[300]),
+            Icon(Icons.quiz_outlined,
+                size: screenWidth * 0.16, color: Colors.grey[300]),
             SizedBox(height: screenHeight * 0.02),
             Text(
               'No question papers found',
-              style: TextStyle(fontSize: screenWidth * 0.045, color: Colors.grey[600], fontWeight: FontWeight.w500),
+              style: TextStyle(
+                  fontSize: screenWidth * 0.045,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -1003,7 +1057,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildQuestionPaperItem(Map<String, dynamic> paper, double screenHeight, double screenWidth) {
+  Widget _buildQuestionPaperItem(
+      Map<String, dynamic> paper, double screenHeight, double screenWidth) {
     final examType = paper['examType']?.toString() ?? 'Unknown';
     final year = paper['year']?.toString() ?? 'N/A';
     final hasSolutions = paper['hasSolutions'] ?? false;
@@ -1032,13 +1087,15 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           SizedBox(height: screenHeight * 0.005),
           Text(
             'Subject: ${paper['subject'] ?? 'N/A'} • $examType $year',
-            style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.028),
+            style: TextStyle(
+                color: Colors.grey[600], fontSize: screenWidth * 0.028),
           ),
           if (paper['uploadedBy'] != null) ...[
             SizedBox(height: screenHeight * 0.002),
             Text(
               'Uploaded by: ${paper['uploadedBy']}',
-              style: TextStyle(color: Colors.grey[500], fontSize: screenWidth * 0.028),
+              style: TextStyle(
+                  color: Colors.grey[500], fontSize: screenWidth * 0.028),
             ),
           ],
         ],
@@ -1048,7 +1105,9 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         children: [
           if (hasSolutions)
             Container(
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.015, vertical: screenHeight * 0.003),
+              padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.015,
+                  vertical: screenHeight * 0.003),
               decoration: BoxDecoration(
                 color: Colors.green.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
@@ -1063,7 +1122,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               ),
             ),
           SizedBox(width: screenWidth * 0.02),
-          Icon(Icons.download, color: Colors.grey[400], size: screenWidth * 0.05),
+          Icon(Icons.download,
+              color: Colors.grey[400], size: screenWidth * 0.05),
         ],
       ),
       onTap: () => _downloadQuestionPaper(paper),
@@ -1087,9 +1147,24 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
 
   Widget _buildEventsList(double screenHeight, double screenWidth) {
     final events = [
-      {'title': 'Tech Fest 2024', 'date': 'Dec 15-17', 'venue': 'Main Auditorium', 'color': Colors.blue},
-      {'title': 'Annual Sports Meet', 'date': 'Jan 20-22', 'venue': 'Sports Complex', 'color': Colors.green},
-      {'title': 'Cultural Night', 'date': 'Feb 14', 'venue': 'Main Hall', 'color': Colors.purple},
+      {
+        'title': 'Tech Fest 2024',
+        'date': 'Dec 15-17',
+        'venue': 'Main Auditorium',
+        'color': Colors.blue
+      },
+      {
+        'title': 'Annual Sports Meet',
+        'date': 'Jan 20-22',
+        'venue': 'Sports Complex',
+        'color': Colors.green
+      },
+      {
+        'title': 'Cultural Night',
+        'date': 'Feb 14',
+        'venue': 'Main Hall',
+        'color': Colors.purple
+      },
     ];
 
     return Container(
@@ -1118,7 +1193,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildEventItem(Map<String, dynamic> event, double screenHeight, double screenWidth) {
+  Widget _buildEventItem(
+      Map<String, dynamic> event, double screenHeight, double screenWidth) {
     return Padding(
       padding: EdgeInsets.all(screenWidth * 0.04),
       child: Row(
@@ -1160,15 +1236,19 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
             ),
           ),
           ElevatedButton(
-            onPressed: () => _showSuccessMessage('Registered for ${event['title']}'),
+            onPressed: () =>
+                _showSuccessMessage('Registered for ${event['title']}'),
             style: ElevatedButton.styleFrom(
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenHeight * 0.01),
+              padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.04,
+                  vertical: screenHeight * 0.01),
             ),
-            child: Text('Link', style: TextStyle(fontSize: screenWidth * 0.032)),
+            child:
+                Text('Link', style: TextStyle(fontSize: screenWidth * 0.032)),
           ),
         ],
       ),
@@ -1187,7 +1267,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
             child: ElevatedButton.icon(
               onPressed: () => _showAddTaskDialog(screenHeight, screenWidth),
               icon: Icon(Icons.add, size: screenWidth * 0.05),
-              label: Text('Add New Task', style: TextStyle(fontSize: screenWidth * 0.035)),
+              label: Text('Add New Task',
+                  style: TextStyle(fontSize: screenWidth * 0.035)),
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: screenHeight * 0.015),
@@ -1208,9 +1289,24 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
 
   Widget _buildTasksList(double screenHeight, double screenWidth) {
     final tasks = [
-      {'title': 'Complete Math Assignment', 'time': 'Due: 6 PM today', 'completed': false, 'priority': 'high'},
-      {'title': 'Review Physics Notes', 'time': 'Due: Tomorrow', 'completed': false, 'priority': 'medium'},
-      {'title': 'Submit Lab Report', 'time': 'Due: Next week', 'completed': true, 'priority': 'low'},
+      {
+        'title': 'Complete Math Assignment',
+        'time': 'Due: 6 PM today',
+        'completed': false,
+        'priority': 'high'
+      },
+      {
+        'title': 'Review Physics Notes',
+        'time': 'Due: Tomorrow',
+        'completed': false,
+        'priority': 'medium'
+      },
+      {
+        'title': 'Submit Lab Report',
+        'time': 'Due: Next week',
+        'completed': true,
+        'priority': 'low'
+      },
     ];
 
     return Container(
@@ -1239,7 +1335,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildTaskItem(Map<String, dynamic> task, double screenHeight, double screenWidth) {
+  Widget _buildTaskItem(
+      Map<String, dynamic> task, double screenHeight, double screenWidth) {
     Color priorityColor = _getPriorityColor(task['priority'] as String);
 
     return CheckboxListTile(
@@ -1260,22 +1357,28 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: screenWidth * 0.038,
-          decoration: (task['completed'] as bool) ? TextDecoration.lineThrough : null,
+          decoration:
+              (task['completed'] as bool) ? TextDecoration.lineThrough : null,
         ),
       ),
       subtitle: Text(
         task['time'] as String,
-        style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.032),
+        style:
+            TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.032),
       ),
     );
   }
 
   Color _getPriorityColor(String priority) {
     switch (priority) {
-      case 'high': return Colors.red;
-      case 'medium': return Colors.orange;
-      case 'low': return Colors.green;
-      default: return Colors.grey;
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
     }
   }
 
@@ -1296,9 +1399,24 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
 
   Widget _buildCareerList(double screenHeight, double screenWidth) {
     final jobs = [
-      {'title': 'Software Developer', 'company': 'TCS', 'salary': '₹6-8 LPA', 'type': 'Full-time'},
-      {'title': 'Data Analyst Intern', 'company': 'Infosys', 'salary': '₹20k/month', 'type': 'Internship'},
-      {'title': 'UI/UX Designer', 'company': 'Wipro', 'salary': '₹4-6 LPA', 'type': 'Full-time'},
+      {
+        'title': 'Software Developer',
+        'company': 'TCS',
+        'salary': '₹6-8 LPA',
+        'type': 'Full-time'
+      },
+      {
+        'title': 'Data Analyst Intern',
+        'company': 'Infosys',
+        'salary': '₹20k/month',
+        'type': 'Internship'
+      },
+      {
+        'title': 'UI/UX Designer',
+        'company': 'Wipro',
+        'salary': '₹4-6 LPA',
+        'type': 'Full-time'
+      },
     ];
 
     return Container(
@@ -1327,7 +1445,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  Widget _buildCareerItem(Map<String, dynamic> job, double screenHeight, double screenWidth) {
+  Widget _buildCareerItem(
+      Map<String, dynamic> job, double screenHeight, double screenWidth) {
     return Padding(
       padding: EdgeInsets.all(screenWidth * 0.04),
       child: Row(
@@ -1375,9 +1494,12 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.04, vertical: screenHeight * 0.01),
+              padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth * 0.04,
+                  vertical: screenHeight * 0.01),
             ),
-            child: Text('Apply', style: TextStyle(fontSize: screenWidth * 0.032)),
+            child:
+                Text('Apply', style: TextStyle(fontSize: screenWidth * 0.032)),
           ),
         ],
       ),
@@ -1428,8 +1550,16 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
                 borderSide: const BorderSide(color: Color(0xFFFF7F50)),
               ),
             ),
-            items: ['Campus Facilities', 'Curriculum', 'Events', 'Digital Services'].map((String value) {
-              return DropdownMenuItem<String>(value: value, child: Text(value, style: TextStyle(fontSize: screenWidth * 0.035)));
+            items: [
+              'Campus Facilities',
+              'Curriculum',
+              'Events',
+              'Digital Services'
+            ].map((String value) {
+              return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value,
+                      style: TextStyle(fontSize: screenWidth * 0.035)));
             }).toList(),
             onChanged: (value) {},
           ),
@@ -1455,7 +1585,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => _showSuccessMessage('Feedback submitted successfully!'),
+              onPressed: () =>
+                  _showSuccessMessage('Feedback submitted successfully!'),
               style: ElevatedButton.styleFrom(
                 foregroundColor: Colors.white,
                 padding: EdgeInsets.symmetric(vertical: screenHeight * 0.018),
@@ -1463,7 +1594,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: Text('Submit Feedback', style: TextStyle(fontSize: screenWidth * 0.04)),
+              child: Text('Submit Feedback',
+                  style: TextStyle(fontSize: screenWidth * 0.04)),
             ),
           ),
         ],
@@ -1606,10 +1738,12 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _showSuccessMessage('Download link is ready - check the dialog above');
+              _showSuccessMessage(
+                  'Download link is ready - check the dialog above');
             },
             style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
             child: const Text('OK', style: TextStyle(color: Colors.white)),
           ),
@@ -1619,7 +1753,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
   }
 
   // Navigation Methods for Clubs
-  void _navigateToClubDetail(String clubName, double screenHeight, double screenWidth) {
+  void _navigateToClubDetail(
+      String clubName, double screenHeight, double screenWidth) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1631,7 +1766,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
     );
   }
 
-  void _navigateToClubCategory(String categoryName, double screenHeight, double screenWidth) {
+  void _navigateToClubCategory(
+      String categoryName, double screenHeight, double screenWidth) {
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -1649,13 +1785,17 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Join New Clubs', style: TextStyle(fontSize: screenWidth * 0.045)),
-        content: Text('Browse available clubs and join based on your interests.',
+        title: Text('Join New Clubs',
+            style: TextStyle(fontSize: screenWidth * 0.045)),
+        content: Text(
+            'Browse available clubs and join based on your interests.',
             style: TextStyle(fontSize: screenWidth * 0.035)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.035)),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: Colors.grey[600], fontSize: screenWidth * 0.035)),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1663,9 +1803,12 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               _showSuccessMessage('Browse clubs feature coming soon!');
             },
             style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text('Browse', style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.035)),
+            child: Text('Browse',
+                style: TextStyle(
+                    color: Colors.white, fontSize: screenWidth * 0.035)),
           ),
         ],
       ),
@@ -1679,7 +1822,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Add New Task', style: TextStyle(fontSize: screenWidth * 0.045)),
+        title: Text('Add New Task',
+            style: TextStyle(fontSize: screenWidth * 0.045)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1689,7 +1833,8 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               decoration: InputDecoration(
                 labelText: 'Task Title',
                 labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             SizedBox(height: screenHeight * 0.02),
@@ -1697,13 +1842,14 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
               decoration: InputDecoration(
                 labelText: 'Priority',
                 labelStyle: TextStyle(fontSize: screenWidth * 0.035),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
               items: ['High', 'Medium', 'Low'].map((String value) {
                 return DropdownMenuItem<String>(
                     value: value,
-                    child: Text(value, style: TextStyle(fontSize: screenWidth * 0.035))
-                );
+                    child: Text(value,
+                        style: TextStyle(fontSize: screenWidth * 0.035)));
               }).toList(),
               onChanged: (value) {},
             ),
@@ -1712,19 +1858,25 @@ class _StudentCurriculumState extends State<StudentCurriculum> with SingleTicker
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600], fontSize: screenWidth * 0.035)),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: Colors.grey[600], fontSize: screenWidth * 0.035)),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
               if (taskController.text.isNotEmpty) {
-                _showSuccessMessage('Task "${taskController.text}" added successfully!');
+                _showSuccessMessage(
+                    'Task "${taskController.text}" added successfully!');
               }
             },
             style: ElevatedButton.styleFrom(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
             ),
-            child: Text('Add Task', style: TextStyle(color: Colors.white, fontSize: screenWidth * 0.035)),
+            child: Text('Add Task',
+                style: TextStyle(
+                    color: Colors.white, fontSize: screenWidth * 0.035)),
           ),
         ],
       ),
@@ -1792,7 +1944,7 @@ class ClubDetailPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: Text(
           clubName,
           style: TextStyle(
@@ -1892,11 +2044,14 @@ class ClubDetailPage extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: screenHeight * 0.02),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
                   'Join Club',
-                  style: TextStyle(fontSize: screenWidth * 0.04, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      fontSize: screenWidth * 0.04,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -1906,7 +2061,8 @@ class ClubDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(String title, String content, double screenWidth, double screenHeight) {
+  Widget _buildSection(
+      String title, String content, double screenWidth, double screenHeight) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1978,7 +2134,7 @@ class ClubCategoryPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: Text(
           '$categoryName Clubs',
           style: TextStyle(
@@ -2066,7 +2222,8 @@ class ClubCategoryPage extends StatelessWidget {
                     horizontal: screenWidth * 0.03,
                     vertical: screenHeight * 0.008,
                   ),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
                 ),
                 child: Text(
                   'View',

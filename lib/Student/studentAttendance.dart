@@ -82,8 +82,10 @@ class _AttendancePageState extends State<AttendancePage>
     final now = DateTime.now();
     int currentIdx = -1;
     for (int i = 0; i < 7; i++) {
-      final start = DateTime(now.year, now.month, now.day, periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
-      final end = DateTime(now.year, now.month, now.day, periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
+      final start = DateTime(now.year, now.month, now.day,
+          periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
+      final end = DateTime(now.year, now.month, now.day,
+          periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
       if (now.isAfter(start) && now.isBefore(end)) {
         currentIdx = i;
         break;
@@ -91,7 +93,8 @@ class _AttendancePageState extends State<AttendancePage>
     }
     setState(() {
       _currentPeriodIndex = currentIdx;
-      _currentDateStr = "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
+      _currentDateStr =
+          "${now.day.toString().padLeft(2, '0')}-${now.month.toString().padLeft(2, '0')}-${now.year}";
     });
   }
 
@@ -113,7 +116,7 @@ class _AttendancePageState extends State<AttendancePage>
 
       final department = data['department'];
       final className = data['class'];
-      
+
       if (department != null && className != null) {
         final classDoc = await FirebaseFirestore.instance
             .collection('colleges')
@@ -128,7 +131,8 @@ class _AttendancePageState extends State<AttendancePage>
           final classData = classDoc.data()!;
           final semesterField = classData['currentSemester'];
           if (semesterField is Map) {
-            currentSemester = semesterField['semester']?.toString() ?? currentSemester;
+            currentSemester =
+                semesterField['semester']?.toString() ?? currentSemester;
           } else if (semesterField != null) {
             currentSemester = semesterField.toString();
           }
@@ -228,25 +232,26 @@ class _AttendancePageState extends State<AttendancePage>
 
       // Sort dates chronologically
       final sorted = Map<String, Map<int, Map<String, String>>>.fromEntries(
-        parsed.entries.toList()..sort((a, b) {
-          try {
-            final dateParts1 = a.key.split('-');
-            final dateParts2 = b.key.split('-');
-            final date1 = DateTime(
-              int.parse(dateParts1[2]),
-              int.parse(dateParts1[1]),
-              int.parse(dateParts1[0]),
-            );
-            final date2 = DateTime(
-              int.parse(dateParts2[2]),
-              int.parse(dateParts2[1]),
-              int.parse(dateParts2[0]),
-            );
-            return date1.compareTo(date2);
-          } catch (e) {
-            return a.key.compareTo(b.key);
-          }
-        }),
+        parsed.entries.toList()
+          ..sort((a, b) {
+            try {
+              final dateParts1 = a.key.split('-');
+              final dateParts2 = b.key.split('-');
+              final date1 = DateTime(
+                int.parse(dateParts1[2]),
+                int.parse(dateParts1[1]),
+                int.parse(dateParts1[0]),
+              );
+              final date2 = DateTime(
+                int.parse(dateParts2[2]),
+                int.parse(dateParts2[1]),
+                int.parse(dateParts2[0]),
+              );
+              return date1.compareTo(date2);
+            } catch (e) {
+              return a.key.compareTo(b.key);
+            }
+          }),
       );
 
       setState(() {
@@ -446,7 +451,8 @@ class _AttendancePageState extends State<AttendancePage>
   /// Ensure storage permission — tries storage first, then manageExternalStorage.
   /// Returns true if permission granted, false otherwise.
   Future<bool> _ensureStoragePermission() async {
-    if (!Platform.isAndroid) return true; // iOS/macOS: saving to app dirs doesn't need these perms
+    if (!Platform.isAndroid)
+      return true; // iOS/macOS: saving to app dirs doesn't need these perms
 
     // Try the "storage" permission first (covers many devices)
     final storageStatus = await Permission.storage.status;
@@ -463,12 +469,16 @@ class _AttendancePageState extends State<AttendancePage>
     if (requestManage.isGranted) return true;
 
     // If we are here, permission denied or permanently denied
-    if (requestManage.isPermanentlyDenied || requestStorage.isPermanentlyDenied) {
+    if (requestManage.isPermanentlyDenied ||
+        requestStorage.isPermanentlyDenied) {
       // Prompt user to open app settings
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Storage permission permanently denied. Please enable it in App settings.')),
+        SnackBar(
+            content: Text(
+                'Storage permission permanently denied. Please enable it in App settings.')),
       );
-      await Future.delayed(const Duration(milliseconds: 400)); // allow snackbar to show
+      await Future.delayed(
+          const Duration(milliseconds: 400)); // allow snackbar to show
       openAppSettings();
     }
 
@@ -603,10 +613,12 @@ class _AttendancePageState extends State<AttendancePage>
         String errorMessage;
         switch (result.type) {
           case ResultType.noAppToOpen:
-            errorMessage = 'No app available to open PDF files. Please install a PDF viewer.';
+            errorMessage =
+                'No app available to open PDF files. Please install a PDF viewer.';
             break;
           case ResultType.fileNotFound:
-            errorMessage = 'PDF file not found. It may have been moved or deleted.';
+            errorMessage =
+                'PDF file not found. It may have been moved or deleted.';
             break;
           case ResultType.permissionDenied:
             errorMessage = 'Permission denied. Unable to open the PDF file.';
@@ -670,7 +682,8 @@ class _AttendancePageState extends State<AttendancePage>
 
       // Create data structure with dates as rows and hours as columns
       // Create table headers with hours
-      final List<String> tableHeaders = ['Date'] + hours.map((h) => 'Hour ${h + 1}').toList();
+      final List<String> tableHeaders =
+          ['Date'] + hours.map((h) => 'Hour ${h + 1}').toList();
 
       // Create table data with dates as rows
       final List<List<String>> tableData = dates.map((date) {
@@ -783,7 +796,8 @@ class _AttendancePageState extends State<AttendancePage>
                     children: [
                       // Present Stats
                       pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 15),
                         decoration: pw.BoxDecoration(
                           color: presentColor,
                           borderRadius: pw.BorderRadius.circular(8),
@@ -819,7 +833,8 @@ class _AttendancePageState extends State<AttendancePage>
                       ),
                       // On Duty Stats
                       pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 15),
                         decoration: pw.BoxDecoration(
                           color: odColor,
                           borderRadius: pw.BorderRadius.circular(8),
@@ -855,7 +870,8 @@ class _AttendancePageState extends State<AttendancePage>
                       ),
                       // Absent Stats
                       pw.Container(
-                        padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+                        padding: const pw.EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 15),
                         decoration: pw.BoxDecoration(
                           color: absentColor,
                           borderRadius: pw.BorderRadius.circular(8),
@@ -915,7 +931,8 @@ class _AttendancePageState extends State<AttendancePage>
             // Attendance Table Section Header
             pw.Container(
               width: double.infinity,
-              padding: const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+              padding:
+                  const pw.EdgeInsets.symmetric(vertical: 10, horizontal: 15),
               decoration: pw.BoxDecoration(
                 color: headerColor,
                 borderRadius: const pw.BorderRadius.only(
@@ -995,15 +1012,21 @@ class _AttendancePageState extends State<AttendancePage>
 
                       return pw.Container(
                         padding: const pw.EdgeInsets.all(6),
-                        decoration: cellColor != null ? pw.BoxDecoration(color: cellColor) : null,
+                        decoration: cellColor != null
+                            ? pw.BoxDecoration(color: cellColor)
+                            : null,
                         child: pw.Text(
                           cellValue,
                           style: pw.TextStyle(
                             fontSize: cellIndex == 0 ? 10 : 8,
-                            fontWeight: cellIndex == 0 ? pw.FontWeight.bold : pw.FontWeight.normal,
+                            fontWeight: cellIndex == 0
+                                ? pw.FontWeight.bold
+                                : pw.FontWeight.normal,
                             color: cellColor != null
                                 ? PdfColors.white
-                                : (cellIndex == 0 ? headerColor : PdfColors.black),
+                                : (cellIndex == 0
+                                    ? headerColor
+                                    : PdfColors.black),
                           ),
                           textAlign: pw.TextAlign.center,
                         ),
@@ -1071,7 +1094,8 @@ class _AttendancePageState extends State<AttendancePage>
         }
 
         final timestamp = DateTime.now().millisecondsSinceEpoch;
-        filePath = '${saveDir!.path}/attendance_report_${selectedSemester}_$timestamp.pdf';
+        filePath =
+            '${saveDir!.path}/attendance_report_${selectedSemester}_$timestamp.pdf';
 
         final file = File(filePath);
         await file.writeAsBytes(await pdf.save());
@@ -1083,14 +1107,17 @@ class _AttendancePageState extends State<AttendancePage>
       } catch (writeError, stack) {
         print('Error saving PDF: $writeError\n$stack');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to save PDF to Downloads. Trying app directory...')),
+          const SnackBar(
+              content: Text(
+                  'Failed to save PDF to Downloads. Trying app directory...')),
         );
 
         // Try fallback: application documents directory
         try {
           final fallbackDir = await getApplicationDocumentsDirectory();
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final fallbackPath = '${fallbackDir.path}/attendance_report_${selectedSemester}_$timestamp.pdf';
+          final fallbackPath =
+              '${fallbackDir.path}/attendance_report_${selectedSemester}_$timestamp.pdf';
           final fallbackFile = File(fallbackPath);
           await fallbackFile.writeAsBytes(await pdf.save());
 
@@ -1128,7 +1155,8 @@ class _AttendancePageState extends State<AttendancePage>
     final hours = collectHours();
     if (hours.isEmpty) return const Center(child: Text('No hours found'));
 
-    final totalHeight = dimensions['headerHeight']! + (hours.length * dimensions['hourCellHeight']!);
+    final totalHeight = dimensions['headerHeight']! +
+        (hours.length * dimensions['hourCellHeight']!);
 
     // Outer vertical scroll to allow many hours
     return SingleChildScrollView(
@@ -1228,11 +1256,13 @@ class _AttendancePageState extends State<AttendancePage>
                             decoration: BoxDecoration(
                               color: const Color(0xFF37474F),
                               border: const Border(
-                                right: BorderSide(color: Colors.white, width: 2.5),
+                                right:
+                                    BorderSide(color: Colors.white, width: 2.5),
                               ),
                             ),
                             alignment: Alignment.center,
-                            padding: EdgeInsets.symmetric(horizontal: dimensions['padding']! / 4),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: dimensions['padding']! / 4),
                             child: Text(
                               date,
                               style: TextStyle(
@@ -1252,19 +1282,27 @@ class _AttendancePageState extends State<AttendancePage>
                             final subj = cell['subject'] as String;
                             final status = cell['status'] as String;
 
-                            final isCurrentClass = date == _currentDateStr && h == _currentPeriodIndex;
+                            final isCurrentClass = date == _currentDateStr &&
+                                h == _currentPeriodIndex;
                             colChildren.add(Container(
                               width: dimensions['dateColumnWidth']!,
                               height: dimensions['hourCellHeight']!,
                               decoration: BoxDecoration(
-                                color: isCurrentClass ? Colors.green.shade500 : (status.isNotEmpty ? getStatusColor(status) : Colors.grey.shade100),
+                                color: isCurrentClass
+                                    ? Colors.green.shade500
+                                    : (status.isNotEmpty
+                                        ? getStatusColor(status)
+                                        : Colors.grey.shade100),
                                 border: const Border(
-                                  right: BorderSide(color: Colors.white, width: 2.5),
-                                  top: BorderSide(color: Colors.white, width: 2.5),
+                                  right: BorderSide(
+                                      color: Colors.white, width: 2.5),
+                                  top: BorderSide(
+                                      color: Colors.white, width: 2.5),
                                 ),
                               ),
                               alignment: Alignment.center,
-                              padding: EdgeInsets.all(dimensions['padding']! / 4),
+                              padding:
+                                  EdgeInsets.all(dimensions['padding']! / 4),
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
@@ -1275,9 +1313,12 @@ class _AttendancePageState extends State<AttendancePage>
                                         child: Text(
                                           subj,
                                           style: TextStyle(
-                                            color: status.isNotEmpty ? Colors.white : Colors.black87,
+                                            color: status.isNotEmpty
+                                                ? Colors.white
+                                                : Colors.black87,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: dimensions['fontSize']! - 3,
+                                            fontSize:
+                                                dimensions['fontSize']! - 3,
                                           ),
                                           textAlign: TextAlign.center,
                                           overflow: TextOverflow.ellipsis,
@@ -1285,25 +1326,29 @@ class _AttendancePageState extends State<AttendancePage>
                                         ),
                                       ),
                                     ),
-                                  if (status.isNotEmpty && subj.isNotEmpty) const SizedBox(height: 2),
+                                  if (status.isNotEmpty && subj.isNotEmpty)
+                                    const SizedBox(height: 2),
                                   if (status.isNotEmpty)
                                     Expanded(
                                       flex: 1,
                                       child: Container(
                                         padding: EdgeInsets.symmetric(
-                                          horizontal: dimensions['padding']! / 3,
+                                          horizontal:
+                                              dimensions['padding']! / 3,
                                           vertical: 1,
                                         ),
                                         decoration: BoxDecoration(
                                           color: Colors.black.withOpacity(0.2),
-                                          borderRadius: BorderRadius.circular(6),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
                                         ),
                                         child: Center(
                                           child: Text(
                                             status,
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: dimensions['fontSize']! - 6,
+                                              fontSize:
+                                                  dimensions['fontSize']! - 6,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
@@ -1364,112 +1409,116 @@ class _AttendancePageState extends State<AttendancePage>
 
         return Column(
           children: [
-
             SizedBox(height: dimensions['padding']!),
             Padding(
               padding: EdgeInsets.symmetric(horizontal: dimensions['padding']!),
               child: isPortrait || !isLargeScreen
                   ? Column(
-                children: [
-                  // Avatar row
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: isLargeScreen ? 45 : 36,
-                        backgroundColor: const Color(0xFFFF8C61).withOpacity(0.12),
-                        child: Icon(
-                          PhosphorIconsRegular.user,
-                          size: isLargeScreen ? 45 : 36,
-                          color: const Color(0xFFFF8C61),
-                        ),
-                      ),
-
-                      SizedBox(width: dimensions['padding']!),
-                      Expanded(
-                        child: Text(
-                          name.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: dimensions['fontSize']!,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: dimensions['padding']!),
-                  // Semester selector and PDF button row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      // Left side - Semester selector
-                      Row(
-                        children: [
-                          Text(
-                            'Semester: ',
-                            style: TextStyle(
-                              fontSize: dimensions['fontSize']! - 2,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Color(0xFFFF7A52)),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: selectedSemester,
-                                items: semesters
-                                    .map((sem) => DropdownMenuItem(
-                                  value: sem,
-                                  child: Text(sem),
-                                ))
-                                    .toList(),
-                                onChanged: _onSemesterChanged,
+                      children: [
+                        // Avatar row
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: isLargeScreen ? 45 : 36,
+                              backgroundColor:
+                                  const Color(0xFFFF8C61).withOpacity(0.12),
+                              child: Icon(
+                                PhosphorIconsRegular.user,
+                                size: isLargeScreen ? 45 : 36,
+                                color: const Color(0xFFFF8C61),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      // Right side - PDF button
-                      ElevatedButton.icon(
-                        onPressed: attendanceData.isEmpty ? null : _generateAttendancePDF,
-                        icon: Icon(Icons.picture_as_pdf, size: 18),
-                        label: Text('Get PDF'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFFF7A52),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            SizedBox(width: dimensions['padding']!),
+                            Expanded(
+                              child: Text(
+                                name.toUpperCase(),
+                                style: TextStyle(
+                                  fontSize: dimensions['fontSize']!,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: dimensions['padding']!),
-                  // Progress bars row
-                  buildProgressSection(context),
-                ],
-              )
+                        SizedBox(height: dimensions['padding']!),
+                        // Semester selector and PDF button row
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // Left side - Semester selector
+                            Row(
+                              children: [
+                                Text(
+                                  'Semester: ',
+                                  style: TextStyle(
+                                    fontSize: dimensions['fontSize']! - 2,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border:
+                                        Border.all(color: Color(0xFFFF7A52)),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: selectedSemester,
+                                      items: semesters
+                                          .map((sem) => DropdownMenuItem(
+                                                value: sem,
+                                                child: Text(sem),
+                                              ))
+                                          .toList(),
+                                      onChanged: _onSemesterChanged,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Right side - PDF button
+                            ElevatedButton.icon(
+                              onPressed: attendanceData.isEmpty
+                                  ? null
+                                  : _generateAttendancePDF,
+                              icon: Icon(Icons.picture_as_pdf, size: 18),
+                              label: Text('Get PDF'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Color(0xFFFF7A52),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                padding: EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 8),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: dimensions['padding']!),
+                        // Progress bars row
+                        buildProgressSection(context),
+                      ],
+                    )
                   : Row(
-                children: [
-                  CircleAvatar(
-                    radius: 45,
-                    backgroundColor: Colors.white70,
-                    child: Icon(
-                      Icons.person,
-                      size: 40,
-                      color: Colors.grey,
+                      children: [
+                        CircleAvatar(
+                          radius: 45,
+                          backgroundColor: Colors.white70,
+                          child: Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
+                        ),
+                        SizedBox(width: dimensions['padding']!),
+                        Expanded(child: buildProgressSection(context)),
+                      ],
                     ),
-                  ),
-                  SizedBox(width: dimensions['padding']!),
-                  Expanded(child: buildProgressSection(context)),
-                ],
-              ),
             ),
             SizedBox(height: dimensions['padding']!),
           ],
@@ -1487,12 +1536,12 @@ class _AttendancePageState extends State<AttendancePage>
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildProgressItem(
-                presentPercent / 100, const Color(0xFF2ECC71), '${presentPercent.toStringAsFixed(1)}%', dimensions),
-            _buildProgressItem(
-                odPercent / 100, const Color(0xFF1E90FF), '${odPercent.toStringAsFixed(1)}%', dimensions),
-            _buildProgressItem(
-                absentPercent / 100, const Color(0xFFE74C3C), '${absentPercent.toStringAsFixed(1)}%', dimensions),
+            _buildProgressItem(presentPercent / 100, const Color(0xFF2ECC71),
+                '${presentPercent.toStringAsFixed(1)}%', dimensions),
+            _buildProgressItem(odPercent / 100, const Color(0xFF1E90FF),
+                '${odPercent.toStringAsFixed(1)}%', dimensions),
+            _buildProgressItem(absentPercent / 100, const Color(0xFFE74C3C),
+                '${absentPercent.toStringAsFixed(1)}%', dimensions),
           ],
         ),
         SizedBox(height: dimensions['padding']! / 2),
@@ -1524,7 +1573,8 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget _buildProgressItem(double percentage, Color color, String text, Map<String, double> dimensions) {
+  Widget _buildProgressItem(double percentage, Color color, String text,
+      Map<String, double> dimensions) {
     return Flexible(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1543,7 +1593,8 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget _buildLegendItem(IconData icon, String text, Color color, Map<String, double> dimensions) {
+  Widget _buildLegendItem(
+      IconData icon, String text, Color color, Map<String, double> dimensions) {
     return Flexible(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1566,7 +1617,8 @@ class _AttendancePageState extends State<AttendancePage>
     );
   }
 
-  Widget buildProgressBar(double percentage, Color color, Map<String, double> dimensions) {
+  Widget buildProgressBar(
+      double percentage, Color color, Map<String, double> dimensions) {
     final progressWidth = dimensions['padding']! * 2;
     return ClipPath(
       clipper: CustomClipPath(),
@@ -1603,7 +1655,7 @@ class _AttendancePageState extends State<AttendancePage>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: const Text(
           "ATTENDANCE",
           style: TextStyle(
@@ -1632,40 +1684,41 @@ class _AttendancePageState extends State<AttendancePage>
                 ),
                 child: loading
                     ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7A52)),
-                      ),
-                      SizedBox(height: 16),
-                      Text('Loading attendance data...'),
-                    ],
-                  ),
-                )
-                    : attendanceData.isEmpty
-                    ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.calendar_today_outlined,
-                        size: isLargeScreen ? 64 : 48,
-                        color: Colors.grey,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No attendance data found for semester ${selectedSemester ?? ""}',
-                        style: TextStyle(
-                          fontSize: isLargeScreen ? 18 : 16,
-                          color: Colors.grey.shade600,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFFF7A52)),
+                            ),
+                            SizedBox(height: 16),
+                            Text('Loading attendance data...'),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                )
-                    : buildTimetable(context),
+                      )
+                    : attendanceData.isEmpty
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_outlined,
+                                  size: isLargeScreen ? 64 : 48,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'No attendance data found for semester ${selectedSemester ?? ""}',
+                                  style: TextStyle(
+                                    fontSize: isLargeScreen ? 18 : 16,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          )
+                        : buildTimetable(context),
               ),
             ),
           ],
@@ -1673,6 +1726,7 @@ class _AttendancePageState extends State<AttendancePage>
       ),
     );
   }
+
   void _goToDashboard(BuildContext context) {
     Navigator.pushReplacement(
       context,
@@ -1681,11 +1735,7 @@ class _AttendancePageState extends State<AttendancePage>
       ),
     );
   }
-
 }
-
-
-
 
 /// small decorative clipper used in progress bar
 class CustomClipPath extends CustomClipper<Path> {

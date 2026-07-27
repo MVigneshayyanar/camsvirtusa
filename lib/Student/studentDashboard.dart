@@ -149,11 +149,11 @@ class _StudentDashboardState extends State<StudentDashboard>
                   height: 90,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFFF97316).withOpacity(0.1),
+                    color: const Color(0xFFFF7F50).withOpacity(0.1),
                   ),
                   child: const Icon(
                     Icons.face_retouching_natural_rounded,
-                    color: Color(0xFFF97316),
+                    color: Color(0xFFFF7F50),
                     size: 48,
                   ),
                 ),
@@ -217,7 +217,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF97316),
+                          backgroundColor: const Color(0xFFFF7F50),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           elevation: 0,
@@ -523,7 +523,9 @@ class _StudentDashboardState extends State<StudentDashboard>
 
     _scanSubscription?.cancel();
     FlutterBluePlus.stopScan();
-    setState(() => _isScanning = false);
+    if (mounted) {
+      setState(() => _isScanning = false);
+    }
 
     print("⏹️ Stopped BLE scanning");
   }
@@ -1188,7 +1190,7 @@ class _StudentDashboardState extends State<StudentDashboard>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: Center(
           child: Text(
             'STUDENT DASHBOARD',

@@ -259,7 +259,7 @@ class _StudentProfileState extends State<StudentProfile> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         automaticallyImplyLeading: false,
         title: Text(
           'STUDENT PROFILE',
@@ -282,7 +282,7 @@ class _StudentProfileState extends State<StudentProfile> {
                 children: [
                   Container(
                     width: double.infinity,
-                    color: const Color(0xFFF97316),
+                    color: const Color(0xFFFF7F50),
                     padding: EdgeInsets.only(
                       bottom:
                           screenHeight > 600 ? 40 : 30, // Responsive padding
@@ -360,7 +360,7 @@ class _StudentProfileState extends State<StudentProfile> {
         height: screenWidth > 600 ? 45 : 40, // Responsive height
         child: FloatingActionButton(
           onPressed: _logout,
-          backgroundColor: const Color(0xFFF97316),
+          backgroundColor: const Color(0xFFFF7F50),
           child: Text(
             'Log out',
             style: TextStyle(

@@ -414,7 +414,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                       child: const Text(
                         'Skip Verification',
                         style: TextStyle(
-                            color: Color(0xFFF97316),
+                            color: Color(0xFFFF7F50),
                             fontSize: 14,
                             fontWeight: FontWeight.bold),
                       ),
@@ -454,7 +454,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   child: const Text(
                     'Skip Verification',
                     style: TextStyle(
-                        color: Color(0xFFF97316),
+                        color: Color(0xFFFF7F50),
                         fontSize: 14,
                         fontWeight: FontWeight.bold),
                   ),

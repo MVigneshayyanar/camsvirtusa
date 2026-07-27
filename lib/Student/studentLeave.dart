@@ -7,7 +7,8 @@ import 'studentDashboard.dart'; // Add this import
 
 class LeaveApplicationForm extends StatefulWidget {
   final String studentId;
-  const LeaveApplicationForm({Key? key, required this.studentId}) : super(key: key);
+  const LeaveApplicationForm({Key? key, required this.studentId})
+      : super(key: key);
 
   @override
   _LeaveApplicationFormState createState() {
@@ -33,7 +34,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
 
   final TextEditingController reasonController = TextEditingController();
 
-  static const Color _orange = Color(0xFFF97316);
+  static const Color _orange = Color(0xFFFF7F50);
   static const Color _lightGrayBg = Color(0xFFF0F0F0);
   static const Color _dropdownColor = Color(0xFFFFFFFF);
 
@@ -48,7 +49,9 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   Future<void> _selectDate(BuildContext context, bool isFromDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isFromDate ? (fromDate ?? DateTime.now()) : (toDate ?? DateTime.now()),
+      initialDate: isFromDate
+          ? (fromDate ?? DateTime.now())
+          : (toDate ?? DateTime.now()),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
     );
@@ -66,7 +69,10 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
   }
 
   void _submitForm() {
-    if (fromDate != null && toDate != null && selectedLeaveType != null && reasonController.text.isNotEmpty) {
+    if (fromDate != null &&
+        toDate != null &&
+        selectedLeaveType != null &&
+        reasonController.text.isNotEmpty) {
       // Show confirmation alert
       showDialog(
         context: context,
@@ -128,7 +134,7 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
                         Navigator.of(context).pop();
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFF97316),
+                        backgroundColor: const Color(0xFFFF7F50),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         elevation: 0,
@@ -206,11 +212,15 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     );
   }
 
-  Widget _buildDateField({required String label, required DateTime? date, required bool isFromDate}) {
+  Widget _buildDateField(
+      {required String label,
+      required DateTime? date,
+      required bool isFromDate}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(label,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -221,7 +231,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
             ),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
-          controller: TextEditingController(text: date == null ? '' : DateFormat('dd/MM/yyyy').format(date)),
+          controller: TextEditingController(
+              text: date == null ? '' : DateFormat('dd/MM/yyyy').format(date)),
         ),
       ],
     );
@@ -231,7 +242,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Number of Days:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Number of Days:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextField(
           readOnly: true,
           decoration: InputDecoration(
@@ -247,7 +259,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Type of Leave:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Type of Leave:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         DropdownButtonFormField<String>(
           value: selectedLeaveType,
           onChanged: (newValue) {
@@ -275,7 +288,8 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text("Reason:", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        Text("Reason:",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         TextFormField(
           controller: reasonController,
           maxLines: 10, // Increased height to 10 lines
@@ -292,12 +306,13 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
         backgroundColor: _orange,
-        padding: EdgeInsets.symmetric(vertical: 15, horizontal: 30), // Added horizontal padding
+        padding: EdgeInsets.symmetric(
+            vertical: 15, horizontal: 30), // Added horizontal padding
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
       onPressed: _submitForm,
-      child: Text("APPLY", style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      child: Text("APPLY",
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
     );
   }
-
 }

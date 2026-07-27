@@ -59,7 +59,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
           .doc('departments')
           .collection('all_departments')
           .doc(department)
-          .collection('clasees') // keeping correct spelling from classControl.dart
+          .collection(
+              'clasees') // keeping correct spelling from classControl.dart
           .doc(className)
           .get();
 
@@ -101,7 +102,7 @@ class _TimeTablePageState extends State<TimeTablePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: const Text(
           'TIME TABLE',
           style: const TextStyle(
@@ -131,11 +132,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
                     child: Text(
                       'Error: $_errorMessage',
                       style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.0,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -149,8 +150,10 @@ class _TimeTablePageState extends State<TimeTablePage> {
                       // Current Semester Section
                       Center(
                         child: Container(
-                          margin: const EdgeInsets.only(left: 16, right: 16, top: 45, bottom: 16),
-                          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 12),
+                          margin: const EdgeInsets.only(
+                              left: 16, right: 16, top: 45, bottom: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 25, vertical: 12),
                           decoration: BoxDecoration(
                             color: const Color(0xFF36454F), // Dark gray
                             borderRadius: BorderRadius.circular(20),
@@ -158,11 +161,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
                           child: Text(
                             'CURRENT SEMESTER : ${_currentSemester ?? "V"}',
                             style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 1.0,
+                            ),
                           ),
                         ),
                       ),
@@ -193,11 +196,11 @@ class _TimeTablePageState extends State<TimeTablePage> {
               Text(
                 'No timetable configured for this semester.',
                 style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.0,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -208,13 +211,13 @@ class _TimeTablePageState extends State<TimeTablePage> {
 
     final days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
     final headers = [
-      "Day", 
-      "P1\n9:00 - 9:50", 
-      "P2\n9:50 - 10:40", 
-      "P3\n10:55 - 11:45", 
-      "P4\n11:45 - 12:35", 
-      "P5\n1:25 - 2:15", 
-      "P6\n2:15 - 3:05", 
+      "Day",
+      "P1\n9:00 - 9:50",
+      "P2\n9:50 - 10:40",
+      "P3\n10:55 - 11:45",
+      "P4\n11:45 - 12:35",
+      "P5\n1:25 - 2:15",
+      "P6\n2:15 - 3:05",
       "P7\n3:20 - 4:10"
     ];
 
@@ -225,79 +228,87 @@ class _TimeTablePageState extends State<TimeTablePage> {
         minScale: 0.8,
         maxScale: 4.0,
         child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-        child: Table(
-          defaultColumnWidth: const FlexColumnWidth(),
-          border: TableBorder.all(
-            color: const Color(0xFF36454F), 
-            width: 1.0, 
-            borderRadius: BorderRadius.circular(6),
-          ),
-          children: [
-            // Headers row
-            TableRow(
-              decoration: const BoxDecoration(color: Color(0xFFE5E5E5)),
-              children: headers.map((header) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                  alignment: Alignment.center,
-                  child: Text(
-                    header,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                );
-              }).toList(),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+          child: Table(
+            defaultColumnWidth: const FlexColumnWidth(),
+            border: TableBorder.all(
+              color: const Color(0xFF36454F),
+              width: 1.0,
+              borderRadius: BorderRadius.circular(6),
             ),
-            // Days rows
-            ...days.map((day) {
-              final periodsList = _timetableData![day] as List?;
-              return TableRow(
-                children: [
-                  // Day Label cell
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
-                    color: const Color(0xFFF9F9F9),
+            children: [
+              // Headers row
+              TableRow(
+                decoration: const BoxDecoration(color: Color(0xFFE5E5E5)),
+                children: headers.map((header) {
+                  return Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
                     alignment: Alignment.center,
                     child: Text(
-                      day.toUpperCase().substring(0, 3), // e.g. MON
+                      header,
                       style: const TextStyle(
-                        fontSize: 11,
+                        color: Colors.white,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFFFF7F50),
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                  ),
-                  // 7 periods cells
-                  ...List.generate(7, (index) {
-                    final String val = (periodsList != null && index < periodsList.length)
-                        ? periodsList[index]?.toString() ?? ""
-                        : "";
-                    return Container(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 1),
+                  );
+                }).toList(),
+              ),
+              // Days rows
+              ...days.map((day) {
+                final periodsList = _timetableData![day] as List?;
+                return TableRow(
+                  children: [
+                    // Day Label cell
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 10, horizontal: 2),
+                      color: const Color(0xFFF9F9F9),
                       alignment: Alignment.center,
                       child: Text(
-                        val.isEmpty ? "-" : val,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: val.isNotEmpty ? FontWeight.bold : FontWeight.normal,
-                          color: val.isNotEmpty ? const Color(0xFFFF7F50) : Colors.grey,
+                        day.toUpperCase().substring(0, 3), // e.g. MON
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF7F50),
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                    );
-                  }),
-                ],
-              );
-            }),
-          ],
+                    ),
+                    // 7 periods cells
+                    ...List.generate(7, (index) {
+                      final String val =
+                          (periodsList != null && index < periodsList.length)
+                              ? periodsList[index]?.toString() ?? ""
+                              : "";
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 10, horizontal: 1),
+                        alignment: Alignment.center,
+                        child: Text(
+                          val.isEmpty ? "-" : val,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: val.isNotEmpty
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: val.isNotEmpty
+                                ? const Color(0xFFFF7F50)
+                                : Colors.grey,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }),
+                  ],
+                );
+              }),
+            ],
+          ),
         ),
       ),
-    ),
     );
   }
 
@@ -344,7 +355,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFF7F50).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -382,7 +394,8 @@ class _TimeTablePageState extends State<TimeTablePage> {
                           if (isElective) ...[
                             const SizedBox(height: 6),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 4, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(4),
@@ -435,5 +448,4 @@ class _TimeTablePageState extends State<TimeTablePage> {
       ),
     );
   }
-
 }

@@ -20,7 +20,7 @@ class _NewsScreenState extends State<NewsScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         elevation: 0,
         automaticallyImplyLeading: !widget.isTab,
         leading: widget.isTab
@@ -44,7 +44,7 @@ class _NewsScreenState extends State<NewsScreen> {
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
-              child: CircularProgressIndicator(color: Color(0xFFF97316)),
+              child: CircularProgressIndicator(color: Color(0xFFFF7F50)),
             );
           }
           if (snapshot.hasError) {
@@ -218,7 +218,7 @@ class _NewsItemCardState extends State<NewsItemCard> {
                   style: const TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: Color(0xFFF97316),
+                    color: Color(0xFFFF7F50),
                   ),
                 ),
               ),

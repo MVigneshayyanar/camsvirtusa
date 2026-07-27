@@ -403,7 +403,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         centerTitle: false,
         title: Text(
           'FACULTY DASHBOARD',

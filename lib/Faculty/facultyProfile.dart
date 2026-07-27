@@ -87,11 +87,11 @@ class _FacultyProfileState extends State<FacultyProfile> {
                   height: 90,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: const Color(0xFFF97316).withOpacity(0.1),
+                    color: const Color(0xFFFF7F50).withOpacity(0.1),
                   ),
                   child: const Icon(
                     Icons.logout_rounded,
-                    color: Color(0xFFF97316),
+                    color: Color(0xFFFF7F50),
                     size: 48,
                   ),
                 ),
@@ -151,7 +151,7 @@ class _FacultyProfileState extends State<FacultyProfile> {
                           _performLogout();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF97316),
+                          backgroundColor: const Color(0xFFFF7F50),
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           elevation: 0,
@@ -206,7 +206,7 @@ class _FacultyProfileState extends State<FacultyProfile> {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: const Color(0xFFF97316),
+          backgroundColor: const Color(0xFFFF7F50),
           title: Text(
             'FACULTY PROFILE',
             style: const TextStyle(
@@ -243,7 +243,7 @@ class _FacultyProfileState extends State<FacultyProfile> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: Text(
           'FACULTY PROFILE',
           style: const TextStyle(
@@ -406,7 +406,7 @@ class _FacultyProfileState extends State<FacultyProfile> {
         height: screenWidth > 600 ? 45 : 40,
         child: FloatingActionButton(
           onPressed: _logout,
-          backgroundColor: const Color(0xFFF97316),
+          backgroundColor: const Color(0xFFFF7F50),
           child: Text(
             'Log out',
             style: TextStyle(

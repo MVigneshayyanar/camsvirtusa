@@ -35,6 +35,9 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   String searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
+  List<Map<String, dynamic>> todaySwaps = [];
+  List<Map<String, dynamic>> deptFaculties = [];
+
   final periodStartTimes = [
     {'hour': 9, 'minute': 0},
     {'hour': 9, 'minute': 50},
@@ -92,12 +95,29 @@ class _MarkAttendanceState extends State<MarkAttendance> {
             .doc(departmentId)
             .collection('clasees')
             .get();
+
+        final facultiesSnapshot = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('faculties')
+            .collection('all_faculties')
+            .where('department', isEqualTo: departmentId)
+            .get();
+
         setState(() {
           allClasses = classesSnapshot.docs.map((doc) => doc.id).toList();
+          deptFaculties = facultiesSnapshot.docs
+              .map((doc) => {
+                    'id': doc.id,
+                    'name': doc.data()['name'] ?? 'Unknown',
+                    'abbreviation': doc.data()['abbreviation'] ?? '',
+                    'classes': List<String>.from(doc.data()['classes'] ?? []),
+                  })
+              .where((f) => f['id'] != widget.facultyId)
+              .toList();
         });
       }
 
-      _calculateCurrentClass();
+      await _calculateCurrentClass();
     } catch (e) {
       setState(() {
         error = 'Error loading faculty details: $e';
@@ -133,9 +153,27 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         "Sunday"
       ];
       final String today = daysOfWeek[now.weekday - 1];
+
+      // Fetch swaps
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+      final swapsSnapshot = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('departments')
+          .collection('all_departments')
+          .doc(departmentId)
+          .collection('swaps')
+          .where('date', isEqualTo: dateStr)
+          .get();
+
+      final List<Map<String, dynamic>> activeSwaps = [];
+      for (var d in swapsSnapshot.docs) {
+        activeSwaps.add(d.data());
+      }
+
       if (today == "Saturday" || today == "Sunday") {
         if (mounted) {
           setState(() {
+            todaySwaps = activeSwaps;
             todayClasses = assignedClasses;
           });
         }
@@ -186,12 +224,48 @@ class _MarkAttendanceState extends State<MarkAttendance> {
           }
         }
       }
-      
+
+      // Adjust based on active swaps
+      for (var swap in activeSwaps) {
+        final f1 = swap['faculty1Id']?.toString() ?? "";
+        final f2 = swap['faculty2Id']?.toString() ?? "";
+        final c1 = swap['faculty1Class']?.toString() ?? "";
+        final c2 = swap['faculty2Class']?.toString() ?? "";
+        final p1 = swap['faculty1Period'] as int? ?? -1;
+        final p2 = swap['faculty2Period'] as int? ?? -1;
+
+        if (f1 == widget.facultyId) {
+          if (c2.isNotEmpty && !tempTodayClasses.contains(c2)) {
+            tempTodayClasses.add(c2);
+          }
+          if (currentIdx == p2) {
+            tempCurrentClass = c2;
+          }
+          if (currentIdx == p1 && tempCurrentClass == c1) {
+            tempCurrentClass = null;
+          }
+        } else if (f2 == widget.facultyId) {
+          if (c1.isNotEmpty && !tempTodayClasses.contains(c1)) {
+            tempTodayClasses.add(c1);
+          }
+          if (currentIdx == p1) {
+            tempCurrentClass = c1;
+          }
+          if (currentIdx == p2 && tempCurrentClass == c2) {
+            tempCurrentClass = null;
+          }
+        }
+      }
+
       if (mounted) {
         setState(() {
-          todayClasses = tempTodayClasses.isEmpty ? assignedClasses : tempTodayClasses;
+          todaySwaps = activeSwaps;
+          todayClasses =
+              tempTodayClasses.isEmpty ? assignedClasses : tempTodayClasses;
           if (tempCurrentClass != null) {
             currentClass = tempCurrentClass;
+          } else {
+            currentClass = '';
           }
         });
       }
@@ -213,12 +287,287 @@ class _MarkAttendanceState extends State<MarkAttendance> {
     );
   }
 
+  void _showSwapDialog() {
+    String? mySelectedClass =
+        assignedClasses.isNotEmpty ? assignedClasses.first : null;
+    int mySelectedPeriod = 0;
+    Map<String, dynamic>? selectedFaculty =
+        deptFaculties.isNotEmpty ? deptFaculties.first : null;
+    String? targetSelectedClass;
+    int targetSelectedPeriod = 6;
+
+    if (selectedFaculty != null &&
+        (selectedFaculty['classes'] as List).isNotEmpty) {
+      targetSelectedClass =
+          (selectedFaculty['classes'] as List).first.toString();
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final targetClasses = selectedFaculty != null
+                ? List<String>.from(selectedFaculty!['classes'] ?? [])
+                : <String>[];
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Row(
+                children: [
+                  Icon(Icons.swap_horiz, color: Color(0xFFFF7F50)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Swap Hours',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Your Hour details:',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: mySelectedClass,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Your Class',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: assignedClasses.map((String value) {
+                        return DropdownMenuItem<String>(
+                          value: value,
+                          child: Text(value),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setDialogState(() {
+                          mySelectedClass = newValue;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: mySelectedPeriod,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Your Period',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: List.generate(7, (index) {
+                        return DropdownMenuItem<int>(
+                          value: index,
+                          child: Text(
+                              'Period ${index + 1} (${_getPeriodTimeLabel(index)})'),
+                        );
+                      }),
+                      onChanged: (newValue) {
+                        setDialogState(() {
+                          mySelectedPeriod = newValue ?? 0;
+                        });
+                      },
+                    ),
+                    const Divider(height: 24, thickness: 1),
+                    const Text(
+                      'Swap With (Target Faculty):',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.grey),
+                    ),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<Map<String, dynamic>>(
+                      value: selectedFaculty,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Faculty',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: deptFaculties.map((Map<String, dynamic> val) {
+                        return DropdownMenuItem<Map<String, dynamic>>(
+                          value: val,
+                          child: Text(val['name']),
+                        );
+                      }).toList(),
+                      onChanged: (newValue) {
+                        setDialogState(() {
+                          selectedFaculty = newValue;
+                          final newTargetClasses = selectedFaculty != null
+                              ? List<String>.from(
+                                  selectedFaculty!['classes'] ?? [])
+                              : <String>[];
+                          targetSelectedClass = newTargetClasses.isNotEmpty
+                              ? newTargetClasses.first
+                              : null;
+                        });
+                      },
+                    ),
+                    if (targetClasses.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        value: targetSelectedClass,
+                        decoration: const InputDecoration(
+                          labelText: 'Select Their Class',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: targetClasses.map((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                        onChanged: (newValue) {
+                          setDialogState(() {
+                            targetSelectedClass = newValue;
+                          });
+                        },
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int>(
+                      value: targetSelectedPeriod,
+                      decoration: const InputDecoration(
+                        labelText: 'Select Their Period',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: List.generate(7, (index) {
+                        return DropdownMenuItem<int>(
+                          value: index,
+                          child: Text(
+                              'Period ${index + 1} (${_getPeriodTimeLabel(index)})'),
+                        );
+                      }),
+                      onChanged: (newValue) {
+                        setDialogState(() {
+                          targetSelectedPeriod = newValue ?? 0;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF7F50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () async {
+                    if (mySelectedClass == null ||
+                        selectedFaculty == null ||
+                        targetSelectedClass == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Please select all fields')),
+                      );
+                      return;
+                    }
+                    Navigator.of(context).pop();
+                    await _createSwap(
+                      myClass: mySelectedClass!,
+                      myPeriod: mySelectedPeriod,
+                      targetFacultyId: selectedFaculty!['id'],
+                      targetFacultyName: selectedFaculty!['name'],
+                      targetClass: targetSelectedClass!,
+                      targetPeriod: targetSelectedPeriod,
+                    );
+                  },
+                  child: const Text('Request Swap',
+                      style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _getPeriodTimeLabel(int index) {
+    final startLabels = [
+      "9:00 AM",
+      "9:50 AM",
+      "10:55 AM",
+      "11:45 AM",
+      "1:25 PM",
+      "2:15 PM",
+      "3:20 PM"
+    ];
+    if (index >= 0 && index < startLabels.length) {
+      return startLabels[index];
+    }
+    return "";
+  }
+
+  Future<void> _createSwap({
+    required String myClass,
+    required int myPeriod,
+    required String targetFacultyId,
+    required String targetFacultyName,
+    required String targetClass,
+    required int targetPeriod,
+  }) async {
+    setState(() => isLoading = true);
+    try {
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+
+      await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('departments')
+          .collection('all_departments')
+          .doc(departmentId)
+          .collection('swaps')
+          .add({
+        'date': dateStr,
+        'faculty1Id': widget.facultyId,
+        'faculty1Name': facultyName,
+        'faculty1Class': myClass,
+        'faculty1Period': myPeriod,
+        'faculty2Id': targetFacultyId,
+        'faculty2Name': targetFacultyName,
+        'faculty2Class': targetClass,
+        'faculty2Period': targetPeriod,
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Successfully swapped hour with $targetFacultyName!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      await _calculateCurrentClass();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to swap hours: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: kBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         titleSpacing: 0,
         title: const Text(
           'ATTENDANCE REGISTER',
@@ -235,6 +584,13 @@ class _MarkAttendanceState extends State<MarkAttendance> {
             Navigator.of(context).pop();
           },
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.swap_horiz, color: Colors.white),
+            onPressed: () => _showSwapDialog(),
+            tooltip: 'Swap Hours',
+          ),
+        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -242,6 +598,58 @@ class _MarkAttendanceState extends State<MarkAttendance> {
               ? Center(child: Text(error))
               : Column(
                   children: [
+                    if (todaySwaps.isNotEmpty) ...[
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFF3E0), // Light orange
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFFFB74D)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.swap_horiz,
+                                    color: Color(0xFFE65100), size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  "Today's Active Swaps",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFFE65100),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ...todaySwaps.map((swap) {
+                              final f1Name = swap['faculty1Name'] ?? 'Unknown';
+                              final f2Name = swap['faculty2Name'] ?? 'Unknown';
+                              final c1 = swap['faculty1Class'] ?? '';
+                              final c2 = swap['faculty2Class'] ?? '';
+                              final p1 =
+                                  (swap['faculty1Period'] as int? ?? 0) + 1;
+                              final p2 =
+                                  (swap['faculty2Period'] as int? ?? 0) + 1;
+
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 4.0),
+                                child: Text(
+                                  "• $f1Name ($c1, P$p1) ⇆ $f2Name ($c2, P$p2)",
+                                  style: const TextStyle(
+                                      fontSize: 12, color: Color(0xFF5D4037)),
+                                ),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                    ],
                     Padding(
                       padding: const EdgeInsets.all(16.0),
                       child: TextField(
@@ -1902,7 +2310,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       return Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          backgroundColor: const Color(0xFFF97316),
+          backgroundColor: const Color(0xFFFF7F50),
           titleSpacing: 0,
           title: const Text(
             'MARK ATTENDANCE',
@@ -1952,7 +2360,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               letterSpacing: 1.0,
             ),
           ),
-          backgroundColor: const Color(0xFFF97316),
+          backgroundColor: const Color(0xFFFF7F50),
         ),
         body: Center(child: Text(error)),
       );
@@ -1966,7 +2374,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     return Scaffold(
       backgroundColor: kBackground,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         titleSpacing: 0,
         title: const Text(
           'MARK ATTENDANCE',

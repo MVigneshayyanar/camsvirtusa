@@ -68,11 +68,11 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                     height: 48,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: const Color(0xFFF97316).withOpacity(0.1),
+                      color: const Color(0xFFFF7F50).withOpacity(0.1),
                     ),
                     child: const Icon(
                       Icons.newspaper_rounded,
-                      color: Color(0xFFF97316),
+                      color: Color(0xFFFF7F50),
                       size: 24,
                     ),
                   ),
@@ -111,7 +111,7 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF97316),
+                    backgroundColor: const Color(0xFFFF7F50),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     elevation: 0,
@@ -145,7 +145,7 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
         }
 
         var allNews = snapshot.data!.docs;
-        
+
         var pinnedNews = allNews.where((doc) {
           var data = doc.data() as Map<String, dynamic>;
           return data['type'] == 'pinned' || data['type'] == 'permanent';
@@ -156,8 +156,12 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
           return data['type'] == 'regular';
         }).toList();
 
-        pinnedNews.sort((a, b) => ((b.data() as Map<String, dynamic>)['createdAt'] ?? 0).compareTo((a.data() as Map<String, dynamic>)['createdAt'] ?? 0));
-        regularNews.sort((a, b) => ((b.data() as Map<String, dynamic>)['createdAt'] ?? 0).compareTo((a.data() as Map<String, dynamic>)['createdAt'] ?? 0));
+        pinnedNews.sort((a, b) =>
+            ((b.data() as Map<String, dynamic>)['createdAt'] ?? 0).compareTo(
+                (a.data() as Map<String, dynamic>)['createdAt'] ?? 0));
+        regularNews.sort((a, b) =>
+            ((b.data() as Map<String, dynamic>)['createdAt'] ?? 0).compareTo(
+                (a.data() as Map<String, dynamic>)['createdAt'] ?? 0));
 
         var combinedNews = [...pinnedNews, ...regularNews];
         // Take only the latest 3 news items for the home page
@@ -189,13 +193,16 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                 },
                 itemBuilder: (context, index) {
                   var data = combinedNews[index].data() as Map<String, dynamic>;
-                  bool isPinned = data['type'] == 'pinned' || data['type'] == 'permanent';
-                  
+                  bool isPinned =
+                      data['type'] == 'pinned' || data['type'] == 'permanent';
+
                   // Format the date and time
                   String timeString = '';
                   if (data['createdAt'] != null) {
-                    DateTime date = DateTime.fromMillisecondsSinceEpoch(data['createdAt']);
-                    timeString = "${date.day}/${date.month}/${date.year} ${date.hour > 12 ? date.hour - 12 : date.hour == 0 ? 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}";
+                    DateTime date =
+                        DateTime.fromMillisecondsSinceEpoch(data['createdAt']);
+                    timeString =
+                        "${date.day}/${date.month}/${date.year} ${date.hour > 12 ? date.hour - 12 : date.hour == 0 ? 12 : date.hour}:${date.minute.toString().padLeft(2, '0')} ${date.hour >= 12 ? 'PM' : 'AM'}";
                   }
 
                   return GestureDetector(
@@ -210,13 +217,18 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                       );
                     },
                     child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
                       decoration: BoxDecoration(
-                        color: isPinned ? const Color(0xFFFFF1F2) : Colors.white,
+                        color:
+                            isPinned ? const Color(0xFFFFF1F2) : Colors.white,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: isPinned ? const Color(0xFFFECDD3) : Colors.grey.shade200,
+                          color: isPinned
+                              ? const Color(0xFFFECDD3)
+                              : Colors.grey.shade200,
                         ),
                         boxShadow: [
                           BoxShadow(
@@ -235,9 +247,13 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                               Row(
                                 children: [
                                   Icon(
-                                    isPinned ? PhosphorIconsFill.pushPin : PhosphorIconsRegular.newspaper,
+                                    isPinned
+                                        ? PhosphorIconsFill.pushPin
+                                        : PhosphorIconsRegular.newspaper,
                                     size: 14,
-                                    color: isPinned ? const Color(0xFFE11D48) : const Color(0xFF3B82F6),
+                                    color: isPinned
+                                        ? const Color(0xFFE11D48)
+                                        : const Color(0xFF3B82F6),
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
@@ -245,7 +261,9 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                                     style: TextStyle(
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
-                                      color: isPinned ? const Color(0xFFE11D48) : const Color(0xFF3B82F6),
+                                      color: isPinned
+                                          ? const Color(0xFFE11D48)
+                                          : const Color(0xFF3B82F6),
                                       letterSpacing: 0.5,
                                     ),
                                   ),
@@ -253,7 +271,10 @@ class _LatestNewsWidgetState extends State<LatestNewsWidget> {
                               ),
                               Text(
                                 timeString,
-                                style: const TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey,
+                                    fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),

@@ -177,7 +177,7 @@ class _TimeTablePageState extends State<TimeTablePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF97316),
+        backgroundColor: const Color(0xFFFF7F50),
         title: const Text(
           'TIME TABLE',
           style: TextStyle(
