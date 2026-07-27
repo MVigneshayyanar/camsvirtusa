@@ -37,10 +37,10 @@ packages:
     dependency: transitive
     description:
       name: async
-      sha256: d2872f9c19731c2e5f10444b14686eb7cc85c76274bd6c16e1816bff9a3bab63
+      sha256: "758e6d74e971c3e5aceb4110bfd6698efc7f501675bcfe0c775459a8140750eb"
       url: "https://pub.dev"
     source: hosted
-    version: "2.12.0"
+    version: "2.13.0"
   barcode:
     dependency: transitive
     description:
@@ -57,6 +57,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.13"
+  ble_peripheral:
+    dependency: "direct main"
+    description:
+      name: ble_peripheral
+      sha256: "858d370709507155bbf69e6160e9cb81d802e664f133a649a38b9ca04439884c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.4.0"
   bluez:
     dependency: transitive
     description:
@@ -245,10 +253,10 @@ packages:
     dependency: transitive
     description:
       name: fake_async
-      sha256: "6a95e56b2449df2273fd8c45a662d6947ce1ebb7aafe80e550a3f68297f3cacc"
+      sha256: "5368f224a74523e8d2e7399ea1638b37aecfca824a3cc4dfdf77bf1fa905ac44"
       url: "https://pub.dev"
     source: hosted
-    version: "1.3.2"
+    version: "1.3.3"
   ffi:
     dependency: transitive
     description:
@@ -414,14 +422,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_ble_peripheral:
-    dependency: "direct main"
-    description:
-      name: flutter_ble_peripheral
-      sha256: "1921c5c1aca8340a09ba612d3e2880f80a3b537860f7129145eaae6997cb9c91"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   flutter_blue_plus:
     dependency: "direct main"
     description:
@@ -518,14 +518,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.31"
-  flutter_reactive_ble:
-    dependency: "direct main"
-    description:
-      name: flutter_reactive_ble
-      sha256: "10022aed17fa1797678a4d848cf25484a4cfd10c46061ce61687f071585fe036"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.4.2"
   flutter_test:
     dependency: transitive
     description: flutter
@@ -536,14 +528,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  functional_data:
-    dependency: transitive
-    description:
-      name: functional_data
-      sha256: "76d17dc707c40e552014f5a49c0afcc3f1e3f05e800cd6b7872940bfe41a5039"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.2.0"
   geolocator:
     dependency: "direct main"
     description:
@@ -732,10 +716,10 @@ packages:
     dependency: transitive
     description:
       name: leak_tracker
-      sha256: c35baad643ba394b40aac41080300150a4f08fd0fd6a10378f8f7c6bc161acec
+      sha256: "6bb818ecbdffe216e81182c2f0714a2e62b593f4a4f13098713ff1685dfb6ab0"
       url: "https://pub.dev"
     source: hosted
-    version: "10.0.8"
+    version: "10.0.9"
   leak_tracker_flutter_testing:
     dependency: transitive
     description:
@@ -1040,14 +1024,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.5.0"
-  protobuf:
-    dependency: transitive
-    description:
-      name: protobuf
-      sha256: "75ec242d22e950bdcc79ee38dd520ce4ee0bc491d7fadc4ea47694604d22bf06"
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.0.0"
   provider:
     dependency: "direct main"
     description:
@@ -1080,22 +1056,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.2.2"
-  reactive_ble_mobile:
-    dependency: transitive
-    description:
-      name: reactive_ble_mobile
-      sha256: ddfc324be406cec06aeace0e85a074cda8d0c01658ef6e5d308764fee4b33b61
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.4.2"
-  reactive_ble_platform_interface:
-    dependency: transitive
-    description:
-      name: reactive_ble_platform_interface
-      sha256: "20efc78259f8d8bf20cd8048c274985e67e043f0d2c62d778303baaa1f1ac667"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.5.0"
   read_pdf_text:
     dependency: "direct main"
     description:
@@ -1321,10 +1281,10 @@ packages:
     dependency: transitive
     description:
       name: vm_service
-      sha256: "0968250880a6c5fe7edc067ed0a13d4bae1577fe2771dcf3010d52c4a9d3ca14"
+      sha256: ddfa8d30d89985b96407efce8acbdd124701f96741f2d981ca860662f1c0dc02
       url: "https://pub.dev"
     source: hosted
-    version: "14.3.1"
+    version: "15.0.0"
   web:
     dependency: transitive
     description:

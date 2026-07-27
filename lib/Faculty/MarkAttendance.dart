@@ -6,7 +6,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
+import 'package:ble_peripheral/ble_peripheral.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 
 // Custom Color Palette
@@ -763,21 +764,13 @@ class ClassAttendanceScreen extends StatefulWidget {
 
 class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   // BLE Peripheral Advertising
-  final FlutterBlePeripheral _blePeripheral = FlutterBlePeripheral();
-
   bool isAdvertising = false;
   String? currentSessionId;
   String? advertisingSubject;
   Set<String> detectedStudentIds = {};
   Timer? _liveUpdateTimer;
   List<Map<String, dynamic>> liveDetectedStudents = [];
-
-  final AdvertiseSettings advertiseSettings = AdvertiseSettings(
-    advertiseMode: AdvertiseMode.advertiseModeBalanced,
-    txPowerLevel: AdvertiseTxPower.advertiseTxPowerMedium,
-    connectable: false,
-    timeout: 0,
-  );
+  Uint8List? currentSessionToken;
 
   bool isLoading = true;
   bool subjectsLoading = false;
@@ -811,6 +804,51 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   void initState() {
     super.initState();
     _initData();
+    _initBLE();
+  }
+
+  Future<void> _initBLE() async {
+    try {
+      await BlePeripheral.initialize();
+      BlePeripheral.setWriteRequestCallback((deviceId, characteristicId, offset, value) {
+        if (value != null && currentSessionToken != null) {
+          _handleStudentWrite(value);
+        }
+        return WriteRequestResult(status: 0);
+      });
+    } catch (e) {
+      print("BLE Init Error: $e");
+    }
+  }
+
+  void _handleStudentWrite(Uint8List value) {
+    if (value.length > 4) {
+      final token = value.sublist(0, 4);
+      bool match = true;
+      for (int i = 0; i < 4; i++) {
+        if (token[i] != currentSessionToken![i]) match = false;
+      }
+      if (match) {
+        final studentId = utf8.decode(value.sublist(4));
+        print("Received valid GATT write from student: $studentId");
+        if (mounted) {
+          setState(() {
+            if (!detectedStudentIds.contains(studentId)) {
+              detectedStudentIds.add(studentId);
+              liveDetectedStudents.insert(0, {
+                'id': studentId,
+                'name': studentId, // Fallback, will be updated by existing UI logic if possible
+                'timestamp': DateTime.now(),
+                'isNew': true,
+              });
+              _markStudentPresent(studentId);
+            }
+          });
+        }
+      } else {
+        print("Invalid token from student GATT write!");
+      }
+    }
   }
 
   StreamSubscription<QuerySnapshot>? _responseSubscription;
@@ -827,95 +865,60 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   Future<void> startAdvertising() async {
     if (isAdvertising || selectedSubject == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a subject first!')),
+        const SnackBar(content: Text('Please select a subject first!')),
       );
       return;
     }
 
-    // Generate short session ID: facultyId + 6 char random alphanumeric suffix
+    final permissions = await [
+      Permission.bluetoothAdvertise,
+      Permission.bluetoothConnect,
+    ].request();
+    if (permissions[Permission.bluetoothAdvertise] != PermissionStatus.granted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bluetooth permissions required!')),
+      );
+      return;
+    }
+
     final randomSuffix = List.generate(6, (index) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       return chars[Random().nextInt(chars.length)];
     }).join();
     final sessionId = '${widget.facultyId}_$randomSuffix';
 
-    print("🚀 Starting broadcast with Session ID: $sessionId");
+    // Generate 4-byte token
+    final random = Random.secure();
+    currentSessionToken = Uint8List.fromList([
+      random.nextInt(256),
+      random.nextInt(256),
+      random.nextInt(256),
+      random.nextInt(256)
+    ]);
 
-    // Get faculty GPS location for proximity verification with robust fallbacks
-    double? facLat;
-    double? facLng;
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        // Request enabling location services
-        print("⚠️ Location services are disabled on faculty device.");
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
-        try {
-          final pos = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy
-                .medium, // Medium accuracy is faster and sufficient for classroom proximity
-          ).timeout(const Duration(seconds: 4));
-          facLat = pos.latitude;
-          facLng = pos.longitude;
-        } catch (e) {
-          print(
-              "⚠️ getCurrentPosition failed or timed out: $e. Trying last known position...");
-          final lastPos = await Geolocator.getLastKnownPosition();
-          if (lastPos != null) {
-            facLat = lastPos.latitude;
-            facLng = lastPos.longitude;
-          }
-        }
-      }
-      print("📍 Faculty location: $facLat, $facLng");
-    } catch (e) {
-      print("⚠️ Could not get faculty location: $e");
-    }
-
-    // Write active session metadata to the class document in Firestore
-    try {
-      await FirebaseFirestore.instance
-          .collection('colleges')
-          .doc('departments')
-          .collection('all_departments')
-          .doc(widget.departmentId)
-          .collection('clasees')
-          .doc(widget.className)
-          .update({
-        'activeSession': {
-          'sessionId': sessionId,
-          'subject': selectedSubject,
-          'facultyId': widget.facultyId,
-          'startedAt': DateTime.now().toIso8601String(),
-          if (facLat != null) 'lat': facLat,
-          if (facLng != null) 'lng': facLng,
-        }
-      });
-      print("✅ Active session metadata written to Firestore class document.");
-    } catch (e) {
-      print("⚠️ Failed to write active session metadata: $e");
-    }
-
-    // Broadcast with minimal BLE payload for maximum device compatibility.
-    // Session data is already in Firestore — BLE is just a proximity beacon.
-    final advertiseData = AdvertiseData(
-      serviceUuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe7",
-      manufacturerId: 1234,
-      manufacturerData: Uint8List.fromList([0x01]), // 1-byte beacon flag
-    );
+    print("🚀 Starting GATT server with Session ID: $sessionId");
 
     try {
-      await _blePeripheral.start(
-        advertiseData: advertiseData,
-        advertiseSettings: advertiseSettings,
+      await BlePeripheral.clearServices();
+      await BlePeripheral.addService(BleService(
+        uuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe7",
+        primary: true,
+        characteristics: [
+          BleCharacteristic(
+            uuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe8",
+            properties: [CharacteristicProperties.write.index],
+            permissions: [AttributePermissions.writeable.index],
+          )
+        ]
+      ));
+
+      await BlePeripheral.startAdvertising(
+        services: ["bf27730d-860a-4e09-889c-2d8b6a9e0fe7"],
+        localName: "Presenza",
+        manufacturerData: ManufacturerData(
+          manufacturerId: 0xFFFF,
+          data: currentSessionToken!,
+        ),
       );
 
       setState(() {
@@ -926,21 +929,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         liveDetectedStudents.clear();
       });
 
-      // CRITICAL: Start the real-time listener IMMEDIATELY after setting state
-      print("🎯 Starting real-time Firestore listener...");
-      startLiveResponseMonitoring();
-
-      // Show broadcasting popup
       _showLiveDetectionDialog();
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Broadcasting started for $selectedSubject!'),
+          content: Text('GATT Server started for $selectedSubject!'),
           backgroundColor: Colors.green,
         ),
       );
-
-      print("✅ Broadcasting active - Session: $sessionId");
     } catch (e) {
       print("❌ Error starting BLE advertising: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1066,7 +1061,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     if (!isAdvertising) return;
 
     try {
-      await _blePeripheral.stop();
+      await BlePeripheral.stopAdvertising();
+      await BlePeripheral.clearServices();
       _liveUpdateTimer?.cancel();
       _responseSubscription?.cancel(); // Clean up Firestore listener
 
