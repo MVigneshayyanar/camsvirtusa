@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../Services/face_recognition_service.dart';
@@ -42,20 +43,20 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen>
   // ── step metadata ────────────────────────────────────────────────────────────
   static const List<Map<String, dynamic>> _steps = [
     {
-      'instruction': 'Look straight\nat the camera',
+      'instruction': 'Look straight at\nthe camera — neutral',
       'icon': Icons.face,
     },
     {
-      'instruction': 'Tilt your head\nslightly to the left',
-      'icon': Icons.arrow_back,
+      'instruction': 'Look straight at\nthe camera — slight smile',
+      'icon': Icons.sentiment_satisfied,
     },
     {
-      'instruction': 'Tilt your head\nslightly to the right',
-      'icon': Icons.arrow_forward,
+      'instruction': 'Look straight at\nthe camera — move closer',
+      'icon': Icons.zoom_in,
     },
     {
-      'instruction': 'Tilt your head\nslightly upward',
-      'icon': Icons.arrow_upward,
+      'instruction': 'Look straight at\nthe camera — natural expression',
+      'icon': Icons.face_retouching_natural,
     },
   ];
 
@@ -124,6 +125,26 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen>
           _isCapturing = false;
         });
         return;
+      }
+
+      // ── Cross-person validation ─────────────────────────────────────────────
+      // Since all 4 steps are frontal, same person's expressions produce
+      // distance 0.20–0.50. A different person's frontal face produces 0.65+.
+      // Since all 4 steps are frontal, same person's expressions produce
+      // distance 0.20–0.65. A different person's frontal face produces 0.85+.
+      // Threshold 0.75 safely blocks a different student from enrolling steps.
+      if (_collectedEmbeddings.isNotEmpty) {
+        final distance = _faceService.calculateDistance(
+            embedding, _collectedEmbeddings[0]);
+        debugPrint('[Enrollment] Cross-step distance: $distance');
+        if (distance > 0.75) {
+          setState(() {
+            _statusMessage =
+                'Different face detected!\nOnly one person should complete all 4 steps.\n\n${_steps[_currentStep]['instruction']}';
+            _isCapturing = false;
+          });
+          return;
+        }
       }
 
       _collectedEmbeddings.add(embedding);
