@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
@@ -584,13 +585,6 @@ class _MarkAttendanceState extends State<MarkAttendance> {
             Navigator.of(context).pop();
           },
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.swap_horiz, color: Colors.white),
-            onPressed: () => _showSwapDialog(),
-            tooltip: 'Swap Hours',
-          ),
-        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -825,6 +819,98 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   // BLE Advertising Methods with Live Updates
   Future<void> startAdvertising() async {
+    final now = DateTime.now();
+    final day = now.weekday; // 1 = Monday, 7 = Sunday
+    final minutesSinceMidnight = now.hour * 60 + now.minute;
+    final startMinutes = 9 * 60; // 9:00 AM
+    final endMinutes = 16 * 60 + 10; // 4:10 PM
+
+    if (day == DateTime.saturday ||
+        day == DateTime.sunday ||
+        minutesSinceMidnight < startMinutes ||
+        minutesSinceMidnight > endMinutes) {
+      showDialog(
+        context: context,
+        barrierDismissible: true,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(28.0),
+            ),
+            elevation: 0,
+            backgroundColor: Colors.white,
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFF7F50).withOpacity(0.1),
+                    ),
+                    child: const Icon(
+                      Icons.wifi_tethering_off_rounded,
+                      color: Color(0xFFFF7F50),
+                      size: 48,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    "Broadcasting Unavailable",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    "Broadcasting is active only from Monday to Friday (9:00 AM to 4:10 PM). Saturday and Sunday are not available.",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.black54,
+                      height: 1.4,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF7F50),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        "OK",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+      return;
+    }
+
     if (isAdvertising || selectedSubject == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select a subject first!')),
@@ -1389,16 +1475,17 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           // Cancel previous timer
           dialogTimer?.cancel();
 
-          // Start new timer with more frequent updates
           dialogTimer = Timer.periodic(Duration(milliseconds: 500), (timer) {
-            if (!isAdvertising || !mounted) {
+            if (!isAdvertising || !mounted || !context.mounted) {
               timer.cancel();
               return;
             }
-            if (mounted) {
+            try {
               setModalState(() {
                 // Force refresh of modal content
               });
+            } catch (e) {
+              timer.cancel();
             }
           });
 
@@ -1443,57 +1530,66 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             Text(
                               'Broadcasting Active',
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500),
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             Text(
                               'Subject: ${advertisingSubject ?? 'Unknown'}',
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500),
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             Text(
-                              '${detectedStudentIds.length} students detected',
+                              '${students.where((s) => attendance[s['id']] == true).length} students detected',
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500),
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.stop_circle,
-                            color: Colors.white, size: 32),
+                      ElevatedButton.icon(
                         onPressed: () {
                           dialogTimer?.cancel();
                           stopAdvertising();
                           Navigator.pop(context);
                         },
+                        icon: const Icon(Icons.stop, size: 14),
+                        label: const Text('Stop Broadcasting',
+                            style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
                 // Stats section
-                Container(
-                  padding: EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      _buildStatCard('Total', students.length.toString(),
-                          Icons.people, Colors.blue),
-                      SizedBox(width: 10),
-                      _buildStatCard(
-                          'Present',
-                          detectedStudentIds.length.toString(),
-                          Icons.check_circle,
-                          Colors.green),
-                      SizedBox(width: 10),
-                      _buildStatCard(
-                          'Absent',
-                          (students.length - detectedStudentIds.length)
-                              .toString(),
-                          Icons.cancel,
-                          Colors.red),
-                    ],
-                  ),
-                ),
+                Builder(builder: (context) {
+                  final presentCount =
+                      students.where((s) => attendance[s['id']] == true).length;
+                  final absentCount = students.length - presentCount;
+                  return Container(
+                    padding: EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        _buildStatCard('Total', students.length.toString(),
+                            Icons.people, Colors.blue),
+                        SizedBox(width: 10),
+                        _buildStatCard('Present', presentCount.toString(),
+                            Icons.check_circle, Colors.green),
+                        SizedBox(width: 10),
+                        _buildStatCard('Absent', absentCount.toString(),
+                            Icons.cancel, Colors.red),
+                      ],
+                    ),
+                  );
+                }),
 
                 // Live students list
                 Expanded(
@@ -1526,16 +1622,19 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                     SizedBox(height: 16),
                                     Text(
                                       'Waiting for student signals...',
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
-                                          fontSize: 14,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w500),
                                     ),
-                                    SizedBox(height: 8),
+                                    const SizedBox(height: 8),
                                     Text(
                                       'Students should open their app for auto-detection',
+                                      textAlign: TextAlign.center,
                                       style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500),
+                                          fontSize: 12,
+                                          color: Colors.grey,
+                                          fontWeight: FontWeight.normal),
                                     ),
                                   ],
                                 ),
@@ -1614,7 +1713,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                               child: Text(
                                                 'NEW',
                                                 style: const TextStyle(
-                                                    fontSize: 14,
+                                                    fontSize: 13,
                                                     fontWeight:
                                                         FontWeight.w500),
                                               ),
@@ -1653,26 +1752,33 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                         children: [
                           Text('Session ID:',
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500)),
+                                  fontSize: 13, fontWeight: FontWeight.w500)),
                           Text(
                               currentSessionId?.substring(
                                       currentSessionId!.length - 8) ??
                                   'Unknown',
                               style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500)),
+                                  fontSize: 13, fontWeight: FontWeight.w500)),
                         ],
                       ),
                       ElevatedButton.icon(
-                        onPressed: () {
-                          dialogTimer?.cancel();
-                          stopAdvertising();
-                          Navigator.pop(context);
-                        },
-                        icon: Icon(Icons.stop),
-                        label: Text('Stop Broadcasting'),
+                        onPressed: isSaving
+                            ? null
+                            : () async {
+                                dialogTimer?.cancel();
+                                Navigator.pop(context);
+                                await _saveAttendance();
+                              },
+                        icon: const Icon(Icons.save),
+                        label: const Text('Save Attendance'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
+                          backgroundColor: const Color(0xFFFF7F50),
                           foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ],
@@ -1704,11 +1810,11 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
             Text(
               label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ],
         ),
@@ -1720,7 +1826,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   Future<void> _initData() async {
     try {
       selectedSemester = semesters.first;
-      selectedHour = hours.first;
+      selectedHour = null;
 
       try {
         final classDoc = await FirebaseFirestore.instance
@@ -1778,7 +1884,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 periodStartTimes[i]['hour']!, periodStartTimes[i]['minute']!);
             final end = DateTime(now.year, now.month, now.day,
                 periodEndTimes[i]['hour']!, periodEndTimes[i]['minute']!);
-            if (now.isAfter(start) && now.isBefore(end)) {
+            if ((now.isAfter(start) || now.isAtSameMomentAs(start)) &&
+                (now.isBefore(end) || now.isAtSameMomentAs(end))) {
               currentIdx = i;
               break;
             }
@@ -1802,6 +1909,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 }
               }
             }
+          } else {
+            selectedHour = null;
           }
         }
       } catch (e) {
@@ -1963,10 +2072,15 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   // UPDATED: Now includes BLE merge after loading attendance
   Future<void> _loadExistingAttendance() async {
-    if (selectedSubject == null ||
-        selectedHour == null ||
-        students.isEmpty ||
-        selectedSemester == null) return;
+    if (selectedSubject == null || students.isEmpty || selectedSemester == null)
+      return;
+
+    if (selectedHour == null) {
+      setState(() {
+        attendance = {for (var s in students) s['id']: false};
+      });
+      return;
+    }
     setState(() => isLoadingAttendance = true);
 
     try {
@@ -2055,6 +2169,11 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       }
     });
     await Future.wait(futures);
+  }
+
+  bool _isAfterFourTen() {
+    final now = DateTime.now();
+    return now.hour > 16 || (now.hour == 16 && now.minute > 10);
   }
 
   void _onSelectionChanged() {
@@ -2177,7 +2296,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               const SizedBox(height: 20),
               const Text("Saving Attendance",
                   style: const TextStyle(
-                      fontSize: 14, fontWeight: FontWeight.w500)),
+                      fontSize: 13, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               ValueListenableBuilder<int>(
                 valueListenable: progressNotifier,
@@ -2185,7 +2304,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                   return Text(
                     "$value%",
                     style: const TextStyle(
-                        fontSize: 14, fontWeight: FontWeight.w500),
+                        fontSize: 13, fontWeight: FontWeight.w500),
                   );
                 },
               ),
@@ -2335,13 +2454,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               const Text(
                 'Loading class data...',
                 style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 8),
               const Text(
                 'Please wait',
                 style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -2355,14 +2474,14 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             'Attendance — ${widget.className}',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               letterSpacing: 1.0,
             ),
           ),
           backgroundColor: const Color(0xFFFF7F50),
         ),
-        body: Center(child: Text(error)),
+        body: Center(child: Text(error, style: const TextStyle(fontSize: 13))),
       );
     }
     final filteredStudents = students
@@ -2380,32 +2499,23 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           'MARK ATTENDANCE',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0,
           ),
         ),
         actions: [
-          // BLE Broadcasting Button
-          IconButton(
-            icon: Icon(
-              isAdvertising ? Icons.stop_circle : Icons.wifi_tethering,
-              color: isAdvertising ? Colors.red : Colors.white,
-              size: 28,
+          // BLE Broadcasting Button (Start Only)
+          if (!isAdvertising)
+            IconButton(
+              icon: const Icon(
+                Icons.wifi_tethering,
+                color: Colors.white,
+                size: 28,
+              ),
+              onPressed: startAdvertising,
+              tooltip: 'Start Broadcasting',
             ),
-            onPressed: () {
-              if (isAdvertising) {
-                stopAdvertising();
-              } else {
-                startAdvertising();
-              }
-            },
-            tooltip: isAdvertising ? 'Stop Broadcasting' : 'Start Broadcasting',
-          ),
-          IconButton(
-            icon: const Icon(Icons.save, color: Colors.white),
-            onPressed: isSaving ? null : _saveAttendance,
-          ),
         ],
         leading: const BackButton(color: Colors.white),
       ),
@@ -2425,9 +2535,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Broadcasting ${advertisingSubject ?? 'Unknown'} • ${detectedStudentIds.length} students detected • Tap to view live',
+                        'Broadcasting ${advertisingSubject ?? 'Unknown'} • ${students.where((s) => attendance[s['id']] == true).length} students detected • Tap to view live',
                         style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500),
+                            fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ),
                     TweenAnimationBuilder(
@@ -2449,15 +2559,16 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ),
             ),
 
-          // Top Dropdowns: Semester and Subject
+          // Top Dropdowns: Semester, Subject and Hour
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
             child: Row(
               children: [
                 Expanded(
                   child: Container(
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.grey,
+                      color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: DropdownButtonHideUnderline(
@@ -2466,7 +2577,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                         isExpanded: true,
                         hint: const Padding(
                           padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text('Select Sem'),
+                          child: Text('Select Sem',
+                              style: TextStyle(fontSize: 13)),
                         ),
                         onChanged: (v) async {
                           if (v != null) {
@@ -2481,7 +2593,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                   child: Padding(
                                     padding:
                                         EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(e),
+                                    child: Text(e,
+                                        style: const TextStyle(fontSize: 13)),
                                   ),
                                 ))
                             .toList(),
@@ -2492,8 +2605,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Container(
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.grey,
+                      color: Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Builder(builder: (context) {
@@ -2509,7 +2623,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           isExpanded: true,
                           hint: const Padding(
                             padding: EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Text('Select Subject'),
+                            child: Text('Select Subject',
+                                style: TextStyle(fontSize: 13)),
                           ),
                           onChanged: (v) {
                             setState(() => selectedSubject = v);
@@ -2521,13 +2636,36 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                     child: Padding(
                                       padding:
                                           EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text(e),
+                                      child: Text(e,
+                                          style: const TextStyle(fontSize: 13)),
                                     ),
                                   ))
                               .toList(),
                         ),
                       );
                     }),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Container(
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF222F3E),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        selectedHour != null && !_isAfterFourTen()
+                            ? 'Hour $selectedHour'
+                            : 'No Hours',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -2565,13 +2703,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           Text(
                             '$presentCount',
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                                fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'PRESENT',
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                                fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -2599,13 +2737,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           Text(
                             '$absentCount',
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                                fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                           const SizedBox(height: 2),
                           Text(
                             'ABSENT',
                             style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
+                                fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                         ],
                       ),
@@ -2616,200 +2754,37 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
             );
           }),
 
-          // Search & Hour Selection
+          // Search Students
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: Colors.grey,
-                          borderRadius: BorderRadius.circular(8),
-                          boxShadow: [
-                            BoxShadow(
-                                color: kShadow,
-                                blurRadius: 3,
-                                offset: Offset(1, 2)),
-                          ],
-                        ),
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            hintText: "Search students",
-                            border: InputBorder.none,
-                            prefixIcon: Icon(Icons.search),
-                            contentPadding: EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 8),
-                          ),
-                          onChanged: (val) => setState(() => searchQuery = val),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: isContinuousMode ? kPrimary : Colors.grey,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            setState(() {
-                              isContinuousMode = !isContinuousMode;
-                              if (!isContinuousMode) {
-                                selectedEndHour = null;
-                              } else {
-                                selectedEndHour = selectedHour;
-                              }
-                            });
-                            _onSelectionChanged();
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Center(
-                            child: Text(
-                              isContinuousMode
-                                  ? 'Multiple Hours'
-                                  : 'Single Hour',
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: [
+                  BoxShadow(
+                      color: kShadow, blurRadius: 3, offset: Offset(1, 2)),
+                ],
+              ),
+              child: TextField(
+                style: const TextStyle(fontSize: 13),
+                decoration: const InputDecoration(
+                  hintText: "Search students",
+                  hintStyle: TextStyle(fontSize: 13),
+                  border: InputBorder.none,
+                  prefixIcon: Icon(Icons.search),
+                  contentPadding:
+                      EdgeInsets.symmetric(horizontal: 6, vertical: 8),
                 ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF222F3E),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: selectedHour,
-                            isExpanded: true,
-                            dropdownColor: Color(0xFF222F3E),
-                            hint: const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(
-                                'Start Hour',
-                                style: const TextStyle(
-                                    fontSize: 14, fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                            onChanged: (v) {
-                              setState(() {
-                                selectedHour = v;
-                                if (isContinuousMode &&
-                                    selectedEndHour != null) {
-                                  final startHour = int.tryParse(v!) ?? 1;
-                                  final endHour =
-                                      int.tryParse(selectedEndHour!) ?? 1;
-                                  if (endHour < startHour) {
-                                    selectedEndHour = v;
-                                  }
-                                }
-                              });
-                              _onSelectionChanged();
-                            },
-                            style: const TextStyle(
-                                fontSize: 14, fontWeight: FontWeight.w500),
-                            iconEnabledColor: Colors.white,
-                            items: hours
-                                .map((e) => DropdownMenuItem(
-                                      value: e,
-                                      child: Padding(
-                                        padding:
-                                            EdgeInsets.symmetric(horizontal: 8),
-                                        child: Text(
-                                          isContinuousMode
-                                              ? 'Hour $e'
-                                              : 'Hour $e',
-                                          style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.w500),
-                                        ),
-                                      ),
-                                    ))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (isContinuousMode) ...[
-                      const SizedBox(width: 8),
-                      const Text(
-                        'to',
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w500),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF222F3E),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedEndHour,
-                              isExpanded: true,
-                              dropdownColor: Color(0xFF222F3E),
-                              hint: const Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                child: Text('End Hour',
-                                    style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500)),
-                              ),
-                              onChanged: (v) {
-                                setState(() => selectedEndHour = v);
-                                _onSelectionChanged();
-                              },
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.w500),
-                              iconEnabledColor: Colors.white,
-                              items: getAvailableEndHours()
-                                  .map((e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Padding(
-                                          padding: EdgeInsets.symmetric(
-                                              horizontal: 8),
-                                          child: Text(
-                                            'Hour $e',
-                                            style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w500),
-                                          ),
-                                        ),
-                                      ))
-                                  .toList(),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
+                onChanged: (val) => setState(() => searchQuery = val),
+              ),
             ),
           ),
 
           // Table Headers
           Padding(
-            padding: const EdgeInsets.only(top: 10, left: 4, right: 14),
+            padding: const EdgeInsets.only(top: 10),
             child: Container(
               decoration: BoxDecoration(
                 color: kBackground,
@@ -2819,38 +2794,27 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 ),
               ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
                 child: Row(
                   children: [
                     const Expanded(
                       flex: 2,
                       child: Text("STUDENT ID",
                           style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w500)),
+                              fontSize: 13, fontWeight: FontWeight.w500)),
                     ),
                     const Expanded(
                       flex: 3,
-                      child: Text("NAME",
+                      child: Text("STUDENT NAME",
                           style: const TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w500)),
+                              fontSize: 13, fontWeight: FontWeight.w500)),
                     ),
                     Expanded(
                       flex: 2,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Expanded(
-                            child: Text(
-                              isContinuousMode && selectedEndHour != null
-                                  ? "HOURS $selectedHour-$selectedEndHour"
-                                  : "HOUR ${selectedHour ?? '-'}",
-                              textAlign: TextAlign.end,
-                              style: const TextStyle(
-                                  fontSize: 11, fontWeight: FontWeight.w500),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
                           const SizedBox(width: 4),
                           PopupMenuButton<String>(
                             icon: const Icon(Icons.more_vert, size: 18),
@@ -2892,8 +2856,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               ),
             ),
           ),
-
-          // Student List with BLE indicators - IMPROVED VERSION
           Expanded(
             child: Stack(
               children: [
@@ -2917,7 +2879,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                 : null, // Highlight BLE detected students
                             child: Padding(
                               padding:
-                                  const EdgeInsets.symmetric(horizontal: 8.0),
+                                  const EdgeInsets.symmetric(horizontal: 16.0),
                               child: Row(
                                 children: [
                                   Expanded(
@@ -2931,7 +2893,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                             child: Text(
                                               sid,
                                               style: const TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 13,
                                                   fontWeight: FontWeight.w500),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -2953,7 +2915,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                           child: Text(
                                             sname,
                                             style: const TextStyle(
-                                                fontSize: 14,
+                                                fontSize: 13,
                                                 fontWeight: FontWeight.w500),
                                             overflow: TextOverflow.ellipsis,
                                           ),
@@ -2971,7 +2933,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                                             child: Text(
                                               'AUTO',
                                               style: const TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w500),
                                             ),
                                           ),
