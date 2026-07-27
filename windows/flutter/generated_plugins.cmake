@@ -3,12 +3,12 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  ble_peripheral
   cloud_firestore
   file_selector_windows
   firebase_auth
   firebase_core
   firebase_storage
-  flutter_ble_peripheral
   flutter_blue_plus_winrt
   geolocator_windows
   permission_handler_windows
