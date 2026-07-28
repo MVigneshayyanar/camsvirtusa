@@ -1571,9 +1571,10 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
                 // Stats section
                 Builder(builder: (context) {
-                  final presentCount =
-                      students.where((s) => attendance[s['id']] == true).length;
-                  final absentCount = students.length - presentCount;
+                  final presentStudents = students.where((s) => attendance[s['id']] == true).toList();
+                  final absentStudents = students.where((s) => attendance[s['id']] != true).toList();
+                  final presentCount = presentStudents.length;
+                  final absentCount = absentStudents.length;
                   return Container(
                     padding: EdgeInsets.all(16),
                     child: Row(
@@ -1582,10 +1583,10 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             Icons.people, Colors.blue),
                         SizedBox(width: 10),
                         _buildStatCard('Present', presentCount.toString(),
-                            Icons.check_circle, Colors.green),
+                            Icons.check_circle, Colors.green, onTap: () => _showStudentsDialog("Present Students", presentStudents)),
                         SizedBox(width: 10),
                         _buildStatCard('Absent', absentCount.toString(),
-                            Icons.cancel, Colors.red),
+                            Icons.cancel, Colors.red, onTap: () => _showStudentsDialog("Absent Students", absentStudents)),
                       ],
                     ),
                   );
@@ -1795,30 +1796,69 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   }
 
   Widget _buildStatCard(
-      String label, String value, IconData icon, Color color) {
+      String label, String value, IconData icon, Color color, {VoidCallback? onTap}) {
     return Expanded(
-      child: Container(
-        padding: EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
-          border: Border.all(color: color.withOpacity(0.3)),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            border: Border.all(color: color.withOpacity(0.3)),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            children: [
+              Icon(icon, color: color, size: 24),
+              SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  void _showStudentsDialog(String title, List<Map<String, dynamic>> list) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Container(
+            width: double.maxFinite,
+            height: 300,
+            child: list.isEmpty
+                ? const Center(child: Text("No students found."))
+                : ListView.builder(
+                    itemCount: list.length,
+                    itemBuilder: (context, index) {
+                      final student = list[index];
+                      return ListTile(
+                        leading: CircleAvatar(
+                          child: Text((student['name'] ?? 'U')[0]),
+                        ),
+                        title: Text(student['name'] ?? 'Unknown'),
+                        subtitle: Text(student['id'] ?? 'Unknown ID'),
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -2674,78 +2714,85 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
           // Present and Absent Count Row (instead of Date Picker)
           Builder(builder: (context) {
-            final presentCount =
-                students.where((s) => attendance[s['id']] == true).length;
-            final absentCount = students.length - presentCount;
+            final presentStudents = students.where((s) => attendance[s['id']] == true).toList();
+            final absentStudents = students.where((s) => attendance[s['id']] != true).toList();
+            final presentCount = presentStudents.length;
+            final absentCount = absentStudents.length;
             return Padding(
               padding:
                   const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
               child: Row(
                 children: [
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.green.shade200),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$presentCount',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'PRESENT',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                        ],
+                    child: GestureDetector(
+                      onTap: () => _showStudentsDialog("Present Students", presentStudents),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.green.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$presentCount',
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'PRESENT',
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.shade200),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$absentCount',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            'ABSENT',
-                            style: const TextStyle(
-                                fontSize: 13, fontWeight: FontWeight.w500),
-                          ),
-                        ],
+                    child: GestureDetector(
+                      onTap: () => _showStudentsDialog("Absent Students", absentStudents),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.red.shade200),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '$absentCount',
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'ABSENT',
+                              style: const TextStyle(
+                                  fontSize: 13, fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),

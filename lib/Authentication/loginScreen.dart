@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../Startup/routes.dart';
 import '../Services/face_recognition_service.dart';
-
+import 'dart:io';
+import 'package:device_info_plus/device_info_plus.dart';
 class LoginScreen extends StatefulWidget {
   // initialRole kept for backwards compatibility but is no longer used for UI
   final String initialRole;
@@ -97,6 +98,41 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (studentDoc.exists) {
         final data = studentDoc.data() as Map<String, dynamic>;
         if (data['password'] == password) {
+          // Fetch hardware device ID for binding
+          String? deviceId;
+          final deviceInfoPlugin = DeviceInfoPlugin();
+          try {
+            if (Platform.isAndroid) {
+              final androidInfo = await deviceInfoPlugin.androidInfo;
+              deviceId = androidInfo.id;
+            } else if (Platform.isIOS) {
+              final iosInfo = await deviceInfoPlugin.iosInfo;
+              deviceId = iosInfo.identifierForVendor;
+            }
+          } catch (e) {
+            print("Failed to get device ID: $e");
+          }
+
+          if (deviceId != null) {
+            final storedDeviceId = data['deviceId'];
+            if (storedDeviceId == null || storedDeviceId.toString().isEmpty) {
+              // First login on this device: Bind it
+              await FirebaseFirestore.instance
+                  .collection('colleges')
+                  .doc('students')
+                  .collection('all_students')
+                  .doc(enteredId)
+                  .update({'deviceId': deviceId});
+            } else if (storedDeviceId != deviceId) {
+              // Already bound to a different device
+              setState(() {
+                _errorMessage =
+                    'Access Denied. This account is bound to another device. Please use your registered phone.';
+              });
+              return;
+            }
+          }
+
           // Student authenticated — proceed to face verification
           final faceService = FaceRecognitionService();
           final hasEnrolled = await faceService.hasEnrolledFace(enteredId);
