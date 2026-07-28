@@ -2465,65 +2465,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return Scaffold(
-        backgroundColor: Colors.white,
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFFF7F50),
-          titleSpacing: 0,
-          title: const Text(
-            'MARK ATTENDANCE',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-          leading: const BackButton(color: Colors.white),
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(kPrimary),
-                strokeWidth: 3,
-              ),
-              const SizedBox(height: 20), // Fixed: Added missing height value
-              const Text(
-                'Loading class data...',
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Please wait',
-                style:
-                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    if (error.isNotEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Attendance — ${widget.className}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-          backgroundColor: const Color(0xFFFF7F50),
-        ),
-        body: Center(child: Text(error, style: const TextStyle(fontSize: 13))),
-      );
-    }
     final filteredStudents = students
         .where((s) =>
             s['name'].toLowerCase().contains(searchQuery.toLowerCase()) ||
@@ -2546,7 +2487,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         ),
         actions: [
           // BLE Broadcasting Button (Start Only)
-          if (!isAdvertising)
+          if (!isLoading && error.isEmpty && !isAdvertising)
             IconButton(
               icon: const Icon(
                 Icons.wifi_tethering,
@@ -2559,7 +2500,31 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         ],
         leading: const BackButton(color: Colors.white),
       ),
-      body: Column(
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(kPrimary),
+                    strokeWidth: 3,
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Loading class data...',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Please wait',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+            )
+          : error.isNotEmpty
+              ? Center(child: Text(error, style: const TextStyle(fontSize: 13)))
+              : Column(
         children: [
           // Broadcasting Status Banner
           if (isAdvertising)
