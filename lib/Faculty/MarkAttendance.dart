@@ -819,7 +819,6 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         Permission.bluetoothAdvertise,
         Permission.bluetoothConnect,
         Permission.bluetoothScan,
-        Permission.locationWhenInUse,
       ].request();
 
       final adGranted = await Permission.bluetoothAdvertise.isGranted;

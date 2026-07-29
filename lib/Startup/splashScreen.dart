@@ -22,7 +22,6 @@ class _SplashScreenState extends State<SplashScreen> {
     await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.locationWhenInUse,
     ].request();
 
     Timer(const Duration(seconds: 2), () {

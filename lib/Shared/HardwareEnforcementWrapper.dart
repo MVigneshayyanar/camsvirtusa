@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class HardwareEnforcementWrapper extends StatefulWidget {
@@ -14,10 +13,8 @@ class HardwareEnforcementWrapper extends StatefulWidget {
 
 class _HardwareEnforcementWrapperState extends State<HardwareEnforcementWrapper> {
   bool _isBluetoothOn = true;
-  bool _isGpsOn = true;
   
   StreamSubscription? _btSubscription;
-  StreamSubscription? _gpsSubscription;
 
   @override
   void initState() {
@@ -27,15 +24,11 @@ class _HardwareEnforcementWrapperState extends State<HardwareEnforcementWrapper>
   }
 
   Future<void> _checkInitialState() async {
-    // Check initial GPS State
-    bool gpsOn = await Geolocator.isLocationServiceEnabled();
-    
     // Check initial BT State
     bool btOn = await FlutterBluePlus.adapterState.first == BluetoothAdapterState.on;
 
     if (mounted) {
       setState(() {
-        _isGpsOn = gpsOn;
         _isBluetoothOn = btOn;
       });
     }
@@ -49,26 +42,17 @@ class _HardwareEnforcementWrapperState extends State<HardwareEnforcementWrapper>
         });
       }
     });
-
-    _gpsSubscription = Geolocator.getServiceStatusStream().listen((status) {
-      if (mounted) {
-        setState(() {
-          _isGpsOn = status == ServiceStatus.enabled;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
     _btSubscription?.cancel();
-    _gpsSubscription?.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    bool isAllOn = _isBluetoothOn && _isGpsOn;
+    bool isAllOn = _isBluetoothOn;
 
     return Stack(
       children: [
@@ -101,10 +85,10 @@ class _HardwareEnforcementWrapperState extends State<HardwareEnforcementWrapper>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 32.0),
                       child: Text(
-                        'To mark attendance securely, you must keep both Bluetooth and Location (GPS) turned ON at all times.',
+                        'To mark attendance securely, you must keep Bluetooth turned ON at all times.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 16,
@@ -116,8 +100,6 @@ class _HardwareEnforcementWrapperState extends State<HardwareEnforcementWrapper>
                     ),
                     const SizedBox(height: 40),
                     _buildStatusRow('Bluetooth', _isBluetoothOn),
-                    const SizedBox(height: 16),
-                    _buildStatusRow('Location (GPS)', _isGpsOn),
                   ],
                 ),
               ),

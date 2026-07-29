@@ -12,7 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:ble_peripheral/ble_peripheral.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:geolocator/geolocator.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -334,7 +334,6 @@ class _StudentDashboardState extends State<StudentDashboard>
     final permissions = await [
       Permission.bluetoothScan,
       Permission.bluetoothConnect,
-      Permission.locationWhenInUse,
     ].request();
 
     // Check for denied permissions
