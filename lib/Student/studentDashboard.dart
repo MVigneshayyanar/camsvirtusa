@@ -10,6 +10,7 @@ import 'package:camsvirtusa/Student/studentTimetable.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:ble_peripheral/ble_peripheral.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -18,6 +19,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'studentProfile.dart';
 import 'studentAttendance.dart';
 import 'StudentCurriculum.dart';
+import 'package:camsvirtusa/Services/offline_attendance_queue.dart';
 
 class StudentDashboard extends StatefulWidget {
   final String studentId;
@@ -54,13 +56,15 @@ class _StudentDashboardState extends State<StudentDashboard>
   int currentNewsIndex = 0;
 
   // --- BLE Configuration (Updated to match faculty broadcaster) ---
-  static const String SERVICE_UUID = "bf27730d-860a-4e09-889c-2d8b6a9e0fe7";
-  static const String CHARACTERISTIC_UUID =
-      "87654321-4321-4321-4321-CBA987654321";
+  // Faculty broadcasts with this prefix in localName: 'FAC_[sessionId]'
+  // Student responds with this prefix in localName: 'STU_[studentId]'
+  // Service UUID used to filter BLE scans on both sides
+  static const String STUDENT_ADV_SERVICE_UUID = "0000aabb-0000-1000-8000-00805f9b34fb";
   static const double PROXIMITY_RADIUS_METERS =
       100.0; // Max distance from faculty to be marked present
 
   // BLE state
+  bool _blePeripheralInitialized = false; // Track initialization to avoid re-init crash
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<BluetoothAdapterState>? _adapterStateSubscription;
   StreamSubscription<DocumentSnapshot>? _firestoreSessionSubscription;
@@ -80,6 +84,8 @@ class _StudentDashboardState extends State<StudentDashboard>
         _initializeEverythingAutomatically();
         _startFirestoreSessionListener();
       }
+      OfflineAttendanceQueue
+          .syncQueuedAttendance(); // Sync offline queue if back online
     });
   }
 
@@ -272,6 +278,8 @@ class _StudentDashboardState extends State<StudentDashboard>
       if (_isAttendanceActive) {
         _initializeEverythingAutomatically();
       }
+      OfflineAttendanceQueue
+          .syncQueuedAttendance(); // Sync any offline queued attendance
     }
   }
 
@@ -433,43 +441,9 @@ class _StudentDashboardState extends State<StudentDashboard>
     setState(() => _bluetoothReady = true);
   }
 
-  // Auto-turn on Location
+  // Auto-turn on Location (GPS hidden / skipped)
   Future<void> _turnOnLocationAutomatically() async {
-    print("📍 Checking Location status...");
-
-    bool serviceEnabled = await Permission.location.serviceStatus.isEnabled;
-
-    if (!serviceEnabled) {
-      print("📍 Location services disabled, requesting to enable...");
-
-      // Note: Flutter can't automatically turn on location services
-      // But we can guide the user
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text("Location Required"),
-            content: Text(
-                "Please enable Location services for Bluetooth scanning to work."),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: Text("OK"),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  openAppSettings();
-                },
-                child: Text("Settings"),
-              ),
-            ],
-          ),
-        );
-      }
-    } else {
-      print("✅ Location services already enabled");
-    }
+    print("📍 Location check skipped (GPS hidden for attendance)");
   }
 
   // Auto-start BLE scanning
@@ -554,42 +528,27 @@ class _StudentDashboardState extends State<StudentDashboard>
           }
         }
 
-        // Path B: Detect by manufacturer ID (1234 = 0x04D2) or service UUID
-        // This works even when the phone's BLE stack drops/truncates manufacturer data bytes
-        bool isOurBeacon = false;
+        // Path B: Detect Connectionless Faculty Beacon ('FAC_' prefix)
+        // This is 100% offline capable because the sessionId is broadcasted directly in the localName!
+        String advName = result.advertisementData.advName;
+        if (advName.isEmpty) advName = result.advertisementData.localName;
+        if (advName.isEmpty) advName = result.device.platformName;
 
-        // Check manufacturer ID
-        if (result.advertisementData.manufacturerData.containsKey(1234)) {
-          isOurBeacon = true;
-        }
+        if (advName.startsWith('FAC_')) {
+          final payload = advName.substring(4);
+          final parts = payload.split('_');
+          final sessionId = parts[0];
+          final proximityToken = parts.length > 1 ? parts[1] : null;
 
-        // Check service UUIDs
-        for (final uuid in result.advertisementData.serviceUuids) {
-          if (uuid.toString().toLowerCase() == SERVICE_UUID.toLowerCase()) {
-            isOurBeacon = true;
-            break;
+          if (sessionId.isNotEmpty && !_respondedSessions.contains(sessionId)) {
+            print(
+                "📡 [BLE-BEACON] Found connectionless Faculty session: $sessionId (Token: $proximityToken)");
+            _respondedSessions.add(sessionId);
+            _currentDetectedSession = sessionId;
+
+            _sendAttendanceResponse(sessionId, "Class Session", sessionId,
+                proximityToken: proximityToken);
           }
-        }
-
-        // Check local name
-        if (result.advertisementData.advName == 'AttendanceSession') {
-          isOurBeacon = true;
-        }
-
-        if (isOurBeacon && studentData != null) {
-          // We detected our beacon but couldn't decode the payload.
-          // Use Firestore to get the active session for this student's class.
-          final className = studentData!['class']?.toString() ?? '';
-          if (className.isEmpty) continue;
-
-          // Generate a unique key so we only trigger this once per device per scan cycle
-          final deviceKey = 'ble_${result.device.remoteId}';
-          if (_respondedSessions.contains(deviceKey)) continue;
-          _respondedSessions.add(deviceKey);
-
-          print(
-              "📡 [BLE-BEACON] Detected our beacon via ID/UUID/name. Checking Firestore for active session...");
-          _checkFirestoreForActiveSession(className);
         }
       } catch (e) {
         print("❌ Error processing scan result: $e");
@@ -638,80 +597,19 @@ class _StudentDashboardState extends State<StudentDashboard>
     print("\u2705 Firestore session listener started for class: $className");
   }
 
-  /// Verify student is within PROXIMITY_RADIUS_METERS of faculty, then mark attendance
+  /// Verify session and mark attendance immediately (GPS distance check hidden/disabled)
   Future<void> _verifyProximityAndRespond(
       Map<String, dynamic> activeSession) async {
     final sessionId = activeSession['sessionId']?.toString() ?? '';
-    final facLat = (activeSession['lat'] as num?)?.toDouble();
-    final facLng = (activeSession['lng'] as num?)?.toDouble();
     final subject = activeSession['subject']?.toString() ?? 'Class Session';
     final facultyId = activeSession['facultyId']?.toString() ?? '';
 
-    if (facLat == null || facLng == null) {
-      // Faculty didn't save location — can't verify proximity.
-      print("⚠️ No faculty GPS in session. Marking present as fallback.");
-      _respondedSessions.add(sessionId);
-      _sendAttendanceResponse(sessionId, subject, facultyId);
-      return;
-    }
+    if (sessionId.isEmpty || _respondedSessions.contains(sessionId)) return;
 
-    try {
-      // Robust location retrieval for student
-      Position? studentPos;
-
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        print("⚠️ Student location services disabled.");
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
-        try {
-          studentPos = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy.medium,
-          ).timeout(const Duration(seconds: 4));
-        } catch (e) {
-          print(
-              "⚠️ Student getCurrentPosition failed or timed out: $e. Trying last known...");
-          studentPos = await Geolocator.getLastKnownPosition();
-        }
-      }
-
-      if (studentPos == null) {
-        print(
-            "❌ Could not retrieve student position. Marking present as fallback.");
-        _respondedSessions.add(sessionId);
-        _sendAttendanceResponse(sessionId, subject, facultyId);
-        return;
-      }
-
-      final distanceMeters = Geolocator.distanceBetween(
-        studentPos.latitude,
-        studentPos.longitude,
-        facLat,
-        facLng,
-      );
-
-      print(
-          "📍 Student distance from faculty: ${distanceMeters.toStringAsFixed(1)}m");
-
-      if (distanceMeters <= PROXIMITY_RADIUS_METERS) {
-        print(
-            "✅ Student is within ${PROXIMITY_RADIUS_METERS}m — marking present!");
-        _respondedSessions.add(sessionId);
-        _sendAttendanceResponse(sessionId, subject, facultyId);
-      } else {
-        print(
-            "❌ Student too far (${distanceMeters.toStringAsFixed(0)}m). Not marking.");
-      }
-    } catch (e) {
-      print("⚠️ GPS proximity check failed: $e");
-    }
+    print(
+        "✅ BLE/Session detected ($sessionId) — marking present without GPS check (GPS hidden)!");
+    _respondedSessions.add(sessionId);
+    _sendAttendanceResponse(sessionId, subject, facultyId);
   }
 
   /// Check Firestore for an active session for the given class (used by BLE beacon detection path)
@@ -819,11 +717,151 @@ class _StudentDashboardState extends State<StudentDashboard>
     return null;
   }
 
-  // Send attendance response to Firestore
-  // Send attendance response to Firestore with proper student name handling
-  Future<void> _sendAttendanceResponse(
+  Future<bool> _requestBleAdvertisePermissions() async {
+    try {
+      print(
+          "📋 Requesting BLE advertising permissions for student response...");
+      final permissions = await [
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+      ].request();
+      return await Permission.bluetoothAdvertise.isGranted;
+    } catch (e) {
+      print("⚠️ Error requesting BLE advertise permissions: $e");
+      return false;
+    }
+  }
+
+  /// Send attendance by BROADCASTING our ID (Connectionless) to bypass Android pairing popups
+  Future<bool> _sendAttendanceViaBLE(
       String sessionId, String subject, String facultyId) async {
     try {
+      print("🔌 Attempting connectionless BLE broadcast to faculty...");
+
+      bool hasPermission = await _requestBleAdvertisePermissions();
+      if (!hasPermission) {
+        print(
+            "⚠️ Missing BLE advertise permissions to send offline attendance.");
+        return false;
+      }
+
+      // Only initialize once - re-initializing crashes on Android
+      if (!_blePeripheralInitialized) {
+        await BlePeripheral.initialize();
+        _blePeripheralInitialized = true;
+      }
+
+      // IMPORTANT: Stop scanning before advertising.
+      // Many Android chipsets cannot reliably scan + advertise simultaneously.
+      // Pausing the scan ensures the STU_ beacon is broadcast cleanly.
+      bool wasScanning = _isScanning;
+      if (wasScanning) {
+        _scanSubscription?.cancel();
+        try {
+          await FlutterBluePlus.stopScan();
+        } catch (_) {}
+        // 150ms hardware radio release buffer for MediaTek / older Qualcomm BLE stacks
+        await Future.delayed(const Duration(milliseconds: 150));
+        if (mounted) setState(() => _isScanning = false);
+        print("⏸️ Paused BLE scan to advertise student response.");
+      }
+
+      // Check if peripheral advertising is supported on this Android device
+      try {
+        if (!await BlePeripheral.isSupported()) {
+          print("⚠️ BLE peripheral mode not supported on this device. Using Firestore fallback.");
+          return false;
+        }
+      } catch (_) {}
+
+      // 'STU_' prefix + studentId must fit within 27 bytes (31 - 4 byte header)
+      final studentIdStr = 'STU_${widget.studentId}';
+
+      print("📡 Broadcasting student ID to faculty over BLE: $studentIdStr");
+
+      await BlePeripheral.startAdvertising(
+        services: [], // No service filter — faculty scans all and checks STU_ prefix
+        localName: studentIdStr,
+      );
+
+      // Broadcast for 8 seconds to give faculty scanner enough time to detect
+      await Future.delayed(const Duration(seconds: 8));
+      await BlePeripheral.stopAdvertising();
+
+      print("✅ Successfully broadcasted attendance to faculty over BLE!");
+
+      // Restart scanning to remain ready for future sessions
+      if (wasScanning && mounted && _isAttendanceActive) {
+        await _startBLEAutomatically();
+        print("▶️ BLE scan restarted after advertising.");
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.bluetooth_connected, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('✅ Attendance sent to faculty via BLE!',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text('ID: ${widget.studentId}',
+                          style: TextStyle(fontSize: 11)),
+                      Text('Subject: $subject', style: TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 4),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return true;
+    } catch (e) {
+      print("❌ Connectionless BLE broadcast failed: $e");
+      try {
+        await BlePeripheral.stopAdvertising();
+      } catch (_) {}
+      // Try to restart scanning if it was active
+      if (_isAttendanceActive && mounted) {
+        await _startBLEAutomatically();
+      }
+      return false;
+    }
+  }
+
+
+  // Send attendance response with 3-tier fallback: BLE Direct -> Firebase -> Offline Queue
+  Future<void> _sendAttendanceResponse(
+      String sessionId, String subject, String facultyId,
+      {String? proximityToken}) async {
+    try {
+      final docId = "${sessionId}_${widget.studentId}";
+
+      // Check to prevent duplicate marking on app restart
+      try {
+        final existingDoc = await FirebaseFirestore.instance
+            .collection('attendance_responses')
+            .doc(docId)
+            .get();
+            
+        if (existingDoc.exists) {
+          print("✅ Attendance already marked in Firebase. Skipping duplicate popup.");
+          _respondedSessions.add(sessionId);
+          return;
+        }
+      } catch (e) {
+        // Ignore errors (e.g. offline), proceed with normal flow
+      }
+
       // Ensure we have student data before proceeding
       if (studentData == null) {
         print("⚠️ Student data not loaded yet, fetching...");
@@ -839,19 +877,24 @@ class _StudentDashboardState extends State<StudentDashboard>
             'Student_${widget.studentId}';
       }
 
-      // Get student class for better identification
       String studentClass =
           studentData?['class']?.toString() ?? 'Unknown Class';
 
-      print("📝 Preparing attendance response:");
+      // Tier 1: Trigger connectionless BLE response broadcast (for offline faculty receiver)
+      _sendAttendanceViaBLE(sessionId, subject, facultyId);
+
+      print("📝 Preparing online Firebase attendance response:");
       print("   Student ID: ${widget.studentId}");
       print("   Student Name: $studentName");
       print("   Student Class: $studentClass");
       print("   Session ID: $sessionId");
       print("   Subject: $subject");
+      if (proximityToken != null) print("   Proximity Token: $proximityToken");
 
-      // Send the response with complete student information
-      await FirebaseFirestore.instance.collection('attendance_responses').add({
+      await FirebaseFirestore.instance
+          .collection('attendance_responses')
+          .doc(docId)
+          .set({
         'sessionId': sessionId,
         'studentId': widget.studentId,
         'studentName': studentName, // Properly retrieved student name
@@ -864,9 +907,10 @@ class _StudentDashboardState extends State<StudentDashboard>
         'responseTime':
             DateTime.now().toIso8601String(), // Add local timestamp as backup
         'status': 'present', // Explicitly mark as present
-      });
+        if (proximityToken != null) 'proximityToken': proximityToken,
+      }, SetOptions(merge: true));
 
-      print("✅ Attendance response sent successfully!");
+      print("✅ Attendance response sent successfully to Firebase!");
       print("   Student Name in DB: $studentName");
       print("   Session: $sessionId");
 
@@ -900,13 +944,50 @@ class _StudentDashboardState extends State<StudentDashboard>
         );
       }
     } catch (e) {
-      print("❌ Error sending attendance response: $e");
+      print(
+          "❌ Error sending attendance response online: $e. Using offline queue fallback.");
+
+      // Tier 3: Offline Queue fallback when both BLE and Firebase fail
+      String studentName =
+          studentData?['name']?.toString() ?? 'Student_${widget.studentId}';
+      String studentClass =
+          studentData?['class']?.toString() ?? 'Unknown Class';
+
+      await OfflineAttendanceQueue.queueAttendance(
+        sessionId: sessionId,
+        studentId: widget.studentId,
+        studentName: studentName,
+        studentClass: studentClass,
+        subject: subject,
+        facultyId: facultyId,
+        timestamp: DateTime.now().toIso8601String(),
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('❌ Failed to mark attendance: $e'),
-            backgroundColor: Colors.red,
+            content: Row(
+              children: [
+                Icon(Icons.offline_pin, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('📶 Attendance queued offline!',
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                          'Will sync automatically when internet is available.',
+                          style: TextStyle(fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }

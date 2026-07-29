@@ -55,51 +55,55 @@ class _StudentMainScreenState extends State<StudentMainScreen> {
           index: _currentIndex,
           children: _pages,
         ),
-        bottomNavigationBar: Align(
-          alignment: Alignment.bottomCenter,
-          heightFactor: 1.0,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            margin: const EdgeInsets.fromLTRB(10, 0, 10, 20),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF7F50), // Orange
-              borderRadius: BorderRadius.circular(40),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFFF7F50).withOpacity(0.25),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Flexible(
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 500),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF7F50), // Orange
+                      borderRadius: BorderRadius.circular(40),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF7F50).withOpacity(0.25),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildNavItem(
+                            icon: PhosphorIconsRegular.newspaper,
+                            label: "News",
+                            index: 0,
+                            screenWidth: screenWidth,
+                          ),
+                          _buildNavItem(
+                            icon: PhosphorIconsRegular.house,
+                            label: "Home",
+                            index: 1,
+                            screenWidth: screenWidth,
+                          ),
+                          _buildNavItem(
+                            icon: PhosphorIconsRegular.user,
+                            label: "Profile",
+                            index: 2,
+                            screenWidth: screenWidth,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
               ],
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _buildNavItem(
-                      icon: PhosphorIconsRegular.newspaper,
-                      label: "News",
-                      index: 0,
-                      screenWidth: screenWidth,
-                    ),
-                    _buildNavItem(
-                      icon: PhosphorIconsRegular.house,
-                      label: "Home",
-                      index: 1,
-                      screenWidth: screenWidth,
-                    ),
-                    _buildNavItem(
-                      icon: PhosphorIconsRegular.user,
-                      label: "Profile",
-                      index: 2,
-                      screenWidth: screenWidth,
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ),

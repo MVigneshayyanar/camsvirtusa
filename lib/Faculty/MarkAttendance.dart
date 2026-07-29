@@ -7,8 +7,10 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:ble_peripheral/ble_peripheral.dart';
+import 'package:camsvirtusa/Services/offline_attendance_queue.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 // Custom Color Palette
 const Color kPrimary = Color(0xFFFF7043);
@@ -756,22 +758,22 @@ class ClassAttendanceScreen extends StatefulWidget {
 }
 
 class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
-  // BLE Peripheral Advertising
-  final FlutterBlePeripheral _blePeripheral = FlutterBlePeripheral();
+  // BLE Peripheral Advertising (using ble_peripheral for GATT server)
+  static const String _SERVICE_UUID = "bf27730d-860a-4e09-889c-2d8b6a9e0fe7";
+  static const String _STUDENT_SERVICE_UUID =
+      "87654321-4321-4321-4321-cba987654321";
+  bool _blePeripheralInitialized = false;
 
   bool isAdvertising = false;
+  bool _isStartingBroadcast = false;
+  StreamSubscription<List<ScanResult>>? _scanSubscription;
+
   String? currentSessionId;
+  String? currentProximityToken;
   String? advertisingSubject;
   Set<String> detectedStudentIds = {};
   Timer? _liveUpdateTimer;
   List<Map<String, dynamic>> liveDetectedStudents = [];
-
-  final AdvertiseSettings advertiseSettings = AdvertiseSettings(
-    advertiseMode: AdvertiseMode.advertiseModeBalanced,
-    txPowerLevel: AdvertiseTxPower.advertiseTxPowerMedium,
-    connectable: false,
-    timeout: 0,
-  );
 
   bool isLoading = true;
   bool subjectsLoading = false;
@@ -804,7 +806,194 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   @override
   void initState() {
     super.initState();
+    _initBlePeripheral();
     _initData();
+  }
+
+  /// Request required Android 12+ BLE advertising/connecting runtime permissions
+  Future<bool> _requestBlePermissions() async {
+    try {
+      print("📋 Requesting BLE advertising, scanning & connect permissions...");
+      final permissions = await [
+        Permission.bluetooth,
+        Permission.bluetoothAdvertise,
+        Permission.bluetoothConnect,
+        Permission.bluetoothScan,
+        Permission.locationWhenInUse,
+      ].request();
+
+      final adGranted = await Permission.bluetoothAdvertise.isGranted;
+      final scanGranted = await Permission.bluetoothScan.isGranted;
+      if (!adGranted || !scanGranted) {
+        print(
+            "⚠️ Android 12+ BLE advertise/scan permissions not fully granted.");
+      }
+      return adGranted && scanGranted;
+    } catch (e) {
+      print("⚠️ Error requesting BLE permissions: $e");
+      return false;
+    }
+  }
+
+  /// Initialize BLE Peripheral for broadcasting the session
+  Future<void> _initBlePeripheral() async {
+    try {
+      await _requestBlePermissions();
+      await BlePeripheral.initialize();
+      // NOTE: We no longer add a GATT service here.
+      // We operate completely connectionless to avoid Android pairing popups.
+
+      // Set up advertising status callback
+      BlePeripheral.setAdvertisingStatusUpdateCallback(
+          (bool advertising, String? error) {
+        if (mounted) {
+          setState(() => isAdvertising = advertising);
+        }
+        if (error != null) {
+          print("❌ BLE advertising error: $error");
+        }
+        print(
+            "📡 BLE advertising status: $advertising ${error != null ? '(Error: $error)' : ''}");
+      });
+
+      _blePeripheralInitialized = true;
+      print("✅ BLE Peripheral initialized (Connectionless mode)");
+    } catch (e) {
+      print("❌ Failed to initialize BLE Peripheral: $e");
+      _blePeripheralInitialized = false;
+    }
+  }
+
+  /// Start scanning for student beacons (Connectionless receiver)
+  void _startScanningForStudents() async {
+    try {
+      _scanSubscription?.cancel();
+
+      // Stop any existing scan to prevent collisions
+      try {
+        await FlutterBluePlus.stopScan();
+      } catch (_) {}
+
+      // Listen BEFORE calling startScan so we don't miss any results
+      _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+        for (final result in results) {
+          String advName = result.advertisementData.advName;
+          if (advName.isEmpty) advName = result.advertisementData.localName;
+          if (advName.isEmpty) advName = result.device.platformName;
+
+          // Faculty looks for "STU_<studentId>" beacons broadcast by students
+          if (advName.startsWith('STU_')) {
+            final studentId = advName.substring(4); // Strip 'STU_' prefix
+            if (studentId.isNotEmpty) {
+              print(
+                  "📡 [SCAN] Detected student beacon: $advName → ID: $studentId");
+              _handleDirectBleAttendance(studentId, studentId, "");
+            }
+          }
+        }
+      });
+
+      // IMPORTANT: Do NOT use withServices filter here.
+      // On Android, withServices is a hardware-level filter that only matches
+      // devices advertising the UUID in their primary service list.
+      // ble_peripheral advertises the service UUID differently so the filter
+      // silently drops all STU_ beacons. Instead, scan all nearby devices and
+      // rely on the STU_ prefix check in the name (which always works).
+      await FlutterBluePlus.startScan(
+        continuousUpdates: true,
+        androidUsesFineLocation: true,
+      );
+      print(
+          "🎯 Scanning for student beacons started (no service filter — using STU_ name prefix).");
+    } catch (e) {
+      print("❌ Error starting BLE scan: $e");
+    }
+  }
+
+  /// Helper to map the received student ID and mark attendance
+  Future<void> _handleDirectBleAttendance(
+      String studentId, String studentName, String studentClass) async {
+    try {
+      if (currentSessionId == null || !isAdvertising) {
+        print("⚠️ Received BLE attendance but no active session. Ignoring.");
+        return;
+      }
+
+      if (detectedStudentIds.contains(studentId)) {
+        print("ℹ️ Student $studentId already detected. Skipping.");
+        return;
+      }
+
+      // Resolve the real student name from the loaded students list
+      String resolvedName = _getStudentName(studentId);
+      if (resolvedName == 'Unknown Student' &&
+          studentName.isNotEmpty &&
+          studentName != studentId) {
+        resolvedName = studentName;
+      }
+
+      print("🆕 [BLE-DIRECT] New student detected: $studentId ($resolvedName)");
+
+      // Mark as present locally
+      detectedStudentIds.add(studentId);
+      _markStudentPresent(studentId);
+
+      // Add to live detection list
+      if (mounted) {
+        setState(() {
+          liveDetectedStudents.insert(0, {
+            'id': studentId,
+            'name': resolvedName,
+            'timestamp': DateTime.now(),
+            'isNew': true,
+            'source': 'ble_direct',
+          });
+          attendance = Map.from(attendance); // Force UI rebuild
+        });
+      }
+
+      // Write to Firestore attendance_responses with deterministic doc ID to deduplicate
+      try {
+        final docId = "${currentSessionId}_$studentId";
+        await FirebaseFirestore.instance
+            .collection('attendance_responses')
+            .doc(docId)
+            .set({
+          'sessionId': currentSessionId!,
+          'studentId': studentId,
+          'studentName': resolvedName,
+          'studentClass': studentClass,
+          'timestamp': FieldValue.serverTimestamp(),
+          'subject': advertisingSubject ?? 'Unknown',
+          'facultyId': widget.facultyId,
+          'responseTime': DateTime.now().toIso8601String(),
+          'status': 'present',
+          'source': 'ble_direct',
+          if (currentProximityToken != null)
+            'proximityToken': currentProximityToken,
+        }, SetOptions(merge: true));
+        print(
+            "✅ [BLE-DIRECT] Student $studentId attendance written to Firestore ($docId)");
+      } catch (e) {
+        print(
+            "⚠️ [BLE-DIRECT] Firestore write failed, falling back to offline queue: $e");
+        // Also queue to offline queue for Firebase sync later
+        OfflineAttendanceQueue.queueAttendance(
+          sessionId: currentSessionId!,
+          studentId: studentId,
+          studentName: resolvedName,
+          studentClass: studentClass,
+          subject: advertisingSubject ?? 'Unknown',
+          facultyId: widget.facultyId,
+          timestamp: DateTime.now().toIso8601String(),
+        );
+      }
+
+      print(
+          "✅ [BLE-DIRECT] Student $studentId marked present via direct BLE scan");
+    } catch (e) {
+      print("❌ Error processing BLE attendance write: $e");
+    }
   }
 
   StreamSubscription<QuerySnapshot>? _responseSubscription;
@@ -819,6 +1008,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
   // BLE Advertising Methods with Live Updates
   Future<void> startAdvertising() async {
+    if (_isStartingBroadcast) return;
+    setState(() => _isStartingBroadcast = true);
+
     final now = DateTime.now();
     final day = now.weekday; // 1 = Monday, 7 = Sunday
     final minutesSinceMidnight = now.hour * 60 + now.minute;
@@ -908,6 +1100,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           );
         },
       );
+      setState(() => _isStartingBroadcast = false);
       return;
     }
 
@@ -915,56 +1108,30 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please select a subject first!')),
       );
+      setState(() => _isStartingBroadcast = false);
       return;
     }
 
-    // Generate short session ID: facultyId + 6 char random alphanumeric suffix
-    final randomSuffix = List.generate(6, (index) {
+    // Generate SHORT session ID (8 chars) + proximity token (4 chars) for BLE broadcast
+    // BLE localName will be "FAC_" + 8 + "_" + 4 = 17 chars total. Well within 31-byte limit.
+    final randomSuffix = List.generate(8, (index) {
       const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
       return chars[Random().nextInt(chars.length)];
     }).join();
-    final sessionId = '${widget.facultyId}_$randomSuffix';
+    final proximityToken = List.generate(4, (index) {
+      const chars = 'abcdef0123456789';
+      return chars[Random().nextInt(chars.length)];
+    }).join();
 
-    print("🚀 Starting broadcast with Session ID: $sessionId");
+    final sessionId = randomSuffix; // Short ID for BLE
 
-    // Get faculty GPS location for proximity verification with robust fallbacks
+    print(
+        "🚀 Starting broadcast with Session ID: $sessionId, Proximity Token: $proximityToken");
+
+    // GPS hidden / disabled — attendance relies on BLE proximity
     double? facLat;
     double? facLng;
-    try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        // Request enabling location services
-        print("⚠️ Location services are disabled on faculty device.");
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-      }
-
-      if (permission == LocationPermission.always ||
-          permission == LocationPermission.whileInUse) {
-        try {
-          final pos = await Geolocator.getCurrentPosition(
-            desiredAccuracy: LocationAccuracy
-                .medium, // Medium accuracy is faster and sufficient for classroom proximity
-          ).timeout(const Duration(seconds: 4));
-          facLat = pos.latitude;
-          facLng = pos.longitude;
-        } catch (e) {
-          print(
-              "⚠️ getCurrentPosition failed or timed out: $e. Trying last known position...");
-          final lastPos = await Geolocator.getLastKnownPosition();
-          if (lastPos != null) {
-            facLat = lastPos.latitude;
-            facLng = lastPos.longitude;
-          }
-        }
-      }
-      print("📍 Faculty location: $facLat, $facLng");
-    } catch (e) {
-      print("⚠️ Could not get faculty location: $e");
-    }
+    print("📍 GPS location lookup skipped (GPS hidden)");
 
     // Write active session metadata to the class document in Firestore
     try {
@@ -978,6 +1145,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           .update({
         'activeSession': {
           'sessionId': sessionId,
+          'proximityToken': proximityToken,
           'subject': selectedSubject,
           'facultyId': widget.facultyId,
           'startedAt': DateTime.now().toIso8601String(),
@@ -990,27 +1158,31 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
       print("⚠️ Failed to write active session metadata: $e");
     }
 
-    // Broadcast with minimal BLE payload for maximum device compatibility.
-    // Session data is already in Firestore — BLE is just a proximity beacon.
-    final advertiseData = AdvertiseData(
-      serviceUuid: "bf27730d-860a-4e09-889c-2d8b6a9e0fe7",
-      manufacturerId: 1234,
-      manufacturerData: Uint8List.fromList([0x01]), // 1-byte beacon flag
-    );
-
+    // Start BLE advertising — connectionless, no GATT server needed
     try {
-      await _blePeripheral.start(
-        advertiseData: advertiseData,
-        advertiseSettings: advertiseSettings,
+      await _requestBlePermissions();
+      if (!_blePeripheralInitialized) {
+        await _initBlePeripheral();
+      }
+
+      // "FAC_" + 8 chars + "_" + 4 chars = 17 chars. Well within 31-byte limit.
+      await BlePeripheral.startAdvertising(
+        services: [], // Empty — student scans unfiltered to find FAC_ prefix
+        localName: "FAC_${sessionId}_$proximityToken",
       );
 
       setState(() {
         isAdvertising = true;
+        _isStartingBroadcast = false;
         currentSessionId = sessionId;
+        currentProximityToken = proximityToken;
         advertisingSubject = selectedSubject;
         detectedStudentIds.clear();
         liveDetectedStudents.clear();
       });
+
+      // Start scanning for students returning their beacons
+      _startScanningForStudents();
 
       // CRITICAL: Start the real-time listener IMMEDIATELY after setting state
       print("🎯 Starting real-time Firestore listener...");
@@ -1028,6 +1200,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
       print("✅ Broadcasting active - Session: $sessionId");
     } catch (e) {
+      setState(() => _isStartingBroadcast = false);
       print("❌ Error starting BLE advertising: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to start broadcasting: $e')),
@@ -1152,7 +1325,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     if (!isAdvertising) return;
 
     try {
-      await _blePeripheral.stop();
+      await BlePeripheral.stopAdvertising();
+      _scanSubscription?.cancel();
+      await FlutterBluePlus.stopScan();
       _liveUpdateTimer?.cancel();
       _responseSubscription?.cancel(); // Clean up Firestore listener
 
@@ -1374,23 +1549,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     try {
       print("✅ Marking student present: $studentId");
 
-      // First, update local state immediately
+      // Update local state immediately
       if (mounted) {
         setState(() {
           attendance[studentId] = true;
           print("📱 Local state updated: $studentId marked present");
         });
       }
-
-      // Then update Firestore (optional - for persistence)
-      String classId = students.firstWhere(
-            (student) => student['id'] == studentId,
-            orElse: () =>
-                {'class': widget.className}, // Use widget.className as fallback
-          )['class'] ??
-          widget.className;
-
-      print("📊 Updating Firestore for student $studentId in class $classId");
     } catch (e) {
       print("❌ Error marking student present: $e");
     }
@@ -1571,8 +1736,12 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
                 // Stats section
                 Builder(builder: (context) {
-                  final presentStudents = students.where((s) => attendance[s['id']] == true).toList();
-                  final absentStudents = students.where((s) => attendance[s['id']] != true).toList();
+                  final presentStudents = students
+                      .where((s) => attendance[s['id']] == true)
+                      .toList();
+                  final absentStudents = students
+                      .where((s) => attendance[s['id']] != true)
+                      .toList();
                   final presentCount = presentStudents.length;
                   final absentCount = absentStudents.length;
                   return Container(
@@ -1583,10 +1752,14 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                             Icons.people, Colors.blue),
                         SizedBox(width: 10),
                         _buildStatCard('Present', presentCount.toString(),
-                            Icons.check_circle, Colors.green, onTap: () => _showStudentsDialog("Present Students", presentStudents)),
+                            Icons.check_circle, Colors.green,
+                            onTap: () => _showStudentsDialog(
+                                "Present Students", presentStudents)),
                         SizedBox(width: 10),
                         _buildStatCard('Absent', absentCount.toString(),
-                            Icons.cancel, Colors.red, onTap: () => _showStudentsDialog("Absent Students", absentStudents)),
+                            Icons.cancel, Colors.red,
+                            onTap: () => _showStudentsDialog(
+                                "Absent Students", absentStudents)),
                       ],
                     ),
                   );
@@ -1795,8 +1968,8 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
     });
   }
 
-  Widget _buildStatCard(
-      String label, String value, IconData icon, Color color, {VoidCallback? onTap}) {
+  Widget _buildStatCard(String label, String value, IconData icon, Color color,
+      {VoidCallback? onTap}) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
@@ -1813,11 +1986,13 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
               SizedBox(height: 4),
               Text(
                 value,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               ),
               Text(
                 label,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                style:
+                    const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
               ),
             ],
           ),
@@ -1829,34 +2004,99 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
   void _showStudentsDialog(String title, List<Map<String, dynamic>> list) {
     showDialog(
       context: context,
+      barrierDismissible: true,
       builder: (context) {
-        return AlertDialog(
-          title: Text(title),
-          content: Container(
-            width: double.maxFinite,
-            height: 300,
-            child: list.isEmpty
-                ? const Center(child: Text("No students found."))
-                : ListView.builder(
-                    itemCount: list.length,
-                    itemBuilder: (context, index) {
-                      final student = list[index];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          child: Text((student['name'] ?? 'U')[0]),
-                        ),
-                        title: Text(student['name'] ?? 'Unknown'),
-                        subtitle: Text(student['id'] ?? 'Unknown ID'),
-                      );
-                    },
-                  ),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28.0),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Close"),
+          elevation: 0,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                // Content
+                Container(
+                  width: double.maxFinite,
+                  height: 300,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: list.isEmpty
+                      ? const Center(
+                          child: Text(
+                            "No students found.",
+                            style: TextStyle(color: Colors.black54),
+                          ),
+                        )
+                      : ListView.separated(
+                          itemCount: list.length,
+                          separatorBuilder: (context, index) =>
+                              const Divider(height: 1, indent: 16, endIndent: 16),
+                          itemBuilder: (context, index) {
+                            final student = list[index];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: const Color(0xFFFF7F50).withOpacity(0.1),
+                                child: Text(
+                                  (student['name'] ?? 'U')[0].toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Color(0xFFFF7F50),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              title: Text(
+                                student['name'] ?? 'Unknown',
+                                style: const TextStyle(fontWeight: FontWeight.w500),
+                              ),
+                              subtitle: Text(student['id'] ?? 'Unknown ID'),
+                            );
+                          },
+                        ),
+                ),
+                const SizedBox(height: 24),
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF7F50),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Text(
+                      "Close",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -2480,7 +2720,7 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           'MARK ATTENDANCE',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 16,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0,
           ),
@@ -2488,8 +2728,19 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         actions: [
           // BLE Broadcasting Button (Start Only)
           if (!isLoading && error.isEmpty && !isAdvertising)
-            IconButton(
-              icon: const Icon(
+            _isStartingBroadcast 
+              ? const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    ),
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(
                 Icons.wifi_tethering,
                 color: Colors.white,
                 size: 28,
@@ -2525,481 +2776,531 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
           : error.isNotEmpty
               ? Center(child: Text(error, style: const TextStyle(fontSize: 13)))
               : Column(
-        children: [
-          // Broadcasting Status Banner
-          if (isAdvertising)
-            Container(
-              width: double.infinity,
-              color: Colors.green.shade100,
-              padding: EdgeInsets.all(8),
-              child: GestureDetector(
-                onTap: _showLiveDetectionDialog,
-                child: Row(
                   children: [
-                    Icon(Icons.wifi_tethering, color: Colors.green, size: 16),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Broadcasting ${advertisingSubject ?? 'Unknown'} • ${students.where((s) => attendance[s['id']] == true).length} students detected • Tap to view live',
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                    TweenAnimationBuilder(
-                      tween: Tween<double>(begin: 0.5, end: 1.0),
-                      duration: Duration(milliseconds: 1000),
-                      builder: (context, double value, child) {
-                        return Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(value),
-                            shape: BoxShape.circle,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // Top Dropdowns: Semester, Subject and Hour
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedSemester,
-                        isExpanded: true,
-                        hint: const Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8.0),
-                          child: Text('Select Sem',
-                              style: TextStyle(fontSize: 13)),
-                        ),
-                        onChanged: (v) async {
-                          if (v != null) {
-                            setState(() => selectedSemester = v);
-                            await _loadSemesterData(v);
-                            _onSelectionChanged();
-                          }
-                        },
-                        items: semesters
-                            .map((e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 8),
-                                    child: Text(e,
-                                        style: const TextStyle(fontSize: 13)),
-                                  ),
-                                ))
-                            .toList(),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Builder(builder: (context) {
-                      final availableSubjects =
-                          getSubjectsForThisFaculty().isNotEmpty
-                              ? getSubjectsForThisFaculty()
-                              : subjects;
-                      return DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: availableSubjects.contains(selectedSubject)
-                              ? selectedSubject
-                              : null,
-                          isExpanded: true,
-                          hint: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.0),
-                            child: Text('Select Subject',
-                                style: TextStyle(fontSize: 13)),
-                          ),
-                          onChanged: (v) {
-                            setState(() => selectedSubject = v);
-                            _onSelectionChanged();
-                          },
-                          items: availableSubjects
-                              .map((e) => DropdownMenuItem(
-                                    value: e,
-                                    child: Padding(
-                                      padding:
-                                          EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text(e,
-                                          style: const TextStyle(fontSize: 13)),
+                    // Broadcasting Status Banner
+                    if (isAdvertising)
+                      Container(
+                        width: double.infinity,
+                        color: Colors.green.shade100,
+                        padding: EdgeInsets.all(8),
+                        child: GestureDetector(
+                          onTap: _showLiveDetectionDialog,
+                          child: Row(
+                            children: [
+                              Icon(Icons.wifi_tethering,
+                                  color: Colors.green, size: 16),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Broadcasting ${advertisingSubject ?? 'Unknown'} • ${students.where((s) => attendance[s['id']] == true).length} students detected • Tap to view live',
+                                  style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                              ),
+                              TweenAnimationBuilder(
+                                tween: Tween<double>(begin: 0.5, end: 1.0),
+                                duration: Duration(milliseconds: 1000),
+                                builder: (context, double value, child) {
+                                  return Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withOpacity(value),
+                                      shape: BoxShape.circle,
                                     ),
-                                  ))
-                              .toList(),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // Top Dropdowns: Semester, Subject and Hour
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10.0, vertical: 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedSemester,
+                                  isExpanded: true,
+                                  hint: const Padding(
+                                    padding:
+                                        EdgeInsets.symmetric(horizontal: 8.0),
+                                    child: Text('Select Sem',
+                                        style: TextStyle(fontSize: 13)),
+                                  ),
+                                  onChanged: (v) async {
+                                    if (v != null) {
+                                      setState(() => selectedSemester = v);
+                                      await _loadSemesterData(v);
+                                      _onSelectionChanged();
+                                    }
+                                  },
+                                  items: semesters
+                                      .map((e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                  horizontal: 8),
+                                              child: Text(e,
+                                                  style: const TextStyle(
+                                                      fontSize: 13)),
+                                            ),
+                                          ))
+                                      .toList(),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Builder(builder: (context) {
+                                final availableSubjects =
+                                    getSubjectsForThisFaculty().isNotEmpty
+                                        ? getSubjectsForThisFaculty()
+                                        : subjects;
+                                return DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: availableSubjects
+                                            .contains(selectedSubject)
+                                        ? selectedSubject
+                                        : null,
+                                    isExpanded: true,
+                                    hint: const Padding(
+                                      padding:
+                                          EdgeInsets.symmetric(horizontal: 8.0),
+                                      child: Text('Select Subject',
+                                          style: TextStyle(fontSize: 13)),
+                                    ),
+                                    onChanged: (v) {
+                                      setState(() => selectedSubject = v);
+                                      _onSelectionChanged();
+                                    },
+                                    items: availableSubjects
+                                        .map((e) => DropdownMenuItem(
+                                              value: e,
+                                              child: Padding(
+                                                padding: EdgeInsets.symmetric(
+                                                    horizontal: 8),
+                                                child: Text(e,
+                                                    style: const TextStyle(
+                                                        fontSize: 13)),
+                                              ),
+                                            ))
+                                        .toList(),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF222F3E),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  selectedHour != null && !_isAfterFourTen()
+                                      ? 'Hour $selectedHour'
+                                      : 'No Hours',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Present and Absent Count Row (instead of Date Picker)
+                    Builder(builder: (context) {
+                      final presentStudents = students
+                          .where((s) => attendance[s['id']] == true)
+                          .toList();
+                      final absentStudents = students
+                          .where((s) => attendance[s['id']] != true)
+                          .toList();
+                      final presentCount = presentStudents.length;
+                      final absentCount = absentStudents.length;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10.0, vertical: 8.0),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showStudentsDialog(
+                                    "Present Students", presentStudents),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: Colors.green.shade200),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '$presentCount',
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'PRESENT',
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () => _showStudentsDialog(
+                                    "Absent Students", absentStudents),
+                                child: Container(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border:
+                                        Border.all(color: Colors.red.shade200),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 4,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '$absentCount',
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        'ABSENT',
+                                        style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       );
                     }),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Container(
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF222F3E),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Center(
-                      child: Text(
-                        selectedHour != null && !_isAfterFourTen()
-                            ? 'Hour $selectedHour'
-                            : 'No Hours',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Present and Absent Count Row (instead of Date Picker)
-          Builder(builder: (context) {
-            final presentStudents = students.where((s) => attendance[s['id']] == true).toList();
-            final absentStudents = students.where((s) => attendance[s['id']] != true).toList();
-            final presentCount = presentStudents.length;
-            final absentCount = absentStudents.length;
-            return Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _showStudentsDialog("Present Students", presentStudents),
+                    // Search Students
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        height: 44,
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.green.shade200),
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
+                                color: kShadow,
+                                blurRadius: 3,
+                                offset: Offset(1, 2)),
                           ],
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '$presentCount',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'PRESENT',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
-                          ],
+                        child: TextField(
+                          style: const TextStyle(fontSize: 13),
+                          decoration: const InputDecoration(
+                            hintText: "Search students",
+                            hintStyle: TextStyle(fontSize: 13),
+                            border: InputBorder.none,
+                            prefixIcon: Icon(Icons.search),
+                            contentPadding: EdgeInsets.symmetric(
+                                horizontal: 6, vertical: 8),
+                          ),
+                          onChanged: (val) => setState(() => searchQuery = val),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => _showStudentsDialog("Absent Students", absentStudents),
+
+                    // Table Headers
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.shade200),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          color: kBackground,
+                          border: const Border(
+                            bottom: BorderSide(color: kPrimary, width: 2),
+                            top: BorderSide(color: kPrimary, width: 2),
+                          ),
                         ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '$absentCount',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'ABSENT',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-
-          // Search Students
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                      color: kShadow, blurRadius: 3, offset: Offset(1, 2)),
-                ],
-              ),
-              child: TextField(
-                style: const TextStyle(fontSize: 13),
-                decoration: const InputDecoration(
-                  hintText: "Search students",
-                  hintStyle: TextStyle(fontSize: 13),
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search),
-                  contentPadding:
-                      EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                ),
-                onChanged: (val) => setState(() => searchQuery = val),
-              ),
-            ),
-          ),
-
-          // Table Headers
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: Container(
-              decoration: BoxDecoration(
-                color: kBackground,
-                border: const Border(
-                  bottom: BorderSide(color: kPrimary, width: 2),
-                  top: BorderSide(color: kPrimary, width: 2),
-                ),
-              ),
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 6.0, horizontal: 16.0),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      flex: 2,
-                      child: Text("STUDENT ID",
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500)),
-                    ),
-                    const Expanded(
-                      flex: 3,
-                      child: Text("STUDENT NAME",
-                          style: const TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500)),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          const SizedBox(width: 4),
-                          PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, size: 18),
-                            onSelected: (value) {
-                              if (value == 'all_present')
-                                _markAll(true);
-                              else if (value == 'all_absent') _markAll(false);
-                            },
-                            itemBuilder: (context) => [
-                              const PopupMenuItem(
-                                value: 'all_present',
-                                child: Row(
-                                  children: [
-                                    Icon(Icons.check_circle,
-                                        color: Colors.green, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Mark All Present'),
-                                  ],
-                                ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 6.0, horizontal: 16.0),
+                          child: Row(
+                            children: [
+                              const Expanded(
+                                flex: 2,
+                                child: Text("STUDENT ID",
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500)),
                               ),
-                              const PopupMenuItem(
-                                value: 'all_absent',
+                              const Expanded(
+                                flex: 3,
+                                child: Text("STUDENT NAME",
+                                    style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500)),
+                              ),
+                              Expanded(
+                                flex: 2,
                                 child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
                                   children: [
-                                    Icon(Icons.cancel,
-                                        color: Colors.red, size: 18),
-                                    SizedBox(width: 8),
-                                    Text('Mark All Absent'),
+                                    const SizedBox(width: 4),
+                                    PopupMenuButton<String>(
+                                      icon:
+                                          const Icon(Icons.more_vert, size: 18),
+                                      onSelected: (value) {
+                                        if (value == 'all_present')
+                                          _markAll(true);
+                                        else if (value == 'all_absent')
+                                          _markAll(false);
+                                      },
+                                      itemBuilder: (context) => [
+                                        const PopupMenuItem(
+                                          value: 'all_present',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.check_circle,
+                                                  color: Colors.green,
+                                                  size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Mark All Present'),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'all_absent',
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.cancel,
+                                                  color: Colors.red, size: 18),
+                                              SizedBox(width: 8),
+                                              Text('Mark All Absent'),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ],
                                 ),
                               ),
                             ],
                           ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Stack(
+                        children: [
+                          filteredStudents.isEmpty
+                              ? const Center(child: Text("No students found."))
+                              : ListView.separated(
+                                  itemCount: filteredStudents.length,
+                                  separatorBuilder: (_, __) => Divider(
+                                      color: kPrimary,
+                                      height: 1,
+                                      thickness: 0.7),
+                                  itemBuilder: (context, i) {
+                                    final s = filteredStudents[i];
+                                    final sid = s['id'];
+                                    final sname = s['name'];
+                                    final present = attendance[sid] ?? false;
+                                    final detectedViaBLE =
+                                        detectedStudentIds.contains(sid);
+
+                                    return Container(
+                                      color: detectedViaBLE
+                                          ? Colors.blue.shade50
+                                          : null, // Highlight BLE detected students
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 16.0),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              flex: 2,
+                                              child: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        vertical: 8),
+                                                child: Row(
+                                                  children: [
+                                                    Flexible(
+                                                      child: Text(
+                                                        sid,
+                                                        style: const TextStyle(
+                                                            fontSize: 13,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500),
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                      ),
+                                                    ),
+                                                    if (detectedViaBLE) ...[
+                                                      SizedBox(width: 4),
+                                                      Icon(
+                                                          Icons
+                                                              .bluetooth_connected,
+                                                          color: Colors.blue,
+                                                          size: 12),
+                                                    ],
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 3,
+                                              child: Row(
+                                                children: [
+                                                  Flexible(
+                                                    child: Text(
+                                                      sname,
+                                                      style: const TextStyle(
+                                                          fontSize: 13,
+                                                          fontWeight:
+                                                              FontWeight.w500),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                  ),
+                                                  if (detectedViaBLE) ...[
+                                                    SizedBox(width: 4),
+                                                    Container(
+                                                      padding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 4,
+                                                              vertical: 1),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.blue,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(6),
+                                                      ),
+                                                      child: Text(
+                                                        'AUTO',
+                                                        style: const TextStyle(
+                                                            fontSize: 12,
+                                                            fontWeight:
+                                                                FontWeight
+                                                                    .w500),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ],
+                                              ),
+                                            ),
+                                            Expanded(
+                                              flex: 2,
+                                              child: Align(
+                                                alignment:
+                                                    Alignment.centerRight,
+                                                child: Switch(
+                                                  key: ValueKey(
+                                                      '${sid}_${present}_${detectedViaBLE}'), // Force rebuild with unique key
+                                                  value: present,
+                                                  activeColor: detectedViaBLE
+                                                      ? Colors.blue
+                                                      : Colors.green,
+                                                  inactiveThumbColor:
+                                                      Colors.red,
+                                                  onChanged: (v) =>
+                                                      setState(() {
+                                                    attendance[sid] = v;
+                                                    if (!v) {
+                                                      // If manually marking as absent, remove from BLE detected set
+                                                      detectedStudentIds
+                                                          .remove(sid);
+                                                    }
+                                                  }),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                          if (isLoadingAttendance)
+                            Container(
+                              color: Colors.white.withOpacity(0.8),
+                              child: const Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CircularProgressIndicator(),
+                                    SizedBox(height: 16),
+                                    Text('Loading attendance...'),
+                                  ],
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: Stack(
-              children: [
-                filteredStudents.isEmpty
-                    ? const Center(child: Text("No students found."))
-                    : ListView.separated(
-                        itemCount: filteredStudents.length,
-                        separatorBuilder: (_, __) =>
-                            Divider(color: kPrimary, height: 1, thickness: 0.7),
-                        itemBuilder: (context, i) {
-                          final s = filteredStudents[i];
-                          final sid = s['id'];
-                          final sname = s['name'];
-                          final present = attendance[sid] ?? false;
-                          final detectedViaBLE =
-                              detectedStudentIds.contains(sid);
-
-                          return Container(
-                            color: detectedViaBLE
-                                ? Colors.blue.shade50
-                                : null, // Highlight BLE detected students
-                            child: Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 16.0),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
-                                      child: Row(
-                                        children: [
-                                          Flexible(
-                                            child: Text(
-                                              sid,
-                                              style: const TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w500),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          if (detectedViaBLE) ...[
-                                            SizedBox(width: 4),
-                                            Icon(Icons.bluetooth_connected,
-                                                color: Colors.blue, size: 12),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 3,
-                                    child: Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            sname,
-                                            style: const TextStyle(
-                                                fontSize: 13,
-                                                fontWeight: FontWeight.w500),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (detectedViaBLE) ...[
-                                          SizedBox(width: 4),
-                                          Container(
-                                            padding: EdgeInsets.symmetric(
-                                                horizontal: 4, vertical: 1),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue,
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
-                                            ),
-                                            child: Text(
-                                              'AUTO',
-                                              style: const TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  Expanded(
-                                    flex: 2,
-                                    child: Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Switch(
-                                        key: ValueKey(
-                                            '${sid}_${present}_${detectedViaBLE}'), // Force rebuild with unique key
-                                        value: present,
-                                        activeColor: detectedViaBLE
-                                            ? Colors.blue
-                                            : Colors.green,
-                                        inactiveThumbColor: Colors.red,
-                                        onChanged: (v) => setState(() {
-                                          attendance[sid] = v;
-                                          if (!v) {
-                                            // If manually marking as absent, remove from BLE detected set
-                                            detectedStudentIds.remove(sid);
-                                          }
-                                        }),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                if (isLoadingAttendance)
-                  Container(
-                    color: Colors.white.withOpacity(0.8),
-                    child: const Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(),
-                          SizedBox(height: 16),
-                          Text('Loading attendance...'),
-                        ],
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
