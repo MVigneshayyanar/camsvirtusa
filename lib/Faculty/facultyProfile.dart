@@ -254,6 +254,13 @@ class _FacultyProfileState extends State<FacultyProfile> {
           ),
         ),
         automaticallyImplyLeading: false,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            onPressed: _logout,
+            tooltip: 'Log out',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -394,27 +401,45 @@ class _FacultyProfileState extends State<FacultyProfile> {
                     ),
                   ),
 
-                  const SizedBox(height: 80), // Space for bottom navigation
+                  SizedBox(height: screenWidth > 600 ? 32 : 24),
+
+                  // Logout Button
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth > 600 ? 24.0 : 16.0,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                        label: const Text(
+                          'LOG OUT',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 140),
                 ],
               ),
             ),
           ),
         ],
-      ),
-      floatingActionButton: SizedBox(
-        width: screenWidth > 600 ? 120 : 100,
-        height: screenWidth > 600 ? 45 : 40,
-        child: FloatingActionButton(
-          onPressed: _logout,
-          backgroundColor: const Color(0xFFFF7F50),
-          child: Text(
-            'Log out',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: screenWidth > 600 ? 14 : 12,
-            ),
-          ),
-        ),
       ),
     );
   }

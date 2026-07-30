@@ -408,6 +408,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                 ],
               ),
               backgroundColor: Colors.blue,
+              behavior: SnackBarBehavior.floating,
             ),
           );
         }
@@ -483,6 +484,7 @@ class _StudentDashboardState extends State<StudentDashboard>
               ],
             ),
             backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -1050,7 +1052,10 @@ class _StudentDashboardState extends State<StudentDashboard>
       print("Error loading student data: $e");
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading student data: $e')));
+            SnackBar(
+              content: Text('Error loading student data: $e'),
+              behavior: SnackBarBehavior.floating,
+            ));
         setState(() {
           _isLoading = false;
           studentData = null;
@@ -1352,23 +1357,23 @@ class _StudentDashboardState extends State<StudentDashboard>
                     if (!_isAttendanceActive)
                       Container(
                         width: double.infinity,
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: Colors.red.shade100,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red),
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.shade200),
                         ),
-                        child: Column(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text(
-                              "Attendance Deactivated (Timeout)",
+                              "Timeout - Verify Face Again",
                               style: TextStyle(
                                   color: Colors.red,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16),
+                                  fontSize: 12),
                             ),
-                            const SizedBox(height: 8),
                             ElevatedButton(
                               onPressed: () {
                                 Navigator.pushReplacementNamed(
@@ -1379,9 +1384,12 @@ class _StudentDashboardState extends State<StudentDashboard>
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                minimumSize: Size.zero,
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
-                              child: const Text("Verify Face Again",
-                                  style: TextStyle(color: Colors.white)),
+                              child: const Text("Verify",
+                                  style: TextStyle(color: Colors.white, fontSize: 11)),
                             )
                           ],
                         ),
@@ -1520,6 +1528,8 @@ class _StudentDashboardState extends State<StudentDashboard>
 
                     SizedBox(height: screenHeight > 600 ? 16 : 12),
 
+                    _buildApprovedODTickets(),
+
                     // Dashboard Grid
                     _buildDashboardGrid(context),
                   ],
@@ -1529,31 +1539,210 @@ class _StudentDashboardState extends State<StudentDashboard>
     );
   }
 
+  Widget _buildApprovedODTickets() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('od_requests')
+          .collection('all_requests')
+          .where('studentId', isEqualTo: widget.studentId)
+          .where('status', isEqualTo: 'approved')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "Approved OD Tickets",
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 125,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: snapshot.data!.docs.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final fromDate = data['fromDate'] ?? '';
+                    final toDate = data['toDate'] ?? '';
+                    final leaveType = data['leaveType'] ?? 'On Duty';
+                    final periods = List<int>.from(data['periods'] ?? []);
+                    final durationType = data['durationType'] ?? 'Full Day';
+                    final id = data['id'] ?? '';
+
+                    return Container(
+                      width: 290,
+                      margin: const EdgeInsets.only(right: 10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blue.shade300, width: 1.5),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.blue.withOpacity(0.04),
+                            blurRadius: 6,
+                            offset: const Offset(0, 3),
+                          )
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Row(
+                          children: [
+                            // Ticket info
+                            Expanded(
+                              flex: 3,
+                              child: Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          leaveType.toUpperCase(),
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 10,
+                                              color: Colors.blue),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          '$fromDate ${fromDate != toDate ? 'to $toDate' : ''}',
+                                          style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          durationType == 'Full Day'
+                                              ? 'Full Day'
+                                              : 'Periods: ${periods.join(', ')}',
+                                          style: const TextStyle(
+                                              fontSize: 9,
+                                              color: Colors.black54),
+                                        ),
+                                      ],
+                                    ),
+                                    Text(
+                                      'ID: ${id.toString().length > 8 ? id.toString().substring(0, 8) : id.toString()}',
+                                      style: const TextStyle(
+                                          fontSize: 8,
+                                          fontFamily: 'monospace',
+                                          color: Colors.grey),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            // Dashed Divider
+                            Container(
+                              width: 1,
+                              height: 90,
+                              color: Colors.grey.shade300,
+                            ),
+                            // QR/Barcode representation
+                            Expanded(
+                              flex: 2,
+                              child: Container(
+                                color: Colors.grey.shade50,
+                                padding: const EdgeInsets.all(6.0),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    // Custom Barcode Graphic
+                                    Column(
+                                      children: List.generate(8, (index) {
+                                        return Container(
+                                          height: 3,
+                                          margin: const EdgeInsets.symmetric(vertical: 1),
+                                          color: index % 3 == 0
+                                              ? Colors.transparent
+                                              : Colors.black87,
+                                        );
+                                      }),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    const Icon(Icons.qr_code_scanner,
+                                        size: 16, color: Colors.blue),
+                                    const SizedBox(height: 1),
+                                    const Text(
+                                      'VERIFIED',
+                                      style: TextStyle(
+                                          fontSize: 7,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue),
+                                    )
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildDashboardGrid(BuildContext context) {
     final MediaQueryData mediaQuery = MediaQuery.of(context);
     final double screenWidth = mediaQuery.size.width;
 
-    return Expanded(
-      child: GridView.count(
-        padding: EdgeInsets.all(screenWidth > 600 ? 24.0 : 16.0),
-        crossAxisCount: screenWidth > 800 ? 3 : 2,
-        crossAxisSpacing: screenWidth > 600 ? 20 : 16,
-        mainAxisSpacing: screenWidth > 600 ? 20 : 16,
-        childAspectRatio: screenWidth > 600 ? 1.1 : 1.0,
-        children: [
-          _buildDashboardCard(
-            context,
-            label: "TIME TABLE",
-            icon: PhosphorIconsRegular.calendarBlank,
-            onTap: () => navigateToTimeTable("Time Table"),
-          ),
-          _buildDashboardCard(
-            context,
-            label: "ATTENDANCE",
-            icon: PhosphorIconsRegular.checkSquare,
-            onTap: () => navigateToAttendance("Attendance"),
-          ),
-        ],
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: screenWidth > 600 ? 24.0 : 16.0,
+        vertical: 4.0,
+      ),
+      child: SizedBox(
+        height: screenWidth < 500 ? 82 : 110,
+        child: Row(
+          children: [
+            Expanded(
+              child: _buildDashboardCard(
+                context,
+                label: "TIME TABLE",
+                icon: PhosphorIconsRegular.calendarBlank,
+                onTap: () => navigateToTimeTable("Time Table"),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildDashboardCard(
+                context,
+                label: "ATTENDANCE",
+                icon: PhosphorIconsRegular.checkSquare,
+                onTap: () => navigateToAttendance("Attendance"),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _buildDashboardCard(
+                context,
+                label: "ON DUTY",
+                icon: PhosphorIconsRegular.clipboardText,
+                onTap: () => navigateToODForm("On Duty"),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1565,37 +1754,38 @@ class _StudentDashboardState extends State<StudentDashboard>
     required VoidCallback onTap,
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 500;
+    
+    final double computedIconSize = isSmall ? 24 : (screenWidth > 800 ? 60 : 40);
+    final double computedFontSize = isSmall ? 10 : (screenWidth > 600 ? 16 : 13);
+    final double computedPadding = isSmall ? 6 : 12;
 
     return Card(
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 15),
       ),
       color: const Color(0xFF36454F),
-      elevation: screenWidth > 600 ? 6 : 4,
+      elevation: isSmall ? 3 : 5,
       child: InkWell(
-        borderRadius: BorderRadius.circular(screenWidth > 600 ? 15 : 10),
+        borderRadius: BorderRadius.circular(isSmall ? 10 : 15),
         onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.all(screenWidth > 600 ? 16 : 12),
+          padding: EdgeInsets.symmetric(vertical: computedPadding, horizontal: 4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
                 icon,
-                size: screenWidth > 800
-                    ? 80
-                    : screenWidth > 600
-                        ? 54
-                        : 40,
+                size: computedIconSize,
                 color: Colors.white,
               ),
-              SizedBox(height: screenWidth > 600 ? 12 : 8),
+              const SizedBox(height: 6),
               Text(
                 label,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: screenWidth > 600 ? 18 : 16,
-                  fontWeight: FontWeight.w500,
+                  fontSize: computedFontSize,
+                  fontWeight: FontWeight.bold,
                 ),
                 textAlign: TextAlign.center,
               ),

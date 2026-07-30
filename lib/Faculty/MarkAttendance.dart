@@ -925,10 +925,9 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
       // Resolve the real student name from the loaded students list
       String resolvedName = _getStudentName(studentId);
-      if (resolvedName == 'Unknown Student' &&
-          studentName.isNotEmpty &&
-          studentName != studentId) {
-        resolvedName = studentName;
+      if (resolvedName == 'Unknown Student') {
+        print("⚠️ Ignored unknown student from BLE: $studentId");
+        return;
       }
 
       print("🆕 [BLE-DIRECT] New student detected: $studentId ($resolvedName)");
@@ -1248,30 +1247,18 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
 
         // Check if this is a new detection
         if (!detectedStudentIds.contains(studentId)) {
-          hasNewStudents = true;
-          print("🆕 NEW STUDENT DETECTED: $studentId - $studentName");
-
-          // Get student name with better fallback logic
-          String displayName = studentName ?? 'Unknown';
-          if (displayName.isEmpty || displayName == 'Unknown Student') {
-            final studentData = students.firstWhere(
-              (s) => s['id'] == studentId,
-              orElse: () => <String, dynamic>{},
-            );
-            if (studentData.isNotEmpty) {
-              displayName = studentData['name'] ??
-                  studentData['student_name'] ??
-                  studentId;
-            } else {
-              displayName = studentId;
-            }
+          String resolvedName = _getStudentName(studentId);
+          if (resolvedName == 'Unknown Student') {
+            print("⚠️ Ignored unknown student response: $studentId");
+            continue;
           }
 
-          print("👤 Final display name: $displayName");
+          hasNewStudents = true;
+          print("🆕 NEW STUDENT DETECTED: $studentId - $resolvedName");
 
           newDetectedStudents.add({
             'id': studentId,
-            'name': displayName,
+            'name': resolvedName,
             'timestamp': timestamp?.toDate() ?? DateTime.now(),
             'isNew': true,
           });
@@ -1709,25 +1696,40 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                           ],
                         ),
                       ),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          dialogTimer?.cancel();
-                          stopAdvertising();
-                          Navigator.pop(context);
-                        },
-                        icon: const Icon(Icons.stop, size: 14),
-                        label: const Text('Stop Broadcasting',
-                            style: TextStyle(fontSize: 11)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 6),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            'Session: ${currentSessionId != null && currentSessionId!.length >= 8 ? currentSessionId!.substring(currentSessionId!.length - 8) : currentSessionId ?? ""}',
+                            style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white),
                           ),
-                        ),
+                          const SizedBox(height: 6),
+                          ElevatedButton.icon(
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    dialogTimer?.cancel();
+                                    Navigator.pop(context);
+                                    await _saveAttendance();
+                                  },
+                            icon: const Icon(Icons.save, size: 12),
+                            label: const Text('Save',
+                                style: TextStyle(fontSize: 11)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: Colors.green.shade700,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
@@ -1909,52 +1911,30 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                   ),
                 ),
 
-                // Bottom section
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius:
-                        BorderRadius.vertical(bottom: Radius.circular(20)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Session ID:',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500)),
-                          Text(
-                              currentSessionId?.substring(
-                                      currentSessionId!.length - 8) ??
-                                  'Unknown',
-                              style: const TextStyle(
-                                  fontSize: 13, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                      ElevatedButton.icon(
-                        onPressed: isSaving
-                            ? null
-                            : () async {
-                                dialogTimer?.cancel();
-                                Navigator.pop(context);
-                                await _saveAttendance();
-                              },
-                        icon: const Icon(Icons.save),
-                        label: const Text('Save Attendance'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF7F50),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
+                // Bottom section wrapped in SafeArea to prevent overlap with phone navigation
+                SafeArea(
+                  top: false,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        dialogTimer?.cancel();
+                        Navigator.pop(context);
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade300,
+                        foregroundColor: Colors.black87,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                    ],
+                      child: const Text('Close Preview',
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.bold)),
+                    ),
                   ),
                 ),
               ],
@@ -2633,6 +2613,11 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
         SnackBar(content: Text('Attendance saved successfully for $hourText')),
       );
 
+      // Stop broadcasting once saved successfully
+      if (isAdvertising) {
+        await stopAdvertising();
+      }
+
       // Fire and forget updating percentages so it doesn't block UI
       _updateAttendancePercentagesFromHistory();
     } catch (e) {
@@ -2740,12 +2725,23 @@ class _ClassAttendanceScreenState extends State<ClassAttendanceScreen> {
                 )
               : IconButton(
                   icon: const Icon(
-                Icons.wifi_tethering,
+                    Icons.wifi_tethering,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: startAdvertising,
+                  tooltip: 'Start Broadcasting',
+                ),
+          // Save Button
+          if (!isLoading && error.isEmpty)
+            IconButton(
+              icon: const Icon(
+                Icons.save,
                 color: Colors.white,
                 size: 28,
               ),
-              onPressed: startAdvertising,
-              tooltip: 'Start Broadcasting',
+              onPressed: isSaving ? null : _saveAttendance,
+              tooltip: 'Save Attendance',
             ),
         ],
         leading: const BackButton(color: Colors.white),

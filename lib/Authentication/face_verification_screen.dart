@@ -54,6 +54,12 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
     )..repeat(reverse: true);
     _pulseAnim = Tween<double>(begin: 1.0, end: 1.04).animate(_pulseController);
 
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+    });
+
     _init();
   }
 

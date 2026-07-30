@@ -46,6 +46,7 @@ class _FacultyMainScreenState extends State<FacultyMainScreen> {
 
     return HardwareEnforcementWrapper(
       child: Scaffold(
+        extendBody: true,
         body: IndexedStack(
           index: _currentIndex,
           children: _pages,
@@ -62,13 +63,7 @@ class _FacultyMainScreenState extends State<FacultyMainScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFF7F50), // Orange
                       borderRadius: BorderRadius.circular(40),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF7F50).withOpacity(0.25),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
+                      boxShadow: const [],
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
@@ -115,7 +110,7 @@ class _FacultyMainScreenState extends State<FacultyMainScreen> {
     final isSelected = _currentIndex == index;
 
     // Scale items on smaller screen sizes to prevent overflow
-    final isSmallScreen = screenWidth < 360;
+    final isSmallScreen = screenWidth < 400;
     final paddingHorizontal = isSmallScreen ? 12.0 : 16.0;
     final paddingVertical = isSmallScreen ? 8.0 : 12.0;
     final iconSize = isSmallScreen ? 18.0 : 22.0;

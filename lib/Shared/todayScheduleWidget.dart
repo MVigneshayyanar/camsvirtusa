@@ -178,38 +178,42 @@ class _TodayScheduleWidgetState extends State<TodayScheduleWidget> {
                 } else {
                   currentSem = currentSemesterField?.toString() ?? 'V';
                 }
-                final timetables = classData['timetables'] as Map?;
-                if (timetables != null) {
-                  final semTimetable = timetables[currentSem];
-                  if (semTimetable != null && semTimetable[today] != null) {
-                    final todayPeriods = semTimetable[today] as List;
-                    for (int i = 0; i < 7 && i < todayPeriods.length; i++) {
-                      var subjectStr = todayPeriods[i]?.toString() ?? "";
-                      if (subjectStr.contains("(") &&
-                          subjectStr.contains(")")) {
-                        var parts = subjectStr.split("(");
-                        var sub = parts[0].trim();
-                        var facStr = parts[1].replaceAll(")", "").trim();
-                        var facs = facStr.split(",");
-                        if (facs.any((f) =>
-                            f.trim() == widget.userId ||
-                            f.trim() == data['abbreviation'])) {
-                          schedule[i] = {
-                            'subject': "$sub - $className",
-                            'period': i,
-                          };
-                        }
-                      } else if (subjectStr.isNotEmpty &&
-                              subjectStr.contains(widget.userId) ||
-                          subjectStr.contains(data['abbreviation'] ?? '')) {
-                        schedule[i] = {
-                          'subject': "$subjectStr - $className",
-                          'period': i,
-                        };
-                      }
-                    }
-                  }
-                }
+                 final timetables = classData['timetables'] as Map?;
+                 final courseMapping = classData['courseMapping'] as Map?;
+                 if (timetables != null && courseMapping != null) {
+                   final semTimetable = timetables[currentSem];
+                   final semMappings = courseMapping[currentSem] as List?;
+                   if (semTimetable != null && semTimetable[today] != null && semMappings != null) {
+                     final todayPeriods = semTimetable[today] as List;
+                     for (int i = 0; i < 7 && i < todayPeriods.length; i++) {
+                       var abbrev = todayPeriods[i]?.toString() ?? "";
+                       if (abbrev.isNotEmpty && abbrev != "-") {
+                         final mapping = semMappings.firstWhere((m) {
+                           final mapData = m as Map?;
+                           if (mapData == null) return false;
+                           if (mapData['abbreviation']?.toString().toLowerCase() !=
+                               abbrev.toLowerCase()) return false;
+
+                           final isPrimaryFaculty =
+                               mapData['facultyId']?.toString().toUpperCase() ==
+                                   widget.userId.toUpperCase();
+                           final isSecondaryFaculty = mapData['isElective'] == true &&
+                               mapData['facultyId2']?.toString().toUpperCase() ==
+                                   widget.userId.toUpperCase();
+
+                           return isPrimaryFaculty || isSecondaryFaculty;
+                         }, orElse: () => null);
+
+                         if (mapping != null) {
+                           schedule[i] = {
+                             'subject': "$abbrev - $className",
+                             'period': i,
+                           };
+                         }
+                       }
+                     }
+                   }
+                 }
               }
             }
           }

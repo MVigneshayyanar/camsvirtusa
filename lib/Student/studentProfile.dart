@@ -45,16 +45,17 @@ class _StudentProfileState extends State<StudentProfile> {
       studentData = studentDoc.data();
       print(studentData);
 
-      final mentorQuery = await FirebaseFirestore.instance
-          .collection('colleges')
-          .doc('faculties')
-          .collection('all_faculties')
-          .where('mentees', arrayContains: widget.studentId)
-          .limit(1)
-          .get();
-
-      if (mentorQuery.docs.isNotEmpty) {
-        mentorData = mentorQuery.docs.first.data();
+      final mentorId = studentData?['mentor_id'];
+      if (mentorId != null && mentorId.toString().isNotEmpty) {
+        final mentorDoc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('faculties')
+            .collection('all_faculties')
+            .doc(mentorId.toString())
+            .get();
+        if (mentorDoc.exists) {
+          mentorData = mentorDoc.data();
+        }
       }
     } catch (e) {
       print("Error fetching data: $e");
@@ -270,6 +271,12 @@ class _StudentProfileState extends State<StudentProfile> {
             letterSpacing: 1.0,
           ),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            onPressed: _logout,
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -352,24 +359,39 @@ class _StudentProfileState extends State<StudentProfile> {
                     ),
                   ),
                   SizedBox(height: screenHeight > 600 ? 20 : 16),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: screenWidth > 600 ? 32 : 16,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _logout,
+                        icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                        label: const Text(
+                          'LOG OUT',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade600,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 140),
                 ],
               ),
             ),
-      floatingActionButton: Container(
-        width: screenWidth > 600 ? 120 : 100, // Responsive width
-        height: screenWidth > 600 ? 45 : 40, // Responsive height
-        child: FloatingActionButton(
-          onPressed: _logout,
-          backgroundColor: const Color(0xFFFF7F50),
-          child: Text(
-            'Log out',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: screenWidth > 600 ? 14 : 12, // Responsive font size
-            ),
-          ),
-        ),
-      ),
-    );
+      );
   }
 }

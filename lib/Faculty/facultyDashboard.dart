@@ -7,6 +7,7 @@ import '../Shared/todayScheduleWidget.dart';
 import 'facultyTimetable.dart';
 import 'facultyProfile.dart';
 import 'MarkAttendance.dart';
+import 'facultyMentees.dart';
 
 class FacultyDashboard extends StatefulWidget {
   final String facultyId;
@@ -280,28 +281,16 @@ class _FacultyDashboardState extends State<FacultyDashboard>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('My Mentees'),
-          ),
-          body: const Center(
-              child: Text('My Mentees Page', style: TextStyle(fontSize: 24))),
-        ),
+        builder: (context) => FacultyMenteesPage(facultyId: widget.facultyId),
       ),
     );
   }
 
-  void _navigateToRequests() {
+  void _navigateToODRequests() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => Scaffold(
-          appBar: AppBar(
-            title: const Text('Requests'),
-          ),
-          body: const Center(
-              child: Text('Requests Page', style: TextStyle(fontSize: 24))),
-        ),
+        builder: (context) => FacultyODRequestsPage(facultyId: widget.facultyId),
       ),
     );
   }
@@ -502,18 +491,18 @@ class _FacultyDashboardState extends State<FacultyDashboard>
             icon: PhosphorIconsRegular.checkSquare,
             onTap: _navigateToMarkAttendance,
           ),
-          // _buildDashboardCard(
-          //   context,
-          //   label: "MY MENTEES",
-          //   imagePath: "assets/MyMentees.png",
-          //   onTap: _navigateToMentees,
-          // ),
-          // _buildDashboardCard(
-          //   context,
-          //   label: "REQUESTS",
-          //   imagePath: "assets/requests.png",
-          //   onTap: _navigateToRequests,
-          // ),
+          _buildDashboardCard(
+            context,
+            label: "MY MENTEES",
+            icon: PhosphorIconsRegular.users,
+            onTap: _navigateToMentees,
+          ),
+          _buildDashboardCard(
+            context,
+            label: "OD REQUESTS",
+            icon: PhosphorIconsRegular.clipboardText,
+            onTap: _navigateToODRequests,
+          ),
         ],
       ),
     );
