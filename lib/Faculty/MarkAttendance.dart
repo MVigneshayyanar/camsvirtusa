@@ -11,6 +11,7 @@ import 'package:ble_peripheral/ble_peripheral.dart';
 import 'package:camsvirtusa/Services/offline_attendance_queue.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:camsvirtusa/Faculty/MarkEventAttendance.dart';
 
 // Custom Color Palette
 const Color kPrimary = Color(0xFFFF7043);
@@ -29,6 +30,7 @@ class _MarkAttendanceState extends State<MarkAttendance> {
   List<String> assignedClasses = [];
   List<String> todayClasses = [];
   List<String> allClasses = [];
+  List<Map<String, dynamic>> todayEvents = [];
   bool isLoading = true;
   String error = '';
   String facultyName = '';
@@ -121,12 +123,44 @@ class _MarkAttendanceState extends State<MarkAttendance> {
       }
 
       await _calculateCurrentClass();
+      await _fetchTodayEvents();
     } catch (e) {
       setState(() {
         error = 'Error loading faculty details: $e';
       });
     } finally {
       setState(() => isLoading = false);
+    }
+  }
+
+  Future<void> _fetchTodayEvents() async {
+    try {
+      final now = DateTime.now();
+      final dateStr = DateFormat('yyyy-MM-dd').format(now);
+      
+      final snap = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('events')
+          .collection('all_events')
+          .where('assignedFacultyIds', arrayContains: widget.facultyId)
+          .get();
+
+      List<Map<String, dynamic>> events = [];
+      for (var doc in snap.docs) {
+        final data = doc.data();
+        final sDate = data['startDate'] ?? '';
+        final eDate = data['endDate'] ?? '';
+        if (sDate.compareTo(dateStr) <= 0 && eDate.compareTo(dateStr) >= 0) {
+          events.add({'id': doc.id, ...data});
+        }
+      }
+      if (mounted) {
+        setState(() {
+          todayEvents = events;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching today's events: $e");
     }
   }
 
@@ -665,9 +699,56 @@ class _MarkAttendanceState extends State<MarkAttendance> {
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
+                          ),
                         ),
                       ),
-                    ),
+                    if (todayEvents.isNotEmpty) ...[
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("TODAY'S EVENTS", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1.2)),
+                        ),
+                      ),
+                      ...todayEvents.map((event) {
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 16.0, right: 16.0, bottom: 8.0),
+                          child: Card(
+                            color: Colors.orange.shade50,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              side: BorderSide(color: Colors.orange.shade300, width: 1.5),
+                            ),
+                            elevation: 0,
+                            child: ListTile(
+                              leading: const Icon(Icons.event, color: Colors.orange),
+                              title: Text(
+                                event['name'] ?? 'Event',
+                                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                              ),
+                              subtitle: const Text("Mark Event Attendance", style: TextStyle(fontSize: 12, color: Colors.black54)),
+                              trailing: const Icon(Icons.arrow_forward_ios, color: Colors.orange, size: 16),
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => MarkEventAttendance(
+                                  eventId: event['id'],
+                                  eventName: event['name'] ?? 'Event',
+                                  students: List<String>.from(event['assignedStudents'] ?? []),
+                                  durationType: event['durationType'] ?? 'hour',
+                                  selectedPeriods: List<int>.from(event['selectedPeriods'] ?? [1]),
+                                )));
+                              },
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text("REGULAR CLASSES", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12, letterSpacing: 1.2)),
+                        ),
+                      ),
+                    ],
                     Expanded(
                       child: Builder(
                         builder: (context) {

@@ -820,6 +820,7 @@ class _ODRequestsTabState extends State<ODRequestsTab> {
     final studentId = req['studentId'] ?? '';
     final reason = req['reason'] ?? '';
     final leaveType = req['leaveType'] ?? 'On Duty';
+    final eventName = req['eventName'];
     final fromDate = req['fromDate'] ?? '';
     final toDate = req['toDate'] ?? '';
 
@@ -858,6 +859,14 @@ class _ODRequestsTabState extends State<ODRequestsTab> {
                   'Type: $leaveType • Dates: $fromDate ${fromDate != toDate ? "to $toDate" : ""}',
                   style: const TextStyle(fontSize: 11, color: Colors.grey),
                 ),
+                if (eventName != null && eventName.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      'Event: $eventName',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFFF7F50)),
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 const Text(
                   "REASON DETAILS:",
@@ -1012,6 +1021,7 @@ class _ODRequestsTabState extends State<ODRequestsTab> {
                   final durationType = req['durationType'] ?? 'Full Day';
                   final periods = List<int>.from(req['periods'] ?? []);
                   final leaveType = req['leaveType'] ?? 'On Duty';
+                  final eventName = req['eventName'];
                   final status = req['status'] ?? '';
                   final comments = req['comments'] ?? '';
 
@@ -1058,6 +1068,11 @@ class _ODRequestsTabState extends State<ODRequestsTab> {
                                       'Roll No: $studentId • $leaveType',
                                       style: const TextStyle(fontSize: 10, color: Colors.grey),
                                     ),
+                                    if (eventName != null && eventName.isNotEmpty)
+                                      Text(
+                                        'Event: $eventName',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFFFF7F50)),
+                                      ),
                                   ],
                                 ),
                               ),

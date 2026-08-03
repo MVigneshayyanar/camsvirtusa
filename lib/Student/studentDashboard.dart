@@ -1,8 +1,10 @@
 import 'package:camsvirtusa/Shared/newsScreen.dart';
-import '../Shared/latestNewsWidget.dart';
+
 import '../Shared/todayScheduleWidget.dart';
 import 'dart:async';
 import 'dart:convert';
+import 'package:intl/intl.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:camsvirtusa/Student/studentLeave.dart';
 import 'package:camsvirtusa/Student/studentOd.dart';
@@ -1523,10 +1525,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                     ),
                     SizedBox(height: screenHeight > 600 ? 16 : 12),
 
-                    // News Bar
-                    const LatestNewsWidget(),
 
-                    SizedBox(height: screenHeight > 600 ? 16 : 12),
 
                     _buildApprovedODTickets(),
 
@@ -1552,6 +1551,35 @@ class _StudentDashboardState extends State<StudentDashboard>
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const SizedBox.shrink();
         }
+        
+        final docs = snapshot.data!.docs.toList();
+        docs.sort((a, b) {
+          final dataA = a.data() as Map<String, dynamic>;
+          final dataB = b.data() as Map<String, dynamic>;
+          
+          try {
+            final format = DateFormat('dd-MM-yyyy');
+            final dateA = format.parse(dataA['fromDate'] ?? '');
+            final dateB = format.parse(dataB['fromDate'] ?? '');
+            
+            final now = DateTime.now();
+            final today = DateTime(now.year, now.month, now.day);
+            
+            final aIsUpcoming = !dateA.isBefore(today);
+            final bIsUpcoming = !dateB.isBefore(today);
+            
+            if (aIsUpcoming && !bIsUpcoming) return -1;
+            if (!aIsUpcoming && bIsUpcoming) return 1;
+            
+            if (aIsUpcoming && bIsUpcoming) {
+              return dateA.compareTo(dateB);
+            }
+            
+            return dateB.compareTo(dateA);
+          } catch (e) {
+            return 0;
+          }
+        });
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -1567,7 +1595,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                 height: 125,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  children: snapshot.data!.docs.map((doc) {
+                  children: docs.map((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     final fromDate = data['fromDate'] ?? '';
                     final toDate = data['toDate'] ?? '';
@@ -1575,120 +1603,202 @@ class _StudentDashboardState extends State<StudentDashboard>
                     final periods = List<int>.from(data['periods'] ?? []);
                     final durationType = data['durationType'] ?? 'Full Day';
                     final id = data['id'] ?? '';
+                    final eventId = data['eventId'] ?? '';
 
-                    return Container(
-                      width: 290,
-                      margin: const EdgeInsets.only(right: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.blue.shade300, width: 1.5),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.blue.withOpacity(0.04),
-                            blurRadius: 6,
-                            offset: const Offset(0, 3),
-                          )
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Row(
-                          children: [
-                            // Ticket info
-                            Expanded(
-                              flex: 3,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          leaveType.toUpperCase(),
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 10,
-                                              color: Colors.blue),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '$fromDate ${fromDate != toDate ? 'to $toDate' : ''}',
-                                          style: const TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.black87),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          durationType == 'Full Day'
-                                              ? 'Full Day'
-                                              : 'Periods: ${periods.join(', ')}',
-                                          style: const TextStyle(
-                                              fontSize: 9,
-                                              color: Colors.black54),
-                                        ),
-                                      ],
-                                    ),
-                                    Text(
-                                      'ID: ${id.toString().length > 8 ? id.toString().substring(0, 8) : id.toString()}',
-                                      style: const TextStyle(
-                                          fontSize: 8,
-                                          fontFamily: 'monospace',
-                                          color: Colors.grey),
-                                    ),
-                                  ],
+                    return GestureDetector(
+                      onTap: () {
+                        // Generate QR Data
+                        final qrData = jsonEncode({
+                          'studentId': widget.studentId,
+                          'eventId': eventId,
+                          'ticketId': id,
+                        });
+                        
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => Container(
+                            height: MediaQuery.of(context).size.height * 0.7,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                            ),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                                const SizedBox(height: 24),
+                                
+                                Text(
+                                  leaveType.toUpperCase(),
+                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1),
+                                  textAlign: TextAlign.center,
                                 ),
-                              ),
-                            ),
-                            // Dashed Divider
-                            Container(
-                              width: 1,
-                              height: 90,
-                              color: Colors.grey.shade300,
-                            ),
-                            // QR/Barcode representation
-                            Expanded(
-                              flex: 2,
-                              child: Container(
-                                color: Colors.grey.shade50,
-                                padding: const EdgeInsets.all(6.0),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Custom Barcode Graphic
-                                    Column(
-                                      children: List.generate(8, (index) {
-                                        return Container(
-                                          height: 3,
-                                          margin: const EdgeInsets.symmetric(vertical: 1),
-                                          color: index % 3 == 0
-                                              ? Colors.transparent
-                                              : Colors.black87,
-                                        );
-                                      }),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    const Icon(Icons.qr_code_scanner,
-                                        size: 16, color: Colors.blue),
-                                    const SizedBox(height: 1),
-                                    const Text(
-                                      'VERIFIED',
-                                      style: TextStyle(
-                                          fontSize: 7,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.blue),
-                                    )
-                                  ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  '$fromDate ${fromDate != toDate ? 'to $toDate' : ''}',
+                                  style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
                                 ),
-                              ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  durationType == 'Full Day' ? 'Full Day' : 'Periods: ${periods.join(', ')}',
+                                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                                ),
+                                
+                                const SizedBox(height: 32),
+                                const Text("Scan this QR code with Faculty app", style: TextStyle(color: Colors.black54, fontSize: 13)),
+                                const SizedBox(height: 16),
+                                
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(color: Colors.blue.shade200, width: 2),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: QrImageView(
+                                    data: qrData,
+                                    version: QrVersions.auto,
+                                    size: 200.0,
+                                    backgroundColor: Colors.white,
+                                  ),
+                                ),
+                                
+                                const Spacer(),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text('Booking ID: $id', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                      const SizedBox(height: 8),
+                                      const Text('#PresenzaOD', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 14)),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: 290,
+                        margin: const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blue.shade300, width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.blue.withOpacity(0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            )
                           ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Row(
+                            children: [
+                              // Ticket info
+                              Expanded(
+                                flex: 3,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            leaveType.toUpperCase(),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 10,
+                                                color: Colors.blue),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '$fromDate ${fromDate != toDate ? 'to $toDate' : ''}',
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.black87),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            durationType == 'Full Day'
+                                                ? 'Full Day'
+                                                : 'Periods: ${periods.join(', ')}',
+                                            style: const TextStyle(
+                                                fontSize: 9,
+                                                color: Colors.black54),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        'ID: ${id.toString().length > 8 ? id.toString().substring(0, 8) : id.toString()}',
+                                        style: const TextStyle(
+                                            fontSize: 8,
+                                            fontFamily: 'monospace',
+                                            color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Dashed Divider
+                              Container(
+                                width: 1,
+                                height: 90,
+                                color: Colors.grey.shade300,
+                              ),
+                              // QR/Barcode representation
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  color: Colors.grey.shade50,
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      // Custom Barcode Graphic
+                                      Column(
+                                        children: List.generate(8, (index) {
+                                          return Container(
+                                            height: 3,
+                                            margin: const EdgeInsets.symmetric(vertical: 1),
+                                            color: index % 3 == 0
+                                                ? Colors.transparent
+                                                : Colors.black87,
+                                          );
+                                        }),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      const Icon(Icons.qr_code_scanner,
+                                          size: 16, color: Colors.blue),
+                                      const SizedBox(height: 1),
+                                      const Text(
+                                        'TAP TO QR',
+                                        style: TextStyle(
+                                            fontSize: 7,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );

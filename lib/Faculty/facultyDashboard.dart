@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../Shared/latestNewsWidget.dart';
+
 import 'package:camsvirtusa/Shared/newsScreen.dart';
 import '../Shared/todayScheduleWidget.dart';
 import 'facultyTimetable.dart';
 import 'facultyProfile.dart';
 import 'MarkAttendance.dart';
 import 'facultyMentees.dart';
+
 
 class FacultyDashboard extends StatefulWidget {
   final String facultyId;
@@ -450,8 +451,7 @@ class _FacultyDashboardState extends State<FacultyDashboard>
                   userType: 'faculty', userId: widget.facultyId),
               const SizedBox(height: 16),
 
-              // News Bar - Added here
-              const LatestNewsWidget(),
+
 
               SizedBox(height: screenHeight > 600 ? 24 : 16),
 

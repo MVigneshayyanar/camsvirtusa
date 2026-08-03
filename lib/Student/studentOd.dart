@@ -16,8 +16,9 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
   DateTime? toDate;
   int numberOfDays = 0;
   String? selectedLeaveType;
-  String selectedDurationType = 'Full Day';
+  String selectedDurationType = 'full_day';
   List<int> selectedPeriods = [];
+  bool isEventLocked = false;
 
   final List<String> leaveTypes = [
     'National Cadet Corps',
@@ -29,13 +30,41 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
     'OTHERS',
   ];
 
-  final List<String> durationTypes = ['Full Day', 'Specific Periods'];
+  final List<String> durationTypes = ['hour', 'hours', 'full_day', 'multiple_days'];
+  final Map<String, String> durationLabels = {
+    'hour': 'Single Hour',
+    'hours': 'Multiple Hours',
+    'full_day': 'Full Day',
+    'multiple_days': 'Multiple Days'
+  };
   final TextEditingController reasonController = TextEditingController();
+
+  List<Map<String, dynamic>> availableEvents = [];
+  String? selectedEventId;
+  String? selectedEventName;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _fetchEvents();
+  }
+
+  Future<void> _fetchEvents() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('events')
+          .collection('all_events')
+          .where('assignedStudents', arrayContains: widget.studentId)
+          .get();
+      
+      setState(() {
+        availableEvents = snap.docs.map((d) => {'id': d.id, ...d.data()}).toList();
+      });
+    } catch (e) {
+      debugPrint("Error fetching events: $e");
+    }
   }
 
   @override
@@ -97,7 +126,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
       return;
     }
 
-    if (selectedDurationType == 'Specific Periods' && selectedPeriods.isEmpty) {
+    if ((selectedDurationType == 'hour' || selectedDurationType == 'hours') && selectedPeriods.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one period.'), backgroundColor: Colors.redAccent),
       );
@@ -148,6 +177,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
         'mentorApproved': false,
         'hodApproved': false,
         'timestamp': FieldValue.serverTimestamp(),
+        if (selectedEventId != null) 'eventId': selectedEventId,
+        if (selectedEventName != null) 'eventName': selectedEventName,
       });
 
       Navigator.of(context).pop(); // Dismiss loader
@@ -157,8 +188,11 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
         toDate = null;
         numberOfDays = 0;
         selectedLeaveType = null;
-        selectedDurationType = 'Full Day';
+        selectedDurationType = 'full_day';
         selectedPeriods = [];
+        selectedEventId = null;
+        selectedEventName = null;
+        isEventLocked = false;
         reasonController.clear();
       });
 
@@ -181,33 +215,36 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
   // UI field builders
   Widget _buildDateField(String label, bool isFromDate) {
     final displayDate = isFromDate ? fromDate : toDate;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
-        const SizedBox(height: 6),
-        InkWell(
-          onTap: () => _selectDate(context, isFromDate),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: Colors.grey.shade300),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  displayDate != null ? DateFormat('dd/MM/yyyy').format(displayDate) : 'dd/mm/yyyy',
-                  style: TextStyle(color: displayDate != null ? Colors.black87 : Colors.black38, fontSize: 14),
-                ),
-                const Icon(Icons.calendar_today, size: 18, color: Color(0xFFFF7F50)),
-              ],
+    return IgnorePointer(
+      ignoring: isEventLocked,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: () => _selectDate(context, isFromDate),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              decoration: BoxDecoration(
+                color: isEventLocked ? Colors.grey.shade100 : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    displayDate != null ? DateFormat('dd/MM/yyyy').format(displayDate) : 'dd/mm/yyyy',
+                    style: TextStyle(color: displayDate != null ? (isEventLocked ? Colors.black54 : Colors.black87) : Colors.black38, fontSize: 14),
+                  ),
+                  Icon(Icons.calendar_today, size: 18, color: isEventLocked ? Colors.grey : const Color(0xFFFF7F50)),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -235,89 +272,109 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
   }
 
   Widget _buildDurationTypeField() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Duration:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
-        const SizedBox(height: 6),
-        Row(
-          children: durationTypes.map((type) {
-            final isSelected = selectedDurationType == type;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => selectedDurationType = type),
+    return IgnorePointer(
+      ignoring: isEventLocked,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text("Duration Type:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
+          const SizedBox(height: 6),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 3.5,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            children: durationTypes.map((type) {
+              final isSelected = selectedDurationType == type;
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedDurationType = type;
+                    if (type == 'hour') selectedPeriods = [1];
+                    else selectedPeriods = [];
+                    if (type != 'multiple_days') toDate = fromDate;
+                  });
+                },
                 child: Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
-                    color: isSelected ? const Color(0xFFFFF5F0) : Colors.white,
+                    color: isSelected ? const Color(0xFFFFF5F0) : (isEventLocked ? Colors.grey.shade100 : Colors.white),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: isSelected ? const Color(0xFFFF7F50) : Colors.grey.shade300, width: isSelected ? 1.5 : 1),
                   ),
                   child: Center(
                     child: Text(
-                      type,
+                      durationLabels[type] ?? type,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? const Color(0xFFFF7F50) : Colors.black87,
+                        color: isSelected ? const Color(0xFFFF7F50) : (isEventLocked ? Colors.black38 : Colors.black87),
                       ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
+              );
+            }).toList(),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildPeriodSelectionField() {
-    if (selectedDurationType != 'Specific Periods') return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Select Periods:", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: List.generate(7, (index) {
-            final period = index + 1;
-            final isSelected = selectedPeriods.contains(period);
-            return GestureDetector(
-              onTap: () {
-                setState(() {
-                  if (isSelected) {
-                    selectedPeriods.remove(period);
-                  } else {
-                    selectedPeriods.add(period);
-                  }
-                });
-              },
-              child: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isSelected ? const Color(0xFFFF7F50) : Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: isSelected ? const Color(0xFFFF7F50) : Colors.grey.shade300),
-                ),
-                child: Center(
-                  child: Text(
-                    '$period',
-                    style: TextStyle(
-                      color: isSelected ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.bold,
+    if (selectedDurationType == 'full_day' || selectedDurationType == 'multiple_days') return const SizedBox.shrink();
+    return IgnorePointer(
+      ignoring: isEventLocked,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(selectedDurationType == 'hour' ? "Select Period:" : "Select Continuous Periods:", style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: List.generate(7, (index) {
+              final period = index + 1;
+              final isSelected = selectedPeriods.contains(period);
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if (selectedDurationType == 'hour') {
+                      selectedPeriods = [period];
+                    } else {
+                      if (isSelected) {
+                        selectedPeriods.remove(period);
+                      } else {
+                        selectedPeriods.add(period);
+                        selectedPeriods.sort();
+                      }
+                    }
+                  });
+                },
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isSelected ? const Color(0xFFFF7F50) : (isEventLocked ? Colors.grey.shade100 : Colors.white),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: isSelected ? const Color(0xFFFF7F50) : Colors.grey.shade300),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '$period',
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : (isEventLocked ? Colors.black38 : Colors.black87),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }),
-        ),
-      ],
+              );
+            }),
+          ),
+        ],
+      ),
     );
   }
 
@@ -346,6 +403,66 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
                 );
               }).toList(),
               onChanged: (value) => setState(() => selectedLeaveType = value),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEventSelectionField() {
+    if (availableEvents.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text("Select Event (Optional):", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: selectedEventId,
+              hint: const Text('None', style: TextStyle(fontSize: 14, color: Colors.black38)),
+              isExpanded: true,
+              items: [
+                const DropdownMenuItem<String>(
+                  value: null,
+                  child: Text('None', style: TextStyle(fontSize: 14)),
+                ),
+                ...availableEvents.map((evt) {
+                  return DropdownMenuItem<String>(
+                    value: evt['id'] as String,
+                    child: Text(evt['name'] as String, style: const TextStyle(fontSize: 14)),
+                  );
+                }).toList(),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  selectedEventId = value;
+                  if (value != null) {
+                    final evt = availableEvents.firstWhere((e) => e['id'] == value);
+                    selectedEventName = evt['name'];
+                    if (evt['startDate'] != null) {
+                      fromDate = DateFormat('yyyy-MM-dd').parse(evt['startDate']);
+                    }
+                    if (evt['endDate'] != null) {
+                      toDate = DateFormat('yyyy-MM-dd').parse(evt['endDate']);
+                    }
+                    selectedDurationType = evt['durationType'] ?? 'hour';
+                    selectedPeriods = List<int>.from(evt['selectedPeriods'] ?? []);
+                    isEventLocked = true;
+                    _calculateDays();
+                  } else {
+                    selectedEventName = null;
+                    isEventLocked = false;
+                  }
+                });
+              },
             ),
           ),
         ),
@@ -616,6 +733,7 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
             final periods = List<int>.from(data['periods'] ?? []);
             final status = data['status'] ?? 'pending_mentor';
             final comments = data['comments'] ?? data['rejectReason'] ?? '';
+            final eventName = data['eventName'];
 
             Color statusColor = Colors.orange;
             String statusText = 'PENDING MENTOR';
@@ -643,11 +761,26 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
-                          child: Text(
-                            leaveType.toUpperCase(),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                leaveType.toUpperCase(),
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.black87),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (eventName != null && eventName.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    'Event: $eventName',
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFFF7F50)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         Container(
@@ -670,7 +803,9 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      durationType == 'Full Day' ? 'Duration: Full Day' : 'Periods: ${periods.join(', ')}',
+                      (durationType == 'full_day' || durationType == 'multiple_days' || durationType == 'Full Day') 
+                          ? 'Duration: ${durationType == 'multiple_days' ? 'Multiple Days' : 'Full Day'}' 
+                          : 'Periods: ${periods.join(', ')}',
                       style: const TextStyle(fontSize: 11, color: Colors.black54),
                     ),
                     const SizedBox(height: 8),
@@ -769,9 +904,13 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDateField("From Date:", true),
-                    const SizedBox(height: 12),
-                    _buildDateField("To Date:", false),
+                    if (selectedDurationType == 'multiple_days') ...[
+                      _buildDateField("From Date:", true),
+                      const SizedBox(height: 12),
+                      _buildDateField("To Date:", false),
+                    ] else ...[
+                      _buildDateField("Date:", true), // Sets fromDate and syncs toDate
+                    ],
                     const SizedBox(height: 12),
                     _buildNumberOfDaysField(),
                     const SizedBox(height: 12),
@@ -780,6 +919,8 @@ class _OnDutyFormPageState extends State<OnDutyFormPage> with SingleTickerProvid
                     _buildPeriodSelectionField(),
                     const SizedBox(height: 12),
                     _buildDropdownField(),
+                    const SizedBox(height: 12),
+                    _buildEventSelectionField(),
                     const SizedBox(height: 12),
                     _buildReasonField(),
                     const SizedBox(height: 20),
