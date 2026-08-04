@@ -13,19 +13,51 @@ class FacultyMenteesPage extends StatefulWidget {
 }
 
 class _FacultyMenteesPageState extends State<FacultyMenteesPage> {
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseFirestore.instance
+        .collection('colleges')
+        .doc('students')
+        .collection('all_students')
+        .where('mentor_id', isEqualTo: widget.facultyId)
+        .get()
+        .then((_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }).catchError((_) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFFFF7F50),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'MY MENTEES',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
         ),
       ),
-      body: MenteesListTab(facultyId: widget.facultyId),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7F50)),
+              ),
+            )
+          : MenteesListTab(facultyId: widget.facultyId),
     );
   }
 }
@@ -75,28 +107,27 @@ class _FacultyODRequestsPageState extends State<FacultyODRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loadingRole) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFFF7F50),
-        body: Center(child: CircularProgressIndicator(color: Colors.white)),
-      );
-    }
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFFFF7F50),
         iconTheme: const IconThemeData(color: Colors.white),
         title: const Text(
           'OD REQUESTS',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
         ),
       ),
-      body: ODRequestsTab(
-        facultyId: widget.facultyId,
-        role: _facultyRole,
-        department: _facultyDept,
-      ),
+      body: _loadingRole
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7F50)),
+              ),
+            )
+          : ODRequestsTab(
+              facultyId: widget.facultyId,
+              role: _facultyRole,
+              department: _facultyDept,
+            ),
     );
   }
 }
@@ -828,6 +859,7 @@ class _ODRequestsTabState extends State<ODRequestsTab> {
       context: context,
       builder: (context) {
         return Dialog(
+          backgroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           child: Padding(
             padding: const EdgeInsets.all(16.0),

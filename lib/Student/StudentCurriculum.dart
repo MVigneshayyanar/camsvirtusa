@@ -342,7 +342,7 @@ class _StudentCurriculumState extends State<StudentCurriculum>
     final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: Colors.white,
       appBar: _buildAppBar(screenHeight, screenWidth),
       body: _isSearching
           ? _buildSearchView(screenHeight, screenWidth)
@@ -358,7 +358,7 @@ class _StudentCurriculumState extends State<StudentCurriculum>
         style: TextStyle(
           color: Colors.white,
           fontWeight: FontWeight.bold,
-          fontSize: screenWidth * 0.05,
+          fontSize: 20,
         ),
       ),
       bottom: PreferredSize(
@@ -1946,10 +1946,10 @@ class ClubDetailPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFFF7F50),
         title: Text(
-          clubName,
+          clubName.toUpperCase(),
           style: TextStyle(
             color: Colors.white,
-            fontSize: screenWidth * 0.045,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -2136,10 +2136,10 @@ class ClubCategoryPage extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFFF7F50),
         title: Text(
-          '$categoryName Clubs',
+          '${categoryName.toUpperCase()} CLUBS',
           style: TextStyle(
             color: Colors.white,
-            fontSize: screenWidth * 0.045,
+            fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),

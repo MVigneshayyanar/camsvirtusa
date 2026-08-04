@@ -256,7 +256,7 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
         backgroundColor: _bgColor,
         automaticallyImplyLeading: false,
         title: const Text(
-          'Face Verification',
+          'FACE VERIFICATION',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w900,
@@ -407,9 +407,15 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     TextButton(
-                      onPressed: () => Navigator.pushReplacementNamed(
-                          context, AppRoutes.login,
-                          arguments: 'student'),
+                      onPressed: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.clear();
+                        if (mounted) {
+                          Navigator.pushReplacementNamed(
+                              context, AppRoutes.login,
+                              arguments: 'student');
+                        }
+                      },
                       child: const Text(
                         'Back to Login',
                         style: TextStyle(color: Colors.black45, fontSize: 14),
@@ -463,6 +469,23 @@ class _FaceVerificationScreenState extends State<FaceVerificationScreen>
                         color: Color(0xFFFF7F50),
                         fontSize: 14,
                         fontWeight: FontWeight.bold),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.clear();
+                    if (mounted) {
+                      Navigator.pushReplacementNamed(
+                          context, AppRoutes.login,
+                          arguments: 'student');
+                    }
+                  },
+                  child: const Text(
+                    'Use ID & Password',
+                    style: TextStyle(
+                        color: Colors.black45,
+                        fontSize: 13),
                   ),
                 ),
               ],

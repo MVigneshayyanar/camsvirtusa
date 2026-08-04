@@ -224,8 +224,8 @@ class _FaceEnrollmentScreenState extends State<FaceEnrollmentScreen>
       appBar: AppBar(
         backgroundColor: _bgColor,
         automaticallyImplyLeading: false,
-        title: Text(
-          'Face Enrollment',
+        title: const Text(
+          'FACE ENROLLMENT',
           style: TextStyle(
             color: Colors.black,
             fontWeight: FontWeight.w900,

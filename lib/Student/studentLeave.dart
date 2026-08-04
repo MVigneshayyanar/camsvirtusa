@@ -180,7 +180,10 @@ class _LeaveApplicationFormState extends State<LeaveApplicationForm> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: _orange,
-        title: const Text("LEAVE FORM"),
+        title: const Text(
+          "LEAVE FORM",
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+        ),
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white), // White back arrow
           onPressed: () {

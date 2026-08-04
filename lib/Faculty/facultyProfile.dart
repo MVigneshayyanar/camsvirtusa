@@ -404,35 +404,35 @@ class _FacultyProfileState extends State<FacultyProfile> {
                   SizedBox(height: screenWidth > 600 ? 32 : 24),
 
                   // Logout Button
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: screenWidth > 600 ? 24.0 : 16.0,
-                    ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: _logout,
-                        icon: const Icon(Icons.logout_rounded, color: Colors.white),
-                        label: const Text(
-                          'LOG OUT',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Padding(
+                  //   padding: EdgeInsets.symmetric(
+                  //     horizontal: screenWidth > 600 ? 24.0 : 16.0,
+                  //   ),
+                  //   child: SizedBox(
+                  //     width: double.infinity,
+                  //     height: 48,
+                  //     child: ElevatedButton.icon(
+                  //       onPressed: _logout,
+                  //       icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                  //       label: const Text(
+                  //         'LOG OUT',
+                  //         style: TextStyle(
+                  //           fontWeight: FontWeight.bold,
+                  //           fontSize: 14,
+                  //           letterSpacing: 1.0,
+                  //         ),
+                  //       ),
+                  //       style: ElevatedButton.styleFrom(
+                  //         backgroundColor: Colors.red.shade600,
+                  //         foregroundColor: Colors.white,
+                  //         shape: RoundedRectangleBorder(
+                  //           borderRadius: BorderRadius.circular(12),
+                  //         ),
+                  //         elevation: 2,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
 
                   const SizedBox(height: 140),
                 ],

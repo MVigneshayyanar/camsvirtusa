@@ -37,24 +37,31 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     super.dispose();
   }
 
-  /// If already logged in, redirect to face verification (for students) or dashboard (for faculty)
+  /// If already logged in or if a student with enrolled face has logged out, redirect to face verification/dashboard
   Future<void> _maybeAutoRedirect() async {
     final prefs = await SharedPreferences.getInstance();
     final isLoggedIn = prefs.getBool('isLoggedIn') ?? false;
     final role = prefs.getString('role');
+    final studentId = prefs.getString('studentId');
+
+    if (role == 'student' && studentId != null) {
+      final faceService = FaceRecognitionService();
+      final hasEnrolled = await faceService.hasEnrolledFace(studentId);
+      faceService.dispose();
+
+      if (hasEnrolled && mounted) {
+        // Enrolled face acts as the login method: redirect directly to Face ID verification
+        Navigator.pushReplacementNamed(
+          context,
+          AppRoutes.faceVerification,
+          arguments: studentId,
+        );
+        return;
+      }
+    }
 
     if (isLoggedIn && role != null) {
-      if (role == 'student') {
-        final studentId = prefs.getString('studentId');
-        if (studentId != null && mounted) {
-          // Require face verification every time they open the app
-          Navigator.pushReplacementNamed(
-            context,
-            AppRoutes.faceVerification,
-            arguments: studentId,
-          );
-        }
-      } else if (role == 'faculty') {
+      if (role == 'faculty') {
         final facultyId = prefs.getString('facultyId');
         if (facultyId != null && mounted) {
           Navigator.pushReplacementNamed(

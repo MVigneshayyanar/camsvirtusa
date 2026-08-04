@@ -220,9 +220,21 @@ class _StudentProfileState extends State<StudentProfile> {
 
   void _performLogout() async {
     try {
-      // Clear all stored user data from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      final role = prefs.getString('role');
+      final studentId = prefs.getString('studentId');
+      final facultyId = prefs.getString('facultyId');
+
+      // Set isLoggedIn to false so they are logged out
+      await prefs.setBool('isLoggedIn', false);
+
+      // Keep studentId and role so that when they open the app again,
+      // we can redirect them to the face verification screen directly.
+      // If it is a faculty, we want them to go back to username/password, so we clear their credentials.
+      if (role == 'faculty') {
+        await prefs.remove('facultyId');
+        await prefs.remove('role');
+      }
 
       // Navigate to login page and clear all previous routes
       Navigator.of(context).pushNamedAndRemoveUntil(
@@ -230,7 +242,8 @@ class _StudentProfileState extends State<StudentProfile> {
         (Route<dynamic> route) => false,
       );
 
-      print("User logged out successfully - SharedPreferences cleared");
+      print(
+          "User logged out successfully - isLoggedIn set to false, studentId preserved");
     } catch (e) {
       print("Error during logout: $e");
       ScaffoldMessenger.of(context).showSnackBar(
@@ -363,35 +376,35 @@ class _StudentProfileState extends State<StudentProfile> {
                     padding: EdgeInsets.symmetric(
                       horizontal: screenWidth > 600 ? 32 : 16,
                     ),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton.icon(
-                        onPressed: _logout,
-                        icon: const Icon(Icons.logout_rounded, color: Colors.white),
-                        label: const Text(
-                          'LOG OUT',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red.shade600,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
-                        ),
-                      ),
-                    ),
+                    // child: SizedBox(
+                    //   width: double.infinity,
+                    //   height: 48,
+                    //   child: ElevatedButton.icon(
+                    //     onPressed: _logout,
+                    //     icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                    //     label: const Text(
+                    //       'LOG OUT',
+                    //       style: TextStyle(
+                    //         fontWeight: FontWeight.bold,
+                    //         fontSize: 14,
+                    //         letterSpacing: 1.0,
+                    //       ),
+                    //     ),
+                    //     style: ElevatedButton.styleFrom(
+                    //       backgroundColor: Colors.red.shade600,
+                    //       foregroundColor: Colors.white,
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(12),
+                    //       ),
+                    //       elevation: 2,
+                    //     ),
+                    //   ),
+                    // ),
                   ),
                   const SizedBox(height: 140),
                 ],
               ),
             ),
-      );
+    );
   }
 }

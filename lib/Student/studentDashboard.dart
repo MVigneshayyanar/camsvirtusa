@@ -61,12 +61,14 @@ class _StudentDashboardState extends State<StudentDashboard>
   // Faculty broadcasts with this prefix in localName: 'FAC_[sessionId]'
   // Student responds with this prefix in localName: 'STU_[studentId]'
   // Service UUID used to filter BLE scans on both sides
-  static const String STUDENT_ADV_SERVICE_UUID = "0000aabb-0000-1000-8000-00805f9b34fb";
+  static const String STUDENT_ADV_SERVICE_UUID =
+      "0000aabb-0000-1000-8000-00805f9b34fb";
   static const double PROXIMITY_RADIUS_METERS =
       100.0; // Max distance from faculty to be marked present
 
   // BLE state
-  bool _blePeripheralInitialized = false; // Track initialization to avoid re-init crash
+  bool _blePeripheralInitialized =
+      false; // Track initialization to avoid re-init crash
   StreamSubscription<List<ScanResult>>? _scanSubscription;
   StreamSubscription<BluetoothAdapterState>? _adapterStateSubscription;
   StreamSubscription<DocumentSnapshot>? _firestoreSessionSubscription;
@@ -772,7 +774,8 @@ class _StudentDashboardState extends State<StudentDashboard>
       // Check if peripheral advertising is supported on this Android device
       try {
         if (!await BlePeripheral.isSupported()) {
-          print("⚠️ BLE peripheral mode not supported on this device. Using Firestore fallback.");
+          print(
+              "⚠️ BLE peripheral mode not supported on this device. Using Firestore fallback.");
           return false;
         }
       } catch (_) {}
@@ -841,7 +844,6 @@ class _StudentDashboardState extends State<StudentDashboard>
     }
   }
 
-
   // Send attendance response with 3-tier fallback: BLE Direct -> Firebase -> Offline Queue
   Future<void> _sendAttendanceResponse(
       String sessionId, String subject, String facultyId,
@@ -855,9 +857,10 @@ class _StudentDashboardState extends State<StudentDashboard>
             .collection('attendance_responses')
             .doc(docId)
             .get();
-            
+
         if (existingDoc.exists) {
-          print("✅ Attendance already marked in Firebase. Skipping duplicate popup.");
+          print(
+              "✅ Attendance already marked in Firebase. Skipping duplicate popup.");
           _respondedSessions.add(sessionId);
           return;
         }
@@ -1053,11 +1056,10 @@ class _StudentDashboardState extends State<StudentDashboard>
     } catch (e) {
       print("Error loading student data: $e");
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error loading student data: $e'),
-              behavior: SnackBarBehavior.floating,
-            ));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Error loading student data: $e'),
+          behavior: SnackBarBehavior.floating,
+        ));
         setState(() {
           _isLoading = false;
           studentData = null;
@@ -1360,7 +1362,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                       Container(
                         width: double.infinity,
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.red.shade50,
                           borderRadius: BorderRadius.circular(10),
@@ -1386,12 +1389,14 @@ class _StudentDashboardState extends State<StudentDashboard>
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.red,
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 6),
                                 minimumSize: Size.zero,
                                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               ),
                               child: const Text("Verify",
-                                  style: TextStyle(color: Colors.white, fontSize: 11)),
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 11)),
                             )
                           ],
                         ),
@@ -1486,7 +1491,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                             "Attendance:",
                             style: TextStyle(
                               color: Colors.black,
-                              fontSize: screenWidth > 600 ? 17.5 : 15.5,
+                              fontSize: screenWidth > 600 ? 16.5 : 14.5,
                             ),
                           ),
                         ),
@@ -1525,9 +1530,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                     ),
                     SizedBox(height: screenHeight > 600 ? 16 : 12),
 
-
-
                     _buildApprovedODTickets(),
+                    _buildActiveTokens(),
 
                     // Dashboard Grid
                     _buildDashboardGrid(context),
@@ -1539,6 +1543,8 @@ class _StudentDashboardState extends State<StudentDashboard>
   }
 
   Widget _buildApprovedODTickets() {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double availableWidth = screenWidth > 600 ? screenWidth - 48 : screenWidth - 32;
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('colleges')
@@ -1551,30 +1557,31 @@ class _StudentDashboardState extends State<StudentDashboard>
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const SizedBox.shrink();
         }
-        
+
         final docs = snapshot.data!.docs.toList();
+        final double cardWidth = docs.length == 1 ? availableWidth : 290.0;
         docs.sort((a, b) {
           final dataA = a.data() as Map<String, dynamic>;
           final dataB = b.data() as Map<String, dynamic>;
-          
+
           try {
             final format = DateFormat('dd-MM-yyyy');
             final dateA = format.parse(dataA['fromDate'] ?? '');
             final dateB = format.parse(dataB['fromDate'] ?? '');
-            
+
             final now = DateTime.now();
             final today = DateTime(now.year, now.month, now.day);
-            
+
             final aIsUpcoming = !dateA.isBefore(today);
             final bIsUpcoming = !dateB.isBefore(today);
-            
+
             if (aIsUpcoming && !bIsUpcoming) return -1;
             if (!aIsUpcoming && bIsUpcoming) return 1;
-            
+
             if (aIsUpcoming && bIsUpcoming) {
               return dateA.compareTo(dateB);
             }
-            
+
             return dateB.compareTo(dateA);
           } catch (e) {
             return 0;
@@ -1588,14 +1595,20 @@ class _StudentDashboardState extends State<StudentDashboard>
             children: [
               const Text(
                 "Approved OD Tickets",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue),
               ),
               const SizedBox(height: 6),
               SizedBox(
                 height: 125,
                 child: ListView(
                   scrollDirection: Axis.horizontal,
-                  children: docs.map((doc) {
+                  children: docs.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final doc = entry.value;
+                    final isLast = index == docs.length - 1;
                     final data = doc.data() as Map<String, dynamic>;
                     final fromDate = data['fromDate'] ?? '';
                     final toDate = data['toDate'] ?? '';
@@ -1613,7 +1626,7 @@ class _StudentDashboardState extends State<StudentDashboard>
                           'eventId': eventId,
                           'ticketId': id,
                         });
-                        
+
                         showModalBottomSheet(
                           context: context,
                           isScrollControlled: true,
@@ -1622,39 +1635,56 @@ class _StudentDashboardState extends State<StudentDashboard>
                             height: MediaQuery.of(context).size.height * 0.7,
                             decoration: const BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24)),
                             ),
                             child: Column(
                               children: [
                                 const SizedBox(height: 12),
-                                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+                                Container(
+                                    width: 40,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius:
+                                            BorderRadius.circular(2))),
                                 const SizedBox(height: 24),
-                                
                                 Text(
                                   leaveType.toUpperCase(),
-                                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blue, letterSpacing: 1),
+                                  style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.blue,
+                                      letterSpacing: 1),
                                   textAlign: TextAlign.center,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   '$fromDate ${fromDate != toDate ? 'to $toDate' : ''}',
-                                  style: const TextStyle(fontSize: 14, color: Colors.black87, fontWeight: FontWeight.w500),
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w500),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  durationType == 'Full Day' ? 'Full Day' : 'Periods: ${periods.join(', ')}',
-                                  style: const TextStyle(fontSize: 14, color: Colors.black54),
+                                  durationType == 'Full Day'
+                                      ? 'Full Day'
+                                      : 'Periods: ${periods.join(', ')}',
+                                  style: const TextStyle(
+                                      fontSize: 14, color: Colors.black54),
                                 ),
-                                
                                 const SizedBox(height: 32),
-                                const Text("Scan this QR code with Faculty app", style: TextStyle(color: Colors.black54, fontSize: 13)),
+                                const Text("Scan this QR code with Faculty app",
+                                    style: TextStyle(
+                                        color: Colors.black54, fontSize: 13)),
                                 const SizedBox(height: 16),
-                                
                                 Container(
                                   padding: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    border: Border.all(color: Colors.blue.shade200, width: 2),
+                                    border: Border.all(
+                                        color: Colors.blue.shade200, width: 2),
                                     borderRadius: BorderRadius.circular(16),
                                   ),
                                   child: QrImageView(
@@ -1664,19 +1694,28 @@ class _StudentDashboardState extends State<StudentDashboard>
                                     backgroundColor: Colors.white,
                                   ),
                                 ),
-                                
                                 const Spacer(),
                                 Container(
                                   width: double.infinity,
                                   padding: const EdgeInsets.all(24),
                                   decoration: BoxDecoration(
-                                    border: Border(top: BorderSide(color: Colors.grey.shade200, width: 1)),
+                                    border: Border(
+                                        top: BorderSide(
+                                            color: Colors.grey.shade200,
+                                            width: 1)),
                                   ),
                                   child: Column(
                                     children: [
-                                      Text('Booking ID: $id', style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                                      Text('Booking ID: $id',
+                                          style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 11)),
                                       const SizedBox(height: 8),
-                                      const Text('#PresenzaOD', style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 14)),
+                                      const Text('#PresenzaOD',
+                                          style: TextStyle(
+                                              color: Colors.blue,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14)),
                                     ],
                                   ),
                                 ),
@@ -1686,12 +1725,13 @@ class _StudentDashboardState extends State<StudentDashboard>
                         );
                       },
                       child: Container(
-                        width: 290,
-                        margin: const EdgeInsets.only(right: 10),
+                        width: cardWidth,
+                        margin: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 10),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.blue.shade300, width: 1.5),
+                          border: Border.all(
+                              color: Colors.blue.shade300, width: 1.5),
                           boxShadow: [
                             BoxShadow(
                               color: Colors.blue.withOpacity(0.04),
@@ -1710,11 +1750,14 @@ class _StudentDashboardState extends State<StudentDashboard>
                                 child: Padding(
                                   padding: const EdgeInsets.all(8.0),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             leaveType.toUpperCase(),
@@ -1775,7 +1818,8 @@ class _StudentDashboardState extends State<StudentDashboard>
                                         children: List.generate(8, (index) {
                                           return Container(
                                             height: 3,
-                                            margin: const EdgeInsets.symmetric(vertical: 1),
+                                            margin: const EdgeInsets.symmetric(
+                                                vertical: 1),
                                             color: index % 3 == 0
                                                 ? Colors.transparent
                                                 : Colors.black87,
@@ -1792,6 +1836,297 @@ class _StudentDashboardState extends State<StudentDashboard>
                                             fontSize: 7,
                                             fontWeight: FontWeight.bold,
                                             color: Colors.blue),
+                                      )
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActiveTokens() {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double availableWidth = screenWidth > 600 ? screenWidth - 48 : screenWidth - 32;
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('colleges')
+          .doc('events')
+          .collection('all_events')
+          .where('assignedStudents', arrayContains: widget.studentId)
+          .where('eventType', isEqualTo: 'token')
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final docs = snapshot.data!.docs.toList();
+        final double cardWidth = docs.length == 1 ? availableWidth : 290.0;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                "My Active Tokens",
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFFFF7F50)),
+              ),
+              const SizedBox(height: 6),
+              SizedBox(
+                height: 125,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  children: docs.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final doc = entry.value;
+                    final isLast = index == docs.length - 1;
+                    final data = doc.data() as Map<String, dynamic>;
+                    final name = data['name'] ?? 'Token Event';
+                    final description = data['description'] ?? '';
+                    final startDate = data['startDate'] ?? '';
+                    final eventId = doc.id;
+
+                    return GestureDetector(
+                      onTap: () async {
+                        try {
+                          final claimDoc = await FirebaseFirestore.instance
+                              .collection('colleges')
+                              .doc('token_claims')
+                              .collection('all_claims')
+                              .doc('${eventId}_${widget.studentId}')
+                              .get();
+
+                          if (claimDoc.exists) {
+                            if (mounted) {
+                              showDialog(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  backgroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16)),
+                                  title: const Text('ALREADY CLAIMED',
+                                      style: TextStyle(
+                                          color: Color(0xFFFF7F50),
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 18)),
+                                  content: const Text(
+                                      'This token has already been scanned and claimed.'),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text('OK',
+                                          style: TextStyle(
+                                              color: Color(0xFFFF7F50),
+                                              fontWeight: FontWeight.bold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return;
+                          }
+                        } catch (_) {}
+
+                        final qrData = jsonEncode({
+                          'studentId': widget.studentId,
+                          'eventId': eventId,
+                        });
+
+                        if (!mounted) return;
+
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => Container(
+                            height: MediaQuery.of(context).size.height * 0.7,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.vertical(
+                                  top: Radius.circular(24)),
+                            ),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 12),
+                                Container(
+                                    width: 40,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                        color: Colors.grey[300],
+                                        borderRadius:
+                                            BorderRadius.circular(2))),
+                                const SizedBox(height: 24),
+                                Text(
+                                  name.toUpperCase(),
+                                  style: const TextStyle(
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFFF7F50),
+                                      letterSpacing: 1),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Date: $startDate',
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black87,
+                                      fontWeight: FontWeight.w500),
+                                ),
+                                const SizedBox(height: 32),
+                                const Text("Scan this QR code with Faculty app",
+                                    style: TextStyle(
+                                        color: Colors.black54, fontSize: 13)),
+                                const SizedBox(height: 16),
+                                Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    border: Border.all(
+                                        color: const Color(0xFFFF7F50),
+                                        width: 2),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: QrImageView(
+                                    data: qrData,
+                                    version: QrVersions.auto,
+                                    size: 200.0,
+                                    backgroundColor: Colors.white,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(
+                                    border: Border(
+                                        top: BorderSide(
+                                            color: Colors.grey.shade200,
+                                            width: 1)),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Text('Event ID: $eventId',
+                                          style: const TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 11)),
+                                      const SizedBox(height: 8),
+                                      const Text('#PresenzaToken',
+                                          style: TextStyle(
+                                              color: Color(0xFFFF7F50),
+                                              fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                )
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                      child: Container(
+                        width: cardWidth,
+                        margin: isLast ? EdgeInsets.zero : const EdgeInsets.only(right: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: const Color(0xFFFF7F50), width: 1.5),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF7F50).withOpacity(0.04),
+                              blurRadius: 6,
+                              offset: const Offset(0, 3),
+                            )
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                flex: 3,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8.0),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name.toUpperCase(),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                                color: Color(0xFFFF7F50)),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            startDate,
+                                            style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.black87),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            description,
+                                            style: const TextStyle(
+                                                fontSize: 9,
+                                                color: Colors.black54),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 90,
+                                color: Colors.grey.shade300,
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: Container(
+                                  color: Colors.grey.shade50,
+                                  padding: const EdgeInsets.all(6.0),
+                                  child: const Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.qr_code_2,
+                                          size: 32, color: Color(0xFFFF7F50)),
+                                      SizedBox(height: 4),
+                                      Text(
+                                        'TAP TO QR',
+                                        style: TextStyle(
+                                            fontSize: 7,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFFFF7F50)),
                                       )
                                     ],
                                   ),
@@ -1865,9 +2200,11 @@ class _StudentDashboardState extends State<StudentDashboard>
   }) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmall = screenWidth < 500;
-    
-    final double computedIconSize = isSmall ? 24 : (screenWidth > 800 ? 60 : 40);
-    final double computedFontSize = isSmall ? 10 : (screenWidth > 600 ? 16 : 13);
+
+    final double computedIconSize =
+        isSmall ? 24 : (screenWidth > 800 ? 60 : 40);
+    final double computedFontSize =
+        isSmall ? 10 : (screenWidth > 600 ? 16 : 13);
     final double computedPadding = isSmall ? 6 : 12;
 
     return Card(
@@ -1880,7 +2217,8 @@ class _StudentDashboardState extends State<StudentDashboard>
         borderRadius: BorderRadius.circular(isSmall ? 10 : 15),
         onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.symmetric(vertical: computedPadding, horizontal: 4),
+          padding:
+              EdgeInsets.symmetric(vertical: computedPadding, horizontal: 4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [

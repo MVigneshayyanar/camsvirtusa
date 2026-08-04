@@ -21,15 +21,14 @@ class AppRoutes {
   static const String facultyDashboard = '/facultyDashboard';
   static const String classStudents = '/classStudents';
 
-
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case splash:
         return _animatedRoute(SplashWrapper(), settings);
 
-
       case studentLogin:
-        return _animatedRoute(const LoginScreen(initialRole: 'student'), settings);
+        return _animatedRoute(
+            const LoginScreen(initialRole: 'student'), settings);
 
       case login:
         final role = settings.arguments as String? ?? 'student';
@@ -38,21 +37,26 @@ class AppRoutes {
       case faceVerification:
         final studentId = settings.arguments as String?;
         if (studentId != null && studentId.isNotEmpty) {
-          return _animatedRoute(FaceVerificationScreen(studentId: studentId), settings);
+          return _animatedRoute(
+              FaceVerificationScreen(studentId: studentId), settings);
         } else {
-          return _errorRoute("Invalid or Missing Student ID for Verification", settings);
+          return _errorRoute(
+              "Invalid or Missing Student ID for Verification", settings);
         }
 
       case faceEnrollment:
         final enrollStudentId = settings.arguments as String?;
         if (enrollStudentId != null && enrollStudentId.isNotEmpty) {
-          return _noBackRoute(FaceEnrollmentScreen(studentId: enrollStudentId), settings);
+          return _noBackRoute(
+              FaceEnrollmentScreen(studentId: enrollStudentId), settings);
         } else {
-          return _errorRoute("Invalid or Missing Student ID for Enrollment", settings);
+          return _errorRoute(
+              "Invalid or Missing Student ID for Enrollment", settings);
         }
 
       case facultyLogin:
-        return _animatedRoute(const LoginScreen(initialRole: 'faculty'), settings);
+        return _animatedRoute(
+            const LoginScreen(initialRole: 'faculty'), settings);
 
       case studentDashboard:
         String? studentId;
@@ -66,19 +70,22 @@ class AppRoutes {
           verificationTime = DateTime.now().toIso8601String();
         }
         if (studentId != null && studentId.isNotEmpty) {
-          return _noBackRoute(StudentMainScreen(studentId: studentId, verificationTime: verificationTime), settings);
+          return _noBackRoute(
+              StudentMainScreen(
+                  studentId: studentId, verificationTime: verificationTime),
+              settings);
         }
-        return _errorRoute("Invalid or Missing Arguments for Dashboard", settings);
+        return _errorRoute(
+            "Invalid or Missing Arguments for Dashboard", settings);
 
       case facultyDashboard:
         final facultyId = settings.arguments as String?;
         if (facultyId != null && facultyId.isNotEmpty) {
-          return _noBackRoute(FacultyMainScreen(facultyId: facultyId), settings);
+          return _noBackRoute(
+              FacultyMainScreen(facultyId: facultyId), settings);
         } else {
           return _errorRoute("Invalid or Missing Faculty ID", settings);
         }
-
-
 
       default:
         return _errorRoute("Page Not Found", settings);
@@ -118,12 +125,14 @@ class AppRoutes {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOut;
-        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        final tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         final fadeTween =
-        Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+            Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
         return SlideTransition(
           position: animation.drive(tween),
-          child: FadeTransition(opacity: animation.drive(fadeTween), child: child),
+          child:
+              FadeTransition(opacity: animation.drive(fadeTween), child: child),
         );
       },
     );
@@ -141,12 +150,14 @@ class AppRoutes {
         const begin = Offset(1.0, 0.0);
         const end = Offset.zero;
         const curve = Curves.easeInOut;
-        final tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        final tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
         final fadeTween =
-        Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
+            Tween<double>(begin: 0.0, end: 1.0).chain(CurveTween(curve: curve));
         return SlideTransition(
           position: animation.drive(tween),
-          child: FadeTransition(opacity: animation.drive(fadeTween), child: child),
+          child:
+              FadeTransition(opacity: animation.drive(fadeTween), child: child),
         );
       },
     );
@@ -157,7 +168,7 @@ class AppRoutes {
     return PageRouteBuilder(
       settings: settings,
       pageBuilder: (_, __, ___) => Scaffold(
-        backgroundColor: const Color(0xFF7886C7),
+        backgroundColor: Colors.white,
         body: Center(
           child: Text(
             message,

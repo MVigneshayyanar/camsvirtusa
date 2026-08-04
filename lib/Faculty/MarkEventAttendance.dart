@@ -299,18 +299,33 @@ class _MarkEventAttendanceState extends State<MarkEventAttendance> {
 
   Future<void> _fetchStudents() async {
     try {
+      bool isTokenType = false;
+      try {
+        final eventDoc = await FirebaseFirestore.instance
+            .collection('colleges')
+            .doc('events')
+            .collection('all_events')
+            .doc(widget.eventId)
+            .get();
+        if (eventDoc.exists) {
+          isTokenType = eventDoc.data()?['eventType'] == 'token';
+        }
+      } catch (_) {}
+
       List<Map<String, dynamic>> details = [];
       for (String sId in widget.students) {
-        final odQuery = await FirebaseFirestore.instance
-            .collection('colleges')
-            .doc('od_requests')
-            .collection('all_requests')
-            .where('studentId', isEqualTo: sId)
-            .where('eventId', isEqualTo: widget.eventId)
-            .where('status', isEqualTo: 'approved')
-            .get();
+        if (!isTokenType) {
+          final odQuery = await FirebaseFirestore.instance
+              .collection('colleges')
+              .doc('od_requests')
+              .collection('all_requests')
+              .where('studentId', isEqualTo: sId)
+              .where('eventId', isEqualTo: widget.eventId)
+              .where('status', isEqualTo: 'approved')
+              .get();
 
-        if (odQuery.docs.isEmpty) continue;
+          if (odQuery.docs.isEmpty) continue;
+        }
 
         final doc = await FirebaseFirestore.instance
             .collection('colleges')
@@ -574,10 +589,10 @@ class _MarkEventAttendanceState extends State<MarkEventAttendance> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF9F9F9),
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: const Color(0xFFFF7F50),
-        title: Text(widget.eventName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.white)),
+        title: Text(widget.eventName.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.of(context).pop(),
@@ -604,6 +619,7 @@ class _MarkEventAttendanceState extends State<MarkEventAttendance> {
             icon: const Icon(Icons.qr_code_scanner, color: Colors.white, size: 24),
             tooltip: 'Scan QR Code',
             onPressed: () {
+              bool isDialogShowing = false;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -613,7 +629,7 @@ class _MarkEventAttendanceState extends State<MarkEventAttendance> {
                       onDetect: (capture) {
                         final List<Barcode> barcodes = capture.barcodes;
                         for (final barcode in barcodes) {
-                          if (barcode.rawValue != null) {
+                          if (barcode.rawValue != null && !isDialogShowing) {
                             try {
                               final data = jsonDecode(barcode.rawValue!);
                               final scannedEventId = data['eventId'];
@@ -623,12 +639,102 @@ class _MarkEventAttendanceState extends State<MarkEventAttendance> {
                                 // Match found!
                                 final student = studentDetails.firstWhere((s) => s['id'] == scannedStudentId, orElse: () => {});
                                 if (student.isNotEmpty) {
-                                  setState(() {
-                                    attendanceStatus[scannedStudentId] = 'P';
-                                  });
-                                  Navigator.pop(context); // Close scanner
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('${student['name']} marked Present!'), backgroundColor: Colors.green),
+                                  isDialogShowing = true;
+                                  showGeneralDialog(
+                                    context: context,
+                                    barrierDismissible: false,
+                                    barrierLabel: '',
+                                    transitionDuration: const Duration(milliseconds: 300),
+                                    pageBuilder: (context, anim1, anim2) {
+                                      return const SizedBox.shrink();
+                                    },
+                                    transitionBuilder: (context, anim1, anim2, child) {
+                                      return ScaleTransition(
+                                        scale: CurvedAnimation(
+                                          parent: anim1,
+                                          curve: Curves.easeOutBack,
+                                        ),
+                                        child: AlertDialog(
+                                          backgroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(16),
+                                          ),
+                                          title: const Text(
+                                            'CONFIRM ATTENDANCE',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 18,
+                                              color: Color(0xFFFF7F50),
+                                            ),
+                                          ),
+                                          content: Column(
+                                            mainAxisSize: MainAxisSize.min,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Name: ${student['name']}',
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.black87,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Text(
+                                                'ID: ${student['id']}',
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  color: Colors.grey,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () {
+                                                Navigator.of(context).pop();
+                                                isDialogShowing = false;
+                                              },
+                                              child: const Text(
+                                                'CANCEL',
+                                                style: TextStyle(color: Colors.grey),
+                                              ),
+                                            ),
+                                            ElevatedButton(
+                                              onPressed: () async {
+                                                Navigator.of(context).pop(); // Close dialog
+                                                Navigator.of(context).pop(); // Close scanner
+                                                setState(() {
+                                                  attendanceStatus[scannedStudentId] = 'P';
+                                                });
+                                                try {
+                                                  await FirebaseFirestore.instance
+                                                      .collection('colleges')
+                                                      .doc('token_claims')
+                                                      .collection('all_claims')
+                                                      .doc('${widget.eventId}_$scannedStudentId')
+                                                      .set({'claimed': true});
+                                                } catch (_) {}
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text('${student['name']} marked Present!'),
+                                                    backgroundColor: Colors.green,
+                                                  ),
+                                                );
+                                              },
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(0xFFFF7F50),
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: BorderRadius.circular(8),
+                                                ),
+                                              ),
+                                              child: const Text('CONFIRM'),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
                                   );
                                   return;
                                 } else {

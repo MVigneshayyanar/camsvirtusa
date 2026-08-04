@@ -15,7 +15,7 @@ import 'package:camsvirtusa/Faculty/MarkEventAttendance.dart';
 
 // Custom Color Palette
 const Color kPrimary = Color(0xFFFF7043);
-const Color kBackground = Color(0xFFF9F9F9);
+const Color kBackground = Colors.white;
 const Color kShadow = Color(0xFFFFFFFF);
 
 class MarkAttendance extends StatefulWidget {
@@ -623,7 +623,11 @@ class _MarkAttendanceState extends State<MarkAttendance> {
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFFF7F50)),
+              ),
+            )
           : error.isNotEmpty
               ? Center(child: Text(error))
               : Column(
